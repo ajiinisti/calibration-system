@@ -11,6 +11,7 @@ type UserUsecase interface {
 	BaseUsecase[model.User]
 	SearchEmail(email string) (*model.User, error)
 	CreateUser(email string, role string) error
+	UpdateData(payload *model.User) error
 }
 
 type userUsecase struct {
@@ -78,6 +79,10 @@ func (u *userUsecase) SaveData(payload *model.User) error {
 
 func (u *userUsecase) DeleteData(id string) error {
 	return u.repo.Delete(id)
+}
+
+func (u *userUsecase) UpdateData(payload *model.User) error {
+	return u.repo.Update(payload)
 }
 
 func NewUserUseCase(repo repository.UserRepo, role RoleUsecase, employee EmployeeUsecase, cfg *config.Config) UserUsecase {

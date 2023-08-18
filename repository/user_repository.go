@@ -10,6 +10,7 @@ import (
 type UserRepo interface {
 	BaseRepository[model.User]
 	SearchByEmail(email string) (*model.User, error)
+	Update(payload *model.User) error
 }
 
 type userRepo struct {
@@ -59,6 +60,13 @@ func (u *userRepo) Delete(id string) error {
 		return result.Error
 	} else if result.RowsAffected == 0 {
 		return fmt.Errorf("Uer not found!")
+	}
+	return nil
+}
+
+func (u *userRepo) Update(payload *model.User) error {
+	if err := u.db.Updates(&payload); err.Error != nil {
+		return err.Error
 	}
 	return nil
 }

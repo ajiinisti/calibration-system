@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"fmt"
+	"net/http"
 
 	"calibration-system.com/config"
 	"calibration-system.com/delivery/controller"
@@ -9,8 +10,10 @@ import (
 	"calibration-system.com/manager"
 	"calibration-system.com/model"
 	"calibration-system.com/utils/authenticator"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	"github.com/gorilla/websocket"
 )
 
 type Server struct {
@@ -20,6 +23,7 @@ type Server struct {
 	host         string
 	tokenService authenticator.AccessToken
 	cfg          config.Config
+	websocket.Upgrader
 }
 
 func (s *Server) initController() {
@@ -67,7 +71,20 @@ func NewServer() *Server {
 		)
 	})
 
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://talent-connect-dev.netlify.app", "http://localhost:3000", "http://167.172.84.203.nip.io", "http://167.172.84.203"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders:     []string{"Content-Type", " Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "accept", "origin", "Cache-Control", "X-Requested-With"},
+		AllowCredentials: true,
+	}))
+
 	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			// Allow all connections (you can implement a proper origin check for production)
+			return true
+		},
+	}
 
 	return &Server{
 		ucManager:    uc,
@@ -76,5 +93,6 @@ func NewServer() *Server {
 		host:         fmt.Sprintf("%s:%s", cfg.ApiHost, cfg.ApiPort),
 		tokenService: tokenService,
 		cfg:          *cfg,
+		Upgrader:     upgrader,
 	}
 }

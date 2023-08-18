@@ -9,8 +9,11 @@ type User struct {
 	Email     string `gorm:"unique" `
 	Password  string `json:"-"`
 	// Username  string `gorm:"unique" `
-	LastLogin time.Time
-	Role      Role
-	RoleID    string
 	// EmployeeId string `gorm:"unique"`
+	LastLogin            time.Time
+	Role                 Role
+	RoleID               string
+	ResetPasswordToken   string `gorm:"type:uuid"`
+	ExpiredPasswordToken time.Time
+	LastPasswordChanged  time.Time
 }

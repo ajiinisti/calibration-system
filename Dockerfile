@@ -8,4 +8,5 @@ RUN go build -o calibration-system
 FROM alpine
 WORKDIR /app
 COPY --from=build /src/calibration-system /app
+COPY --from=build /src/utils/templates /app/utils/templates
 ENTRYPOINT ["/app/calibration-system"]

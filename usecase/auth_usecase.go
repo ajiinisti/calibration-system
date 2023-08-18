@@ -2,18 +2,21 @@ package usecase
 
 import (
 	"fmt"
+	"time"
 
 	"calibration-system.com/delivery/api/request"
 	"calibration-system.com/model"
 	"calibration-system.com/utils"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type AuthUsecase interface {
 	Login(payload request.Login) (*model.User, error)
 	// ChangePassword(email string, requestData request.ChangePassword) error
-	ForgetPassword() error
+	ForgetPassword(email string, resetToken uuid.UUID) error
 	GetUserByEmail(email string) (*model.User, error)
+	ResetPassword(email string, resetToken string, newPassword string, confirmPassword string) error
 }
 
 type authUsecase struct {
@@ -39,11 +42,42 @@ type authUsecase struct {
 // }
 
 // forgetPassword implements AuthUsecase
-func (*authUsecase) ForgetPassword() error {
-	// check if email exists
-	// add key to redis (different DB)
-	// send email
-	panic("unimplemented")
+func (a *authUsecase) ForgetPassword(email string, resetToken uuid.UUID) error {
+	user, err := a.user.SearchEmail(email)
+	if err != nil {
+		return err
+	}
+
+	user.ResetPasswordToken = resetToken.String()
+	user.ExpiredPasswordToken = time.Now().Add(time.Minute * 10)
+	return a.user.UpdateData(user)
+}
+
+func (a *authUsecase) ResetPassword(email string, resetToken string, newPassword string, confirmPassword string) error {
+	user, err := a.user.SearchEmail(email)
+	if err != nil {
+		return err
+	}
+
+	if time.Now().After(user.ExpiredPasswordToken) {
+		return fmt.Errorf("Your reset token has been expired")
+	}
+
+	if resetToken != user.ResetPasswordToken {
+		return fmt.Errorf("Your reset token is invalid")
+	}
+
+	if newPassword != confirmPassword {
+		return fmt.Errorf("Your new password and confirm new password isn't the same")
+	}
+
+	hashedPassword, err := utils.SaltPassword([]byte(newPassword))
+	if err != nil {
+		return err
+	}
+	user.Password = hashedPassword
+	user.LastPasswordChanged = time.Now()
+	return a.user.UpdateData(user)
 }
 
 // update password from forgetForm

@@ -87,11 +87,11 @@ func (c *Config) ReadConfigFile() error {
 	}
 
 	c.SMTPConfig = SMTPConfig{
-		// SMTPHost:       os.Getenv("SMTP_HOST"),
-		// SMTPPort:       os.Getenv("SMTP_PORT"),
-		// SMTPSenderName: os.Getenv("SMTP_SENDER"),
-		// SMTPEmail:      os.Getenv("SMTP_EMAIL"),
-		// SMTPPassword:   os.Getenv("SMTP_PASS"),
+		SMTPHost:       os.Getenv("SMTP_HOST"),
+		SMTPPort:       os.Getenv("SMTP_PORT"),
+		SMTPSenderName: os.Getenv("SMTP_SENDER"),
+		SMTPEmail:      os.Getenv("SMTP_EMAIL"),
+		SMTPPassword:   os.Getenv("SMTP_PASS"),
 	}
 
 	c.TokenConfig = TokenConfig{
@@ -108,12 +108,12 @@ func (c *Config) ReadConfigFile() error {
 		Db:        0,
 	}
 
-	// c.GoogleOAuthConfig.GoogleClientID = os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
-	// c.GoogleOAuthConfig.GoogleClientSecret = os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
-	// c.GoogleOAuthConfig.GoogleOAuthRedirectUrl = os.Getenv("GOOGLE_OAUTH_REDIRECT_URL")
-	// c.SMTPEmail == "" || c.SMTPHost == "" || c.SMTPPassword == "" || c.SMTPPort == "" || c.SMTPSenderName == ""
+	c.GoogleOAuthConfig.GoogleClientID = os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
+	c.GoogleOAuthConfig.GoogleClientSecret = os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	c.GoogleOAuthConfig.GoogleOAuthRedirectUrl = os.Getenv("GOOGLE_OAUTH_REDIRECT_URL")
 
-	if c.DbConfig.Host == "" || c.DbConfig.Name == "" || c.DbConfig.Password == "" || c.DbConfig.Port == "" || c.DbConfig.User == "" {
+	if c.SMTPEmail == "" || c.SMTPHost == "" || c.SMTPPassword == "" || c.SMTPPort == "" || c.SMTPSenderName == "" ||
+		c.DbConfig.Host == "" || c.DbConfig.Name == "" || c.DbConfig.Password == "" || c.DbConfig.Port == "" || c.DbConfig.User == "" {
 		return errors.New("Missing required field")
 	}
 	return nil
