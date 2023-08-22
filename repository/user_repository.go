@@ -19,7 +19,7 @@ type userRepo struct {
 
 func (u *userRepo) SearchByEmail(email string) (*model.User, error) {
 	var user model.User
-	err := u.db.Preload("Role").First(&user, "email = ?", email).Error
+	err := u.db.Preload("Roles").First(&user, "email = ?", email).Error
 	if err != nil {
 		return nil, err
 	}
@@ -29,14 +29,14 @@ func (u *userRepo) SearchByEmail(email string) (*model.User, error) {
 func (u *userRepo) Save(payload *model.User) error {
 	err := u.db.Save(&payload)
 	if err.Error != nil {
-		return err.Error
+		return fmt.Errorf(err.Error.Error() + payload.ID)
 	}
 	return nil
 }
 
 func (u *userRepo) Get(id string) (*model.User, error) {
 	var user model.User
-	err := u.db.Preload("Role").First(&user, "id = ?", id).Error
+	err := u.db.Preload("Roles").First(&user, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (u *userRepo) Get(id string) (*model.User, error) {
 
 func (u *userRepo) List() ([]model.User, error) {
 	var users []model.User
-	err := u.db.Preload("Role").Find(&users).Error
+	err := u.db.Preload("Roles").Find(&users).Error
 	if err != nil {
 		return nil, err
 	}

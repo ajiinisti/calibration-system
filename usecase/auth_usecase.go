@@ -7,14 +7,13 @@ import (
 	"calibration-system.com/delivery/api/request"
 	"calibration-system.com/model"
 	"calibration-system.com/utils"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type AuthUsecase interface {
 	Login(payload request.Login) (*model.User, error)
 	// ChangePassword(email string, requestData request.ChangePassword) error
-	ForgetPassword(email string, resetToken uuid.UUID) error
+	ForgetPassword(email string, resetToken string) error
 	GetUserByEmail(email string) (*model.User, error)
 	ResetPassword(email string, resetToken string, newPassword string, confirmPassword string) error
 }
@@ -42,13 +41,13 @@ type authUsecase struct {
 // }
 
 // forgetPassword implements AuthUsecase
-func (a *authUsecase) ForgetPassword(email string, resetToken uuid.UUID) error {
+func (a *authUsecase) ForgetPassword(email string, resetToken string) error {
 	user, err := a.user.SearchEmail(email)
 	if err != nil {
 		return err
 	}
 
-	user.ResetPasswordToken = resetToken.String()
+	user.ResetPasswordToken = resetToken
 	user.ExpiredPasswordToken = time.Now().Add(time.Minute * 10)
 	return a.user.UpdateData(user)
 }

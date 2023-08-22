@@ -30,6 +30,7 @@ func (s *Server) initController() {
 	controller.NewRoleController(s.engine, s.ucManager.RoleUc())
 	controller.NewUserController(s.engine, s.ucManager.UserUc())
 	controller.NewAuthController(s.engine, s.ucManager.AuthUc(), s.tokenService, s.cfg)
+	controller.NewEmployeeController(s.engine, s.ucManager.EmployeeUc())
 }
 
 func (s *Server) Run() {
@@ -66,8 +67,9 @@ func NewServer() *Server {
 	r := gin.Default()
 	r.GET("/migration", func(ctx *gin.Context) {
 		infra.Migrate(
-			&model.User{},
 			&model.Role{},
+			&model.User{},
+			&model.Employee{},
 		)
 	})
 

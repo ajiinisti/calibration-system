@@ -14,7 +14,6 @@ import (
 	"calibration-system.com/utils"
 	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -38,9 +37,15 @@ func (a *AuthController) login(c *gin.Context) {
 		a.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	var roles []string
+	for _, v := range user.Roles {
+		roles = append(roles, v.Name)
+	}
+
 	cred := model.TokenModel{
 		Email: user.Email,
-		Role:  user.Role.Name,
+		Role:  roles,
 		ID:    user.ID,
 	}
 	tokenDetail, err := a.tokenService.CreateAccessToken(&cred)
@@ -91,10 +96,16 @@ func (a *AuthController) loginGoogle(ctx *gin.Context) {
 		a.NewFailedResponse(ctx, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	var roles []string
+	for _, v := range user.Roles {
+		roles = append(roles, v.Name)
+	}
+
 	cred := model.TokenModel{
 		Username: "",
 		Email:    user.Email,
-		Role:     user.Role.Name,
+		Role:     roles,
 		ID:       user.ID,
 	}
 
@@ -156,7 +167,7 @@ func (a *AuthController) forgetPassword(ctx *gin.Context) {
 	}
 
 	// Generate Verification Code
-	resetToken := uuid.New()
+	resetToken, err := utils.GeneratePassword()
 	err = a.uc.ForgetPassword(userCredential.Email, resetToken)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -172,7 +183,7 @@ func (a *AuthController) forgetPassword(ctx *gin.Context) {
 	}
 
 	emailData := utils.EmailData{
-		URL:       "http://localhost:3000/#/reset-password/" + fmt.Sprintf("%s/%s", user.Email, resetToken.String()),
+		URL:       "http://localhost:3000/#/reset-password/" + fmt.Sprintf("%s/%s", user.Email, resetToken),
 		FirstName: user.Email,
 		Subject:   "Your password reset token (valid for 10min)",
 	}

@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"fmt"
+
 	"calibration-system.com/config"
 	"calibration-system.com/model"
 	"calibration-system.com/repository"
@@ -10,7 +12,7 @@ import (
 type UserUsecase interface {
 	BaseUsecase[model.User]
 	SearchEmail(email string) (*model.User, error)
-	CreateUser(email string, role string) error
+	CreateUser(email string, role []string) error
 	UpdateData(payload *model.User) error
 }
 
@@ -32,7 +34,7 @@ func (u *userUsecase) FindById(id string) (*model.User, error) {
 	return u.repo.Get(id)
 }
 
-func (u *userUsecase) CreateUser(email string, role string) error {
+func (u *userUsecase) CreateUser(email string, role []string) error {
 	//Find user in Employee
 	// _, err := u.employee.FindByEmail(email)
 	// if err != nil {
@@ -44,23 +46,31 @@ func (u *userUsecase) CreateUser(email string, role string) error {
 	// 	return err
 	// }
 
-	user := model.User{
-		Email: email,
-	}
-
+	fmt.Println("MASUK")
 	password, err := utils.SaltPassword([]byte("password"))
 	if err != nil {
 		return err
 	}
-	user.Password = password
 
+	fmt.Println("MASUK2")
 	//Find Role
-	getRole, err := u.role.FindByName(role)
-	if err != nil {
-		return err
+	var roles []model.Role
+	for _, v := range role {
+		getRole, err := u.role.FindByName(v)
+		if err != nil {
+			return err
+		}
+		roles = append(roles, *getRole)
 	}
-	user.Role = *getRole
 
+	fmt.Println("MASUK3")
+	user := model.User{
+		Email:    email,
+		Password: password,
+		Roles:    roles,
+	}
+
+	fmt.Println("New user", user)
 	if err := u.repo.Save(&user); err != nil {
 		return err
 	}

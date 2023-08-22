@@ -4,16 +4,16 @@ import "time"
 
 type User struct {
 	BaseModel
-	CreatedBy string `gorm:"default:admin" json:"-"`
-	UpdatedBy string `gorm:"default:admin" json:"-"`
-	Email     string `gorm:"unique" `
-	Password  string `json:"-"`
-	// Username  string `gorm:"unique" `
-	// EmployeeId string `gorm:"unique"`
+	CreatedBy            string `gorm:"default:admin" json:"-"`
+	UpdatedBy            string `gorm:"default:admin" json:"-"`
+	Email                string `gorm:"unique" `
+	Name                 string
+	Password             string `json:"-"`
 	LastLogin            time.Time
-	Role                 Role
-	RoleID               string
-	ResetPasswordToken   string `gorm:"type:uuid"`
+	Roles                []Role `gorm:"many2many:user_roles"`
+	ResetPasswordToken   string
 	ExpiredPasswordToken time.Time
 	LastPasswordChanged  time.Time
+	// Username  string `gorm:"unique" `
+	// EmployeeId string `gorm:"unique"`
 }

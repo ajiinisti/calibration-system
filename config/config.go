@@ -61,13 +61,13 @@ type Config struct {
 }
 
 func (c *Config) ReadConfigFile() error {
-	if os.Getenv("ENV") == "local" {
-		err := godotenv.Load(".env")
-		if err != nil {
-			log.Println(err)
-			return errors.New("Failed to load .env file")
-		}
+	// if os.Getenv("ENV") == "local" {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println(err)
+		return errors.New("Failed to load .env file")
 	}
+	// }
 
 	c.DbConfig = DbConfig{
 		Host:     os.Getenv("DB_HOST"),

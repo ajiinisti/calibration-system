@@ -9,6 +9,7 @@ type UsecaseManager interface {
 	UserUc() usecase.UserUsecase
 	RoleUc() usecase.RoleUsecase
 	AuthUc() usecase.AuthUsecase
+	EmployeeUc() usecase.EmployeeUsecase
 }
 
 type usecaseManager struct {
