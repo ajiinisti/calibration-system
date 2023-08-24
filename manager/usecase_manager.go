@@ -10,6 +10,8 @@ type UsecaseManager interface {
 	RoleUc() usecase.RoleUsecase
 	AuthUc() usecase.AuthUsecase
 	EmployeeUc() usecase.EmployeeUsecase
+	BusinessUnitUc() usecase.BusinessUnitUsecase
+	GroupBusinessUnitUc() usecase.GroupBusinessUnitUsecase
 }
 
 type usecaseManager struct {
@@ -31,6 +33,14 @@ func (u *usecaseManager) AuthUc() usecase.AuthUsecase {
 
 func (u *usecaseManager) EmployeeUc() usecase.EmployeeUsecase {
 	return usecase.NewEmployeeUsecase(u.repo.EmployeeRepo())
+}
+
+func (u *usecaseManager) GroupBusinessUnitUc() usecase.GroupBusinessUnitUsecase {
+	return usecase.NewGroupBusinessUnitUsecase(u.repo.GroupBusinessUnitRepo())
+}
+
+func (u *usecaseManager) BusinessUnitUc() usecase.BusinessUnitUsecase {
+	return usecase.NewBusinessUnitUsecase(u.repo.BusinessUnitRepo(), u.GroupBusinessUnitUc())
 }
 
 func NewUsecaseManager(repo RepoManager, cfg *config.Config) UsecaseManager {

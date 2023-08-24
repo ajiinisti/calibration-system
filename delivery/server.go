@@ -31,6 +31,8 @@ func (s *Server) initController() {
 	controller.NewUserController(s.engine, s.ucManager.UserUc())
 	controller.NewAuthController(s.engine, s.ucManager.AuthUc(), s.tokenService, s.cfg)
 	controller.NewEmployeeController(s.engine, s.ucManager.EmployeeUc())
+	controller.NewGroupBusinessUnitController(s.engine, s.ucManager.GroupBusinessUnitUc())
+	controller.NewBusinessUnitController(s.engine, s.ucManager.BusinessUnitUc())
 }
 
 func (s *Server) Run() {
@@ -70,6 +72,8 @@ func NewServer() *Server {
 			&model.Role{},
 			&model.User{},
 			&model.Employee{},
+			&model.BusinessUnit{},
+			&model.GroupBusinessUnit{},
 		)
 	})
 
