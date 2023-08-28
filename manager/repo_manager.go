@@ -5,9 +5,15 @@ import "calibration-system.com/repository"
 type RepoManager interface {
 	RoleRepo() repository.RoleRepo
 	UserRepo() repository.UserRepo
-	EmployeeRepo() repository.EmployeeRepo
 	BusinessUnitRepo() repository.BusinessUnitRepo
 	GroupBusinessUnitRepo() repository.GroupBusinessUnitRepo
+	ActualScoreRepo() repository.ActualScoreRepo
+	CalibrationRepo() repository.CalibrationRepo
+	PhaseRepo() repository.PhaseRepo
+	ProjectRepo() repository.ProjectRepo
+	ProjectPhaseRepo() repository.ProjectPhaseRepo
+	RatingQuotaRepo() repository.RatingQuotaRepo
+	ScoreDistributionRepo() repository.ScoreDistributionRepo
 }
 
 type repoManager struct {
@@ -22,16 +28,40 @@ func (r *repoManager) UserRepo() repository.UserRepo {
 	return repository.NewUserRepo(r.infra.Conn())
 }
 
-func (r *repoManager) EmployeeRepo() repository.EmployeeRepo {
-	return repository.NewEmployeeRepo(r.infra.Conn())
-}
-
 func (r *repoManager) BusinessUnitRepo() repository.BusinessUnitRepo {
 	return repository.NewBusinessUnitRepo(r.infra.Conn())
 }
 
 func (r *repoManager) GroupBusinessUnitRepo() repository.GroupBusinessUnitRepo {
 	return repository.NewGroupBusinessUnitRepo(r.infra.Conn())
+}
+
+func (r *repoManager) ActualScoreRepo() repository.ActualScoreRepo {
+	return repository.NewActualScoreRepo(r.infra.Conn())
+}
+
+func (r *repoManager) CalibrationRepo() repository.CalibrationRepo {
+	return repository.NewCalibrationRepo(r.infra.Conn())
+}
+
+func (r *repoManager) PhaseRepo() repository.PhaseRepo {
+	return repository.NewPhaseRepo(r.infra.Conn())
+}
+
+func (r *repoManager) ProjectRepo() repository.ProjectRepo {
+	return repository.NewProjectRepo(r.infra.Conn())
+}
+
+func (r *repoManager) ProjectPhaseRepo() repository.ProjectPhaseRepo {
+	return repository.NewProjectPhaseRepo(r.infra.Conn())
+}
+
+func (r *repoManager) RatingQuotaRepo() repository.RatingQuotaRepo {
+	return repository.NewRatingQuotaRepo(r.infra.Conn())
+}
+
+func (r *repoManager) ScoreDistributionRepo() repository.ScoreDistributionRepo {
+	return repository.NewScoreDistributionRepo(r.infra.Conn())
 }
 
 func NewRepoManager(infra InfraManager) RepoManager {

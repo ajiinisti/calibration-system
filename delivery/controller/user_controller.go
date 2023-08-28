@@ -25,6 +25,16 @@ func (u *UserController) listHandler(c *gin.Context) {
 	u.NewSuccessSingleResponse(c, user, "OK")
 }
 
+func (u *UserController) getByIdHandler(c *gin.Context) {
+	id := c.Param("id")
+	roles, err := u.uc.FindById(id)
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	u.NewSuccessSingleResponse(c, roles, "OK")
+}
+
 func (u *UserController) createHandler(c *gin.Context) {
 	var payload request.CreateUser
 
@@ -33,7 +43,20 @@ func (u *UserController) createHandler(c *gin.Context) {
 		return
 	}
 
-	if err := u.uc.CreateUser(payload.Email, payload.Role); err != nil {
+	user := model.User{
+		Email:            payload.Email,
+		Name:             payload.Name,
+		Nik:              payload.Nik,
+		DateOfBirth:      payload.DateOfBirth,
+		SupervisorName:   payload.SupervisorName,
+		BusinessUnitId:   payload.BusinessUnitId,
+		OrganizationUnit: payload.OrganizationUnit,
+		Division:         payload.Division,
+		Department:       payload.Department,
+		HireDate:         payload.HireDate,
+		Grade:            payload.Grade,
+	}
+	if err := u.uc.CreateUser(user, payload.Role); err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -42,14 +65,31 @@ func (u *UserController) createHandler(c *gin.Context) {
 }
 
 func (u *UserController) updateHandler(c *gin.Context) {
-	var payload model.User
+	var payload request.UpdateUser
 
 	if err := c.ShouldBind(&payload); err != nil {
 		u.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := u.uc.SaveData(&payload); err != nil {
+	user := model.User{
+		BaseModel: model.BaseModel{
+			ID: payload.ID,
+		},
+		Email:            payload.Email,
+		Name:             payload.Name,
+		Nik:              payload.Nik,
+		DateOfBirth:      payload.DateOfBirth,
+		SupervisorName:   payload.SupervisorName,
+		BusinessUnit:     model.BusinessUnit{},
+		BusinessUnitId:   payload.BusinessUnitId,
+		OrganizationUnit: payload.OrganizationUnit,
+		Division:         payload.Division,
+		Department:       payload.Department,
+		HireDate:         payload.HireDate,
+		Grade:            payload.Grade,
+	}
+	if err := u.uc.SaveUser(user, payload.Role); err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -72,6 +112,7 @@ func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
 		uc:     uc,
 	}
 	u.GET("/users", controller.listHandler)
+	u.GET("/users/:id", controller.getByIdHandler)
 	u.PUT("/users", controller.updateHandler)
 	u.POST("/users", controller.createHandler)
 	u.DELETE("/users/:id", controller.deleteHandler)

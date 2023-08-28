@@ -9,43 +9,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type RoleController struct {
+type ProjectController struct {
 	router *gin.Engine
-	uc     usecase.RoleUsecase
+	uc     usecase.ProjectUsecase
 	api.BaseApi
 }
 
-func (r *RoleController) listHandler(c *gin.Context) {
-	roles, err := r.uc.FindAll()
+func (r *ProjectController) listHandler(c *gin.Context) {
+	projects, err := r.uc.FindAll()
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	r.NewSuccessSingleResponse(c, roles, "OK")
+	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
-func (r *RoleController) getByHandler(c *gin.Context) {
-	name := c.Param("name")
-	roles, err := r.uc.FindByName(name)
-	if err != nil {
-		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	r.NewSuccessSingleResponse(c, roles, "OK")
-}
-
-func (r *RoleController) getByIdHandler(c *gin.Context) {
+func (r *ProjectController) getByIdHandler(c *gin.Context) {
 	id := c.Param("id")
-	roles, err := r.uc.FindById(id)
+	projects, err := r.uc.FindById(id)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	r.NewSuccessSingleResponse(c, roles, "OK")
+	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
-func (r *RoleController) createHandler(c *gin.Context) {
-	var payload model.Role
+func (r *ProjectController) createHandler(c *gin.Context) {
+	var payload model.Project
 	if err := r.ParseRequestBody(c, &payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
@@ -59,8 +49,8 @@ func (r *RoleController) createHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
-func (r *RoleController) updateHandler(c *gin.Context) {
-	var payload model.Role
+func (r *ProjectController) updateHandler(c *gin.Context) {
+	var payload model.Project
 
 	if err := c.ShouldBind(&payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
@@ -75,7 +65,7 @@ func (r *RoleController) updateHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
-func (r *RoleController) deleteHandler(c *gin.Context) {
+func (r *ProjectController) deleteHandler(c *gin.Context) {
 	id := c.Param("id")
 	if err := r.uc.DeleteData(id); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -84,16 +74,15 @@ func (r *RoleController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
-func NewRoleController(r *gin.Engine, uc usecase.RoleUsecase) *RoleController {
-	controller := RoleController{
+func NewProjectController(r *gin.Engine, uc usecase.ProjectUsecase) *ProjectController {
+	controller := ProjectController{
 		router: r,
 		uc:     uc,
 	}
-	r.GET("/roles", controller.listHandler)
-	r.GET("/roles/:name", controller.getByHandler)
-	r.GET("/roles/id/:id", controller.getByIdHandler)
-	r.PUT("/roles", controller.updateHandler)
-	r.POST("/roles", controller.createHandler)
-	r.DELETE("/roles/:id", controller.deleteHandler)
+	r.GET("/projects", controller.listHandler)
+	r.GET("/projects/:id", controller.getByIdHandler)
+	r.PUT("/projects", controller.updateHandler)
+	r.POST("/projects", controller.createHandler)
+	r.DELETE("/projects/:id", controller.deleteHandler)
 	return &controller
 }

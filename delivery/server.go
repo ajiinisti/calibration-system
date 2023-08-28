@@ -30,9 +30,15 @@ func (s *Server) initController() {
 	controller.NewRoleController(s.engine, s.ucManager.RoleUc())
 	controller.NewUserController(s.engine, s.ucManager.UserUc())
 	controller.NewAuthController(s.engine, s.ucManager.AuthUc(), s.tokenService, s.cfg)
-	controller.NewEmployeeController(s.engine, s.ucManager.EmployeeUc())
 	controller.NewGroupBusinessUnitController(s.engine, s.ucManager.GroupBusinessUnitUc())
 	controller.NewBusinessUnitController(s.engine, s.ucManager.BusinessUnitUc())
+	controller.NewPhaseController(s.engine, s.ucManager.PhaseUc())
+	controller.NewProjectController(s.engine, s.ucManager.ProjectUc())
+	controller.NewProjectPhaseController(s.engine, s.ucManager.ProjectPhaseUc())
+	controller.NewActualScoreController(s.engine, s.ucManager.ActualScoreUc())
+	controller.NewCalibrationController(s.engine, s.ucManager.CalibrationUc())
+	controller.NewRatingQuotaController(s.engine, s.ucManager.RatingQuotaUc())
+	controller.NewScoreDistributionController(s.engine, s.ucManager.ScoreDistributionUc())
 }
 
 func (s *Server) Run() {
@@ -71,9 +77,15 @@ func NewServer() *Server {
 		infra.Migrate(
 			&model.Role{},
 			&model.User{},
-			&model.Employee{},
 			&model.BusinessUnit{},
 			&model.GroupBusinessUnit{},
+			&model.Phase{},
+			&model.Project{},
+			&model.ProjectPhase{},
+			&model.ActualScore{},
+			&model.Calibration{},
+			&model.RatingQuota{},
+			&model.ScoreDistribution{},
 		)
 	})
 

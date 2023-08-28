@@ -12,15 +12,15 @@ import (
 type UserUsecase interface {
 	BaseUsecase[model.User]
 	SearchEmail(email string) (*model.User, error)
-	CreateUser(email string, role []string) error
+	CreateUser(payload model.User, role []string) error
+	SaveUser(payload model.User, role []string) error
 	UpdateData(payload *model.User) error
 }
 
 type userUsecase struct {
-	repo     repository.UserRepo
-	role     RoleUsecase
-	employee EmployeeUsecase
-	cfg      *config.Config
+	repo repository.UserRepo
+	role RoleUsecase
+	cfg  *config.Config
 }
 
 func (u *userUsecase) SearchEmail(email string) (*model.User, error) {
@@ -34,25 +34,17 @@ func (u *userUsecase) FindById(id string) (*model.User, error) {
 	return u.repo.Get(id)
 }
 
-func (u *userUsecase) CreateUser(email string, role []string) error {
-	//Find user in Employee
-	// _, err := u.employee.FindByEmail(email)
-	// if err != nil {
-	// 	return err
-	// }
+func (u *userUsecase) CreateUser(payload model.User, role []string) error {
+	var password string
+	if len(role) > 0 {
+		var err error
+		password, err = utils.SaltPassword([]byte("password"))
+		if err != nil {
+			return err
+		}
 
-	// password, err := utils.GeneratePassword()
-	// if err != nil {
-	// 	return err
-	// }
-
-	fmt.Println("MASUK")
-	password, err := utils.SaltPassword([]byte("password"))
-	if err != nil {
-		return err
 	}
 
-	fmt.Println("MASUK2")
 	//Find Role
 	var roles []model.Role
 	for _, v := range role {
@@ -63,15 +55,10 @@ func (u *userUsecase) CreateUser(email string, role []string) error {
 		roles = append(roles, *getRole)
 	}
 
-	fmt.Println("MASUK3")
-	user := model.User{
-		Email:    email,
-		Password: password,
-		Roles:    roles,
-	}
+	payload.Password = password
+	payload.Roles = roles
 
-	fmt.Println("New user", user)
-	if err := u.repo.Save(&user); err != nil {
+	if err := u.repo.Save(&payload); err != nil {
 		return err
 	}
 
@@ -80,6 +67,26 @@ func (u *userUsecase) CreateUser(email string, role []string) error {
 	// if err := utils.SendMail([]string{payload.Email}, "TalentConnect Registration", body, u.cfg.SMTPConfig); err != nil {
 	// 	return err
 	// }
+	return nil
+}
+
+func (u *userUsecase) SaveUser(payload model.User, role []string) error {
+	//Find Role
+	var roles []model.Role
+	for _, v := range role {
+		getRole, err := u.role.FindByName(v)
+		if err != nil {
+			return err
+		}
+		roles = append(roles, *getRole)
+	}
+	payload.Roles = roles
+	fmt.Println("DATA", payload)
+
+	if err := u.repo.Update(&payload); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -95,11 +102,10 @@ func (u *userUsecase) UpdateData(payload *model.User) error {
 	return u.repo.Update(payload)
 }
 
-func NewUserUseCase(repo repository.UserRepo, role RoleUsecase, employee EmployeeUsecase, cfg *config.Config) UserUsecase {
+func NewUserUseCase(repo repository.UserRepo, role RoleUsecase, cfg *config.Config) UserUsecase {
 	return &userUsecase{
-		repo:     repo,
-		role:     role,
-		employee: employee,
-		cfg:      cfg,
+		repo: repo,
+		role: role,
+		cfg:  cfg,
 	}
 }

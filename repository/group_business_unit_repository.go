@@ -42,7 +42,7 @@ func (r *groupBusinessUnitRepo) List() ([]model.GroupBusinessUnit, error) {
 }
 
 func (r *groupBusinessUnitRepo) Delete(id string) error {
-	result := r.db.Delete(&model.Employee{
+	result := r.db.Delete(&model.GroupBusinessUnit{
 		BaseModel: model.BaseModel{ID: id},
 	})
 	if result.Error != nil {
