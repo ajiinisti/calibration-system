@@ -2,5 +2,6 @@ package model
 
 type Phase struct {
 	BaseModel
-	Name string
+	Name  string
+	Order int
 }

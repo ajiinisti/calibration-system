@@ -106,6 +106,15 @@ func (u *UserController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
+func (u *UserController) uploadHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := u.uc.DeleteData(id); err != nil {
+		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.String(http.StatusNoContent, "")
+}
+
 func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
 	controller := UserController{
 		router: u,
@@ -115,6 +124,7 @@ func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
 	u.GET("/users/:id", controller.getByIdHandler)
 	u.PUT("/users", controller.updateHandler)
 	u.POST("/users", controller.createHandler)
+	u.POST("/users/upload", controller.uploadHandler)
 	u.DELETE("/users/:id", controller.deleteHandler)
 	return &controller
 }

@@ -25,7 +25,7 @@ func (r *projectRepo) Save(payload *model.Project) error {
 
 func (r *projectRepo) Get(id string) (*model.Project, error) {
 	var project model.Project
-	err := r.db.Preload("ActualScores").Preload("ProjectPhases").First(&project, "id = ?", id).Error
+	err := r.db.Preload("ActualScores").Preload("ProjectPhases").Preload("ScoreDistributions").First(&project, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (r *projectRepo) Get(id string) (*model.Project, error) {
 
 func (r *projectRepo) List() ([]model.Project, error) {
 	var projects []model.Project
-	err := r.db.Preload("ActualScores").Preload("ProjectPhases").Find(&projects).Error
+	err := r.db.Preload("ActualScores").Preload("ProjectPhases").Preload("ScoreDistributions").Find(&projects).Error
 	if err != nil {
 		return nil, err
 	}

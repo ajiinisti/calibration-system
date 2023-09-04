@@ -5,6 +5,7 @@ import (
 
 	"calibration-system.com/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type PhaseRepo interface {
@@ -34,7 +35,7 @@ func (r *phaseRepo) Get(id string) (*model.Phase, error) {
 
 func (r *phaseRepo) List() ([]model.Phase, error) {
 	var phases []model.Phase
-	err := r.db.Find(&phases).Error
+	err := r.db.Order(clause.OrderByColumn{Column: clause.Column{Name: "order"}, Desc: false}).Find(&phases).Error
 	if err != nil {
 		return nil, err
 	}

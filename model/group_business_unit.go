@@ -4,6 +4,6 @@ type GroupBusinessUnit struct {
 	BaseModel
 	Status             bool
 	GroupName          string
-	BusinessUnits      []BusinessUnit
+	BusinessUnits      []BusinessUnit `gorm:"foreignKey:GroupBusinessUnitId"`
 	ScoreDistributions []ScoreDistribution
 }
