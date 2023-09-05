@@ -11,6 +11,7 @@ type UserRepo interface {
 	BaseRepository[model.User]
 	SearchByEmail(email string) (*model.User, error)
 	Update(payload *model.User) error
+	Bulksave(payload *[]model.User) error
 }
 
 type userRepo struct {
@@ -30,6 +31,14 @@ func (u *userRepo) Save(payload *model.User) error {
 	err := u.db.Save(&payload)
 	if err.Error != nil {
 		return fmt.Errorf(err.Error.Error() + payload.ID)
+	}
+	return nil
+}
+
+func (u *userRepo) Bulksave(payload *[]model.User) error {
+	err := u.db.Save(&payload)
+	if err.Error != nil {
+		return err.Error
 	}
 	return nil
 }

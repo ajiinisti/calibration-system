@@ -18,8 +18,10 @@ type User struct {
 	OrganizationUnit       string
 	Division               string
 	Department             string
-	HireDate               time.Time `gorm:"type:timestamp without time zone"`
+	JoinDate               time.Time `gorm:"type:timestamp without time zone"`
 	Grade                  string
+	HRBP                   string
+	Position               string
 	Password               string `json:"-"`
 	Roles                  []Role `gorm:"many2many:user_roles"`
 	ResetPasswordToken     string

@@ -12,9 +12,11 @@ type CreateUser struct {
 	OrganizationUnit string
 	Division         string
 	Department       string
-	HireDate         time.Time
+	JoinDate         time.Time
 	Grade            string
 	Role             []string
+	HRBP             string
+	Position         string
 }
 
 type UpdateUser struct {
@@ -28,7 +30,9 @@ type UpdateUser struct {
 	OrganizationUnit string
 	Division         string
 	Department       string
-	HireDate         time.Time
+	JoinDate         time.Time
 	Grade            string
+	HRBP             string
+	Position         string
 	Role             []string
 }

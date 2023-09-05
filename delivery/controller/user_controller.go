@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strings"
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
@@ -53,8 +54,10 @@ func (u *UserController) createHandler(c *gin.Context) {
 		OrganizationUnit: payload.OrganizationUnit,
 		Division:         payload.Division,
 		Department:       payload.Department,
-		HireDate:         payload.HireDate,
+		JoinDate:         payload.JoinDate,
 		Grade:            payload.Grade,
+		HRBP:             payload.HRBP,
+		Position:         payload.Position,
 	}
 	if err := u.uc.CreateUser(user, payload.Role); err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -86,8 +89,10 @@ func (u *UserController) updateHandler(c *gin.Context) {
 		OrganizationUnit: payload.OrganizationUnit,
 		Division:         payload.Division,
 		Department:       payload.Department,
-		HireDate:         payload.HireDate,
+		JoinDate:         payload.JoinDate,
 		Grade:            payload.Grade,
+		HRBP:             payload.HRBP,
+		Position:         payload.Position,
 	}
 	if err := u.uc.SaveUser(user, payload.Role); err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -107,12 +112,23 @@ func (u *UserController) deleteHandler(c *gin.Context) {
 }
 
 func (u *UserController) uploadHandler(c *gin.Context) {
-	id := c.Param("id")
-	if err := u.uc.DeleteData(id); err != nil {
-		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+	file, err := c.FormFile("excelFile")
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	c.String(http.StatusNoContent, "")
+
+	logs, err := u.uc.BulkInsert(file)
+	if err != nil {
+		if len(logs) > 0 {
+			u.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+		} else {
+			u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	u.NewSuccessSingleResponse(c, "", "OK")
 }
 
 func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {

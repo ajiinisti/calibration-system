@@ -14,6 +14,4 @@ type Calibration struct {
 	SpmoID         string
 	ActualScore    float64
 	ActualRating   string
-	Y1Rating       string
-	Y2Rating       string
 }

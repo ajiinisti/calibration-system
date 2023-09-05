@@ -85,7 +85,11 @@ func (r *BusinessUnitController) uploadHandler(c *gin.Context) {
 
 	logs, err := r.uc.BulkInsert(file)
 	if err != nil {
-		r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, " "))
+		if len(logs) > 0 {
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, " "))
+		} else {
+			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 

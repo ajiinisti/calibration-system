@@ -30,7 +30,7 @@ func (u *usecaseManager) RoleUc() usecase.RoleUsecase {
 }
 
 func (u *usecaseManager) UserUc() usecase.UserUsecase {
-	return usecase.NewUserUseCase(u.repo.UserRepo(), u.RoleUc(), u.cfg)
+	return usecase.NewUserUseCase(u.repo.UserRepo(), u.RoleUc(), u.BusinessUnitUc(), u.cfg)
 }
 
 func (u *usecaseManager) AuthUc() usecase.AuthUsecase {
