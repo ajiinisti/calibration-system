@@ -7,6 +7,7 @@ import (
 
 type GroupBusinessUnitUsecase interface {
 	BaseUsecase[model.GroupBusinessUnit]
+	FindByName(name string) (*model.GroupBusinessUnit, error)
 }
 
 type groupBusinessUnitUsecase struct {
@@ -19,6 +20,10 @@ func (r *groupBusinessUnitUsecase) FindAll() ([]model.GroupBusinessUnit, error) 
 
 func (r *groupBusinessUnitUsecase) FindById(id string) (*model.GroupBusinessUnit, error) {
 	return r.repo.Get(id)
+}
+
+func (r *groupBusinessUnitUsecase) FindByName(name string) (*model.GroupBusinessUnit, error) {
+	return r.repo.GetByName(name)
 }
 
 func (r *groupBusinessUnitUsecase) SaveData(payload *model.GroupBusinessUnit) error {

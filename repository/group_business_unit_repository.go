@@ -9,6 +9,7 @@ import (
 
 type GroupBusinessUnitRepo interface {
 	BaseRepository[model.GroupBusinessUnit]
+	GetByName(name string) (*model.GroupBusinessUnit, error)
 }
 
 type groupBusinessUnitRepo struct {
@@ -32,6 +33,14 @@ func (r *groupBusinessUnitRepo) Get(id string) (*model.GroupBusinessUnit, error)
 	return &groupBusinessUnit, nil
 }
 
+func (r *groupBusinessUnitRepo) GetByName(name string) (*model.GroupBusinessUnit, error) {
+	var groupBusinessUnit model.GroupBusinessUnit
+	err := r.db.First(&groupBusinessUnit, "group_name = ?", name).Error
+	if err != nil {
+		return nil, err
+	}
+	return &groupBusinessUnit, nil
+}
 func (r *groupBusinessUnitRepo) List() ([]model.GroupBusinessUnit, error) {
 	var groupBusinessUnits []model.GroupBusinessUnit
 	err := r.db.Find(&groupBusinessUnits).Error

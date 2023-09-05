@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strings"
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/model"
@@ -74,6 +75,23 @@ func (r *BusinessUnitController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
+func (r *BusinessUnitController) uploadHandler(c *gin.Context) {
+	// Menerima file Excel dari permintaan HTTP POST
+	file, err := c.FormFile("excelFile")
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	logs, err := r.uc.BulkInsert(file)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, " "))
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
 func NewBusinessUnitController(r *gin.Engine, uc usecase.BusinessUnitUsecase) *BusinessUnitController {
 	controller := BusinessUnitController{
 		router: r,
@@ -83,6 +101,7 @@ func NewBusinessUnitController(r *gin.Engine, uc usecase.BusinessUnitUsecase) *B
 	r.GET("/business-units/:id", controller.getByIdHandler)
 	r.PUT("/business-units", controller.updateHandler)
 	r.POST("/business-units", controller.createHandler)
+	r.POST("/business-units/upload", controller.uploadHandler)
 	r.DELETE("/business-units/:id", controller.deleteHandler)
 	return &controller
 }

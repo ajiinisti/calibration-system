@@ -9,6 +9,7 @@ import (
 
 type BusinessUnitRepo interface {
 	BaseRepository[model.BusinessUnit]
+	Bulksave(payload *[]model.BusinessUnit) error
 }
 
 type businessUnitRepo struct {
@@ -16,6 +17,14 @@ type businessUnitRepo struct {
 }
 
 func (r *businessUnitRepo) Save(payload *model.BusinessUnit) error {
+	err := r.db.Save(&payload)
+	if err.Error != nil {
+		return err.Error
+	}
+	return nil
+}
+
+func (r *businessUnitRepo) Bulksave(payload *[]model.BusinessUnit) error {
 	err := r.db.Save(&payload)
 	if err.Error != nil {
 		return err.Error
