@@ -10,12 +10,22 @@ import (
 type UserRepo interface {
 	BaseRepository[model.User]
 	SearchByEmail(email string) (*model.User, error)
+	SearchByNik(nik string) (*model.User, error)
 	Update(payload *model.User) error
 	Bulksave(payload *[]model.User) error
 }
 
 type userRepo struct {
 	db *gorm.DB
+}
+
+func (u *userRepo) SearchByNik(nik string) (*model.User, error) {
+	var user model.User
+	err := u.db.Preload("Roles").First(&user, "nik = ?", nik).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (u *userRepo) SearchByEmail(email string) (*model.User, error) {

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strings"
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/model"
@@ -74,6 +75,28 @@ func (r *ActualScoreController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
+func (r *ActualScoreController) uploadHandler(c *gin.Context) {
+	// Menerima file Excel dari permintaan HTTP POST
+	projectId := c.Request.FormValue("projectId")
+	file, err := c.FormFile("excelFile")
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	logs, err := r.uc.BulkInsert(file, projectId)
+	if err != nil {
+		if len(logs) > 0 {
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+		} else {
+			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
 func NewActualScoreController(r *gin.Engine, uc usecase.ActualScoreUsecase) *ActualScoreController {
 	controller := ActualScoreController{
 		router: r,
@@ -83,6 +106,7 @@ func NewActualScoreController(r *gin.Engine, uc usecase.ActualScoreUsecase) *Act
 	r.GET("/actual-scores/:id", controller.getByIdHandler)
 	r.PUT("/actual-scores", controller.updateHandler)
 	r.POST("/actual-scores", controller.createHandler)
+	r.POST("/actual-scores/upload", controller.uploadHandler)
 	r.DELETE("/actual-scores/:id", controller.deleteHandler)
 	return &controller
 }

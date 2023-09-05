@@ -62,8 +62,8 @@ func (r *businessUnitUsecase) BulkInsert(file *multipart.FileHeader) ([]string, 
 	rows := xlsFile.GetRows(sheetName)
 
 	for i, row := range rows {
+		passed := true
 		if i == 0 {
-			// Skip the first row
 			continue
 		}
 
@@ -71,16 +71,11 @@ func (r *businessUnitUsecase) BulkInsert(file *multipart.FileHeader) ([]string, 
 		buName := row[1]
 		gbuName := row[3]
 
-		bu := model.BusinessUnit{
-			ID:     buID,
-			Status: true,
-			Name:   buName,
-		}
-
 		var found bool
+		var gbuid string
 		for _, gb := range groupBu {
 			if gb.GroupName == gbuName {
-				bu.GroupBusinessUnitId = gb.ID
+				gbuid = gb.ID
 				found = true
 				break
 			}
@@ -89,14 +84,29 @@ func (r *businessUnitUsecase) BulkInsert(file *multipart.FileHeader) ([]string, 
 		if !found {
 			gbu, err := r.groupBu.FindByName(gbuName)
 			if err != nil {
-				return nil, err
+				logs = append(logs, fmt.Sprintf("Error Group Business Unit Name on Row %d ", i))
+				passed = false
 			}
-			bu.GroupBusinessUnitId = gbu.ID
+			gbuid = gbu.ID
 			groupBu = append(groupBu, *gbu)
 		}
 
-		businessUnits = append(businessUnits, bu)
+		if passed {
+			bu := model.BusinessUnit{
+				ID:                  buID,
+				Status:              true,
+				Name:                buName,
+				GroupBusinessUnitId: gbuid,
+			}
+
+			businessUnits = append(businessUnits, bu)
+		}
 	}
+
+	if len(logs) > 0 {
+		return logs, fmt.Errorf("Error when insert data")
+	}
+
 	err = r.repo.Bulksave(&businessUnits)
 	if err != nil {
 		return nil, err

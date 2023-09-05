@@ -9,6 +9,7 @@ import (
 
 type ActualScoreRepo interface {
 	BaseRepository[model.ActualScore]
+	Bulksave(payload *[]model.ActualScore) error
 }
 
 type actualScoreRepo struct {
@@ -16,6 +17,14 @@ type actualScoreRepo struct {
 }
 
 func (r *actualScoreRepo) Save(payload *model.ActualScore) error {
+	err := r.db.Save(&payload)
+	if err.Error != nil {
+		return err.Error
+	}
+	return nil
+}
+
+func (r *actualScoreRepo) Bulksave(payload *[]model.ActualScore) error {
 	err := r.db.Save(&payload)
 	if err.Error != nil {
 		return err.Error

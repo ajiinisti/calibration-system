@@ -20,6 +20,7 @@ type UserUsecase interface {
 	SaveUser(payload model.User, role []string) error
 	UpdateData(payload *model.User) error
 	BulkInsert(file *multipart.FileHeader) ([]string, error)
+	FindByNik(nik string) (*model.User, error)
 }
 
 type userUsecase struct {
@@ -32,6 +33,11 @@ type userUsecase struct {
 func (u *userUsecase) SearchEmail(email string) (*model.User, error) {
 	return u.repo.SearchByEmail(email)
 }
+
+func (u *userUsecase) FindByNik(nik string) (*model.User, error) {
+	return u.repo.SearchByNik(nik)
+}
+
 func (u *userUsecase) FindAll() ([]model.User, error) {
 	return u.repo.List()
 }
@@ -129,49 +135,22 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 	rows := xlsFile.GetRows(sheetName)
 
 	for i, row := range rows {
+		passed := true
 		if i == 0 {
-			// Skip the first row
 			continue
 		}
 
 		num, err := strconv.Atoi(row[2])
 		if err != nil {
-			return logs, err
+			logs = append(logs, fmt.Sprintf("Cannot convert column-2 (date) on row %d", i))
+			passed = false
 		}
 		dateValue := time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, num-1)
 
-		nik := row[0]
-		name := row[1]
-		supervisor := row[3]
-		buId := row[4]
-		orgUnit := row[5]
-		division := row[6]
-		department := row[7]
-		position := row[8]
-		grade := row[9]
-		hrbp := row[10]
-		email := row[11]
-
-		user := model.User{
-			Email:            email,
-			Name:             name,
-			Nik:              nik,
-			DateOfBirth:      time.Time{},
-			SupervisorName:   supervisor,
-			BusinessUnitId:   buId,
-			OrganizationUnit: orgUnit,
-			Division:         division,
-			Department:       department,
-			JoinDate:         dateValue,
-			Grade:            grade,
-			HRBP:             hrbp,
-			Position:         position,
-		}
-
 		var found bool
+		buId := row[4]
 		for _, bu := range businessunits {
 			if bu.ID == buId {
-				user.BusinessUnitId = bu.ID
 				found = true
 				break
 			}
@@ -180,14 +159,42 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 		if !found {
 			bu, err := u.bu.FindById(buId)
 			if err != nil {
-				logs = append(logs, fmt.Sprintf("Error Business Unit on Row %d Employee %s", i, name))
-				break
+				logs = append(logs, fmt.Sprintf("Error Business Unit Id on Row %d", i))
+				passed = false
 			}
-			user.BusinessUnitId = bu.ID
 			businessunits = append(businessunits, *bu)
 		}
 
-		users = append(users, user)
+		nik := row[0]
+		name := row[1]
+		supervisor := row[3]
+		orgUnit := row[5]
+		division := row[6]
+		department := row[7]
+		position := row[8]
+		grade := row[9]
+		hrbp := row[10]
+		email := row[11]
+
+		if passed {
+			user := model.User{
+				Email:            email,
+				Name:             name,
+				Nik:              nik,
+				DateOfBirth:      time.Time{},
+				SupervisorName:   supervisor,
+				BusinessUnitId:   buId,
+				OrganizationUnit: orgUnit,
+				Division:         division,
+				Department:       department,
+				JoinDate:         dateValue,
+				Grade:            grade,
+				HRBP:             hrbp,
+				Position:         position,
+			}
+
+			users = append(users, user)
+		}
 	}
 
 	if len(logs) > 0 {
