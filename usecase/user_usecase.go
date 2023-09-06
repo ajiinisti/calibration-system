@@ -3,7 +3,6 @@ package usecase
 import (
 	"fmt"
 	"mime/multipart"
-	"strconv"
 	"time"
 
 	"calibration-system.com/config"
@@ -116,6 +115,8 @@ func (u *userUsecase) UpdateData(payload *model.User) error {
 
 func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 	var logs []string
+	var dateLogs []string
+	var buLogs []string
 	var users []model.User
 	var businessunits []model.BusinessUnit
 
@@ -131,7 +132,7 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 		return nil, err
 	}
 
-	sheetName := xlsFile.GetSheetName(2) // Ganti dengan nama sheet yang sesuai
+	sheetName := xlsFile.GetSheetName(2)
 	rows := xlsFile.GetRows(sheetName)
 
 	for i, row := range rows {
@@ -140,12 +141,12 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			continue
 		}
 
-		num, err := strconv.Atoi(row[2])
+		layout := "01-02-06"
+		parsedTime, err := time.Parse(layout, row[2])
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Cannot convert column-2 (date) on row %d", i))
+			dateLogs = append(dateLogs, fmt.Sprintf("Cannot parse date on Employee NIK %s", row[1]))
 			passed = false
 		}
-		dateValue := time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC).AddDate(0, 0, num-1)
 
 		var found bool
 		buId := row[4]
@@ -159,47 +160,37 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 		if !found {
 			bu, err := u.bu.FindById(buId)
 			if err != nil {
-				logs = append(logs, fmt.Sprintf("Error Business Unit Id on Row %d", i))
+				buLogs = append(buLogs, fmt.Sprintf("Error Business Unit Id on Row %d", i+1))
 				passed = false
+			} else {
+				businessunits = append(businessunits, *bu)
 			}
-			businessunits = append(businessunits, *bu)
 		}
 
-		nik := row[0]
-		name := row[1]
-		supervisor := row[3]
-		orgUnit := row[5]
-		division := row[6]
-		department := row[7]
-		position := row[8]
-		grade := row[9]
-		hrbp := row[10]
-		email := row[11]
+		user := model.User{
+			Email:            row[11],
+			Name:             row[1],
+			Nik:              row[0],
+			DateOfBirth:      time.Time{},
+			SupervisorName:   row[3],
+			BusinessUnitId:   nil,
+			OrganizationUnit: row[5],
+			Division:         row[6],
+			Department:       row[7],
+			JoinDate:         parsedTime,
+			Grade:            row[9],
+			HRBP:             row[10],
+			Position:         row[8],
+		}
 
 		if passed {
-			user := model.User{
-				Email:            email,
-				Name:             name,
-				Nik:              nik,
-				DateOfBirth:      time.Time{},
-				SupervisorName:   supervisor,
-				BusinessUnitId:   buId,
-				OrganizationUnit: orgUnit,
-				Division:         division,
-				Department:       department,
-				JoinDate:         dateValue,
-				Grade:            grade,
-				HRBP:             hrbp,
-				Position:         position,
-			}
-
-			users = append(users, user)
+			user.BusinessUnitId = &buId
 		}
+		users = append(users, user)
 	}
 
-	if len(logs) > 0 {
-		return logs, fmt.Errorf("Error when insert data")
-	}
+	logs = append(logs, dateLogs...)
+	logs = append(logs, buLogs...)
 
 	err = u.repo.Bulksave(&users)
 	if err != nil {

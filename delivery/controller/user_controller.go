@@ -50,7 +50,7 @@ func (u *UserController) createHandler(c *gin.Context) {
 		Nik:              payload.Nik,
 		DateOfBirth:      payload.DateOfBirth,
 		SupervisorName:   payload.SupervisorName,
-		BusinessUnitId:   payload.BusinessUnitId,
+		BusinessUnitId:   &payload.BusinessUnitId,
 		OrganizationUnit: payload.OrganizationUnit,
 		Division:         payload.Division,
 		Department:       payload.Department,
@@ -85,7 +85,7 @@ func (u *UserController) updateHandler(c *gin.Context) {
 		DateOfBirth:      payload.DateOfBirth,
 		SupervisorName:   payload.SupervisorName,
 		BusinessUnit:     model.BusinessUnit{},
-		BusinessUnitId:   payload.BusinessUnitId,
+		BusinessUnitId:   &payload.BusinessUnitId,
 		OrganizationUnit: payload.OrganizationUnit,
 		Division:         payload.Division,
 		Department:       payload.Department,
@@ -120,11 +120,12 @@ func (u *UserController) uploadHandler(c *gin.Context) {
 
 	logs, err := u.uc.BulkInsert(file)
 	if err != nil {
-		if len(logs) > 0 {
-			u.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
-		} else {
-			u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
-		}
+		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if len(logs) > 0 {
+		u.NewSuccessSingleResponse(c, strings.Join(logs, "."), "Success with some error")
 		return
 	}
 
