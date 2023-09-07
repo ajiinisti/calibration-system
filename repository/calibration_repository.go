@@ -9,6 +9,7 @@ import (
 
 type CalibrationRepo interface {
 	BaseRepository[model.Calibration]
+	Bulksave(payload *[]model.Calibration) error
 }
 
 type calibrationRepo struct {
@@ -16,6 +17,14 @@ type calibrationRepo struct {
 }
 
 func (r *calibrationRepo) Save(payload *model.Calibration) error {
+	err := r.db.Save(&payload)
+	if err.Error != nil {
+		return err.Error
+	}
+	return nil
+}
+
+func (r *calibrationRepo) Bulksave(payload *[]model.Calibration) error {
 	err := r.db.Save(&payload)
 	if err.Error != nil {
 		return err.Error

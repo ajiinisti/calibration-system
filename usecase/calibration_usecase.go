@@ -260,9 +260,7 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		}
 	}
 
-	// fmt.Println(calibrations)
-
-	return nil
+	return r.repo.Bulksave(&calibrations)
 }
 
 func NewCalibrationUsecase(repo repository.CalibrationRepo, user UserUsecase, project ProjectUsecase, projectPhase ProjectPhaseUsecase) CalibrationUsecase {
