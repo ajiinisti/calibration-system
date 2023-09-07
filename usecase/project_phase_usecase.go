@@ -46,9 +46,10 @@ func (r *projectPhaseUsecase) DeleteData(id string) error {
 	return r.repo.Delete(id)
 }
 
-func NewProjectPhaseUsecase(repo repository.ProjectPhaseRepo, phase PhaseUsecase) ProjectPhaseUsecase {
+func NewProjectPhaseUsecase(repo repository.ProjectPhaseRepo, phase PhaseUsecase, project ProjectUsecase) ProjectPhaseUsecase {
 	return &projectPhaseUsecase{
-		repo:  repo,
-		phase: phase,
+		repo:    repo,
+		phase:   phase,
+		project: project,
 	}
 }

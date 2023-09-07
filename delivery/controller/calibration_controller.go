@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strings"
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/model"
@@ -74,6 +75,65 @@ func (r *CalibrationController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
+func (r *CalibrationController) uploadHandler(c *gin.Context) {
+	projectId := c.Request.FormValue("projectId")
+	file, err := c.FormFile("excelFile")
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	err = r.uc.BulkInsert(file, projectId)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
+func (r *CalibrationController) uploadNikHandler(c *gin.Context) {
+	projectId := c.Request.FormValue("projectId")
+	file, err := c.FormFile("excelFile")
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	logs, err := r.uc.CheckEmployee(file, projectId)
+	if err != nil {
+		if len(logs) > 0 {
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+		} else {
+			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
+func (r *CalibrationController) uploadCalibratorHandler(c *gin.Context) {
+	projectId := c.Request.FormValue("projectId")
+	file, err := c.FormFile("excelFile")
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	logs, err := r.uc.CheckCalibrator(file, projectId)
+	if err != nil {
+		if len(logs) > 0 {
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+		} else {
+			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
 func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
 		router: r,
@@ -83,6 +143,9 @@ func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *Cal
 	r.GET("/calibrations/:id", controller.getByIdHandler)
 	r.PUT("/calibrations", controller.updateHandler)
 	r.POST("/calibrations", controller.createHandler)
+	r.POST("/calibrations/upload", controller.uploadHandler)
+	r.POST("/calibrations/upload-employee", controller.uploadNikHandler)
+	r.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)
 	r.DELETE("/calibrations/:id", controller.deleteHandler)
 	return &controller
 }

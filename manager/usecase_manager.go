@@ -54,7 +54,7 @@ func (u *usecaseManager) ProjectUc() usecase.ProjectUsecase {
 }
 
 func (u *usecaseManager) ProjectPhaseUc() usecase.ProjectPhaseUsecase {
-	return usecase.NewProjectPhaseUsecase(u.repo.ProjectPhaseRepo(), u.PhaseUc())
+	return usecase.NewProjectPhaseUsecase(u.repo.ProjectPhaseRepo(), u.PhaseUc(), u.ProjectUc())
 }
 
 func (u *usecaseManager) ActualScoreUc() usecase.ActualScoreUsecase {
