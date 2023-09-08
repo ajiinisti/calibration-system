@@ -25,9 +25,23 @@ func (r *actualScoreRepo) Save(payload *model.ActualScore) error {
 }
 
 func (r *actualScoreRepo) Bulksave(payload *[]model.ActualScore) error {
-	err := r.db.Save(&payload)
-	if err.Error != nil {
-		return err.Error
+	batchSize := 100
+	numFullBatches := len(*payload) / batchSize
+
+	for i := 0; i < numFullBatches; i++ {
+		start := i * batchSize
+		end := (i + 1) * batchSize
+		currentBatch := (*payload)[start:end]
+		return r.db.Save(&currentBatch).Error
+
+	}
+	remainingItems := (*payload)[numFullBatches*batchSize:]
+
+	if len(remainingItems) > 0 {
+		err := r.db.Save(&remainingItems)
+		if err != nil {
+			return r.db.Save(&remainingItems).Error
+		}
 	}
 	return nil
 }

@@ -46,9 +46,23 @@ func (u *userRepo) Save(payload *model.User) error {
 }
 
 func (u *userRepo) Bulksave(payload *[]model.User) error {
-	err := u.db.Save(&payload)
-	if err.Error != nil {
-		return err.Error
+	batchSize := 100
+	numFullBatches := len(*payload) / batchSize
+
+	for i := 0; i < numFullBatches; i++ {
+		start := i * batchSize
+		end := (i + 1) * batchSize
+		currentBatch := (*payload)[start:end]
+		return u.db.Save(&currentBatch).Error
+
+	}
+	remainingItems := (*payload)[numFullBatches*batchSize:]
+
+	if len(remainingItems) > 0 {
+		err := u.db.Save(&remainingItems)
+		if err != nil {
+			return u.db.Save(&remainingItems).Error
+		}
 	}
 	return nil
 }
