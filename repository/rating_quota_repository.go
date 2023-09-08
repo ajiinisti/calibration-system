@@ -9,6 +9,7 @@ import (
 
 type RatingQuotaRepo interface {
 	BaseRepository[model.RatingQuota]
+	Bulksave(payload *[]model.RatingQuota) error
 }
 
 type ratingQuotaRepo struct {
@@ -16,6 +17,14 @@ type ratingQuotaRepo struct {
 }
 
 func (r *ratingQuotaRepo) Save(payload *model.RatingQuota) error {
+	err := r.db.Save(&payload)
+	if err.Error != nil {
+		return err.Error
+	}
+	return nil
+}
+
+func (r *ratingQuotaRepo) Bulksave(payload *[]model.RatingQuota) error {
 	err := r.db.Save(&payload)
 	if err.Error != nil {
 		return err.Error

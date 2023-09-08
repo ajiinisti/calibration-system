@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strings"
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/model"
@@ -74,6 +75,28 @@ func (r *RatingQuotaController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
+func (r *RatingQuotaController) uploadHandler(c *gin.Context) {
+	// Menerima file Excel dari permintaan HTTP POST
+	projectId := c.Request.FormValue("projectId")
+	file, err := c.FormFile("excelFile")
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	logs, err := r.uc.BulkInsert(file, projectId)
+	if err != nil {
+		if len(logs) > 0 {
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+		} else {
+			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
 func NewRatingQuotaController(r *gin.Engine, uc usecase.RatingQuotaUsecase) *RatingQuotaController {
 	controller := RatingQuotaController{
 		router: r,
@@ -83,6 +106,7 @@ func NewRatingQuotaController(r *gin.Engine, uc usecase.RatingQuotaUsecase) *Rat
 	r.GET("/rating-quotas/:id", controller.getByIdHandler)
 	r.PUT("/rating-quotas", controller.updateHandler)
 	r.POST("/rating-quotas", controller.createHandler)
+	r.POST("/rating-quotas/upload", controller.uploadHandler)
 	r.DELETE("/rating-quotas/:id", controller.deleteHandler)
 	return &controller
 }
