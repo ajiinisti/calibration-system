@@ -8,7 +8,10 @@ import (
 )
 
 type ScoreDistributionUsecase interface {
-	BaseUsecase[model.ScoreDistribution]
+	FindAll() ([]model.ScoreDistribution, error)
+	FindById(id string) (*model.ScoreDistribution, error)
+	SaveData(payload *model.ScoreDistribution) error
+	DeleteData(projectId, groupBusinessUnitId string) error
 }
 
 type scoreDistributionUsecase struct {
@@ -42,8 +45,8 @@ func (r *scoreDistributionUsecase) SaveData(payload *model.ScoreDistribution) er
 	return r.repo.Save(payload)
 }
 
-func (r *scoreDistributionUsecase) DeleteData(id string) error {
-	return r.repo.Delete(id)
+func (r *scoreDistributionUsecase) DeleteData(projectId, groupBusinessUnitId string) error {
+	return r.repo.Delete(projectId, groupBusinessUnitId)
 }
 
 func NewScoreDistributionUsecase(repo repository.ScoreDistributionRepo, gbu GroupBusinessUnitUsecase, project ProjectUsecase) ScoreDistributionUsecase {

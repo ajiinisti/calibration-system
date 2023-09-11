@@ -8,7 +8,10 @@ import (
 )
 
 type CalibrationRepo interface {
-	BaseRepository[model.Calibration]
+	Save(payload *model.Calibration) error
+	Get(id string) (*model.Calibration, error)
+	List() ([]model.Calibration, error)
+	Delete(projectId, projectPhaseId, employeeId string) error
 	Bulksave(payload *[]model.Calibration) error
 }
 
@@ -64,11 +67,11 @@ func (r *calibrationRepo) List() ([]model.Calibration, error) {
 	return calibrations, nil
 }
 
-func (r *calibrationRepo) Delete(id string) error {
+func (r *calibrationRepo) Delete(projectId, projectPhaseId, employeeId string) error {
 	result := r.db.Delete(&model.Calibration{
-		BaseModel: model.BaseModel{
-			ID: id,
-		},
+		ProjectID:      projectId,
+		ProjectPhaseID: projectPhaseId,
+		EmployeeID:     employeeId,
 	})
 	if result.Error != nil {
 		return result.Error

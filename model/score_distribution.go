@@ -1,11 +1,19 @@
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 type ScoreDistribution struct {
-	BaseModel
+	CreatedAt           time.Time      `gorm:"<-:create" json:"-"`
+	UpdatedAt           time.Time      `json:"-"`
+	DeletedAt           gorm.DeletedAt `json:"-"`
 	Project             Project
-	ProjectID           string
+	ProjectID           string `gorm:"primaryKey"`
 	GroupBusinessUnit   GroupBusinessUnit
-	GroupBusinessUnitID string
+	GroupBusinessUnitID string `gorm:"primaryKey"`
 	APlusUpperLimit     float64
 	APlusLowerLimit     float64
 	AUpperLimit         float64

@@ -10,7 +10,10 @@ import (
 )
 
 type CalibrationUsecase interface {
-	BaseUsecase[model.Calibration]
+	FindAll() ([]model.Calibration, error)
+	FindById(id string) (*model.Calibration, error)
+	SaveData(payload *model.Calibration) error
+	DeleteData(projectId, projectPhaseId, employeeId string) error
 	CheckEmployee(file *multipart.FileHeader, projectId string) ([]string, error)
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
 	BulkInsert(file *multipart.FileHeader, projectId string) error
@@ -69,8 +72,8 @@ func (r *calibrationUsecase) SaveData(payload *model.Calibration) error {
 	return r.repo.Save(payload)
 }
 
-func (r *calibrationUsecase) DeleteData(id string) error {
-	return r.repo.Delete(id)
+func (r *calibrationUsecase) DeleteData(projectId, projectPhaseId, employeeId string) error {
+	return r.repo.Delete(projectId, projectPhaseId, employeeId)
 }
 
 func (r *calibrationUsecase) CheckEmployee(file *multipart.FileHeader, projectId string) ([]string, error) {

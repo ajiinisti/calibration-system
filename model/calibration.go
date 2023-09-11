@@ -1,13 +1,21 @@
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 type Calibration struct {
-	BaseModel
+	CreatedAt         time.Time      `gorm:"<-:create" json:"-"`
+	UpdatedAt         time.Time      `json:"-"`
+	DeletedAt         gorm.DeletedAt `json:"-"`
 	Project           Project
-	ProjectID         string
+	ProjectID         string `gorm:"primaryKey"`
 	ProjectPhase      ProjectPhase
-	ProjectPhaseID    string
+	ProjectPhaseID    string `gorm:"primaryKey"`
 	Employee          User
-	EmployeeID        string
+	EmployeeID        string `gorm:"primaryKey"`
 	Calibrator        User
 	CalibratorID      string
 	Spmo              User

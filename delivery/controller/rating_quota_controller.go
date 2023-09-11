@@ -67,8 +67,9 @@ func (r *RatingQuotaController) updateHandler(c *gin.Context) {
 }
 
 func (r *RatingQuotaController) deleteHandler(c *gin.Context) {
-	id := c.Param("id")
-	if err := r.uc.DeleteData(id); err != nil {
+	projectId := c.Param("projectId")
+	businessUnitId := c.Param("businessUnitId")
+	if err := r.uc.DeleteData(projectId, businessUnitId); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -107,6 +108,6 @@ func NewRatingQuotaController(r *gin.Engine, uc usecase.RatingQuotaUsecase) *Rat
 	r.PUT("/rating-quotas", controller.updateHandler)
 	r.POST("/rating-quotas", controller.createHandler)
 	r.POST("/rating-quotas/upload", controller.uploadHandler)
-	r.DELETE("/rating-quotas/:id", controller.deleteHandler)
+	r.DELETE("/rating-quotas/:projectId/:businessUnitId", controller.deleteHandler)
 	return &controller
 }

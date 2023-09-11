@@ -8,7 +8,10 @@ import (
 )
 
 type ScoreDistributionRepo interface {
-	BaseRepository[model.ScoreDistribution]
+	Save(payload *model.ScoreDistribution) error
+	Get(id string) (*model.ScoreDistribution, error)
+	List() ([]model.ScoreDistribution, error)
+	Delete(projectId, groupBusinessUnitId string) error
 }
 
 type scoreDistributionRepo struct {
@@ -41,11 +44,10 @@ func (r *scoreDistributionRepo) List() ([]model.ScoreDistribution, error) {
 	return scoreDistributions, nil
 }
 
-func (r *scoreDistributionRepo) Delete(id string) error {
+func (r *scoreDistributionRepo) Delete(projectId, groupBusinessUnitId string) error {
 	result := r.db.Delete(&model.ScoreDistribution{
-		BaseModel: model.BaseModel{
-			ID: id,
-		},
+		ProjectID:           projectId,
+		GroupBusinessUnitID: groupBusinessUnitId,
 	})
 	if result.Error != nil {
 		return result.Error

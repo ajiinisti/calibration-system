@@ -11,7 +11,10 @@ import (
 )
 
 type RatingQuotaUsecase interface {
-	BaseUsecase[model.RatingQuota]
+	FindAll() ([]model.RatingQuota, error)
+	FindById(id string) (*model.RatingQuota, error)
+	SaveData(payload *model.RatingQuota) error
+	DeleteData(projectId, businessUnitId string) error
 	BulkInsert(file *multipart.FileHeader, projectId string) ([]string, error)
 }
 
@@ -46,8 +49,8 @@ func (r *ratingQuotaUsecase) SaveData(payload *model.RatingQuota) error {
 	return r.repo.Save(payload)
 }
 
-func (r *ratingQuotaUsecase) DeleteData(id string) error {
-	return r.repo.Delete(id)
+func (r *ratingQuotaUsecase) DeleteData(projectId, businessUnitId string) error {
+	return r.repo.Delete(projectId, businessUnitId)
 }
 
 func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId string) ([]string, error) {
@@ -124,7 +127,7 @@ func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		}
 
 		if passed {
-			actualScore := model.RatingQuota{
+			ratingQuota := model.RatingQuota{
 				ProjectID:      projectId,
 				BusinessUnitID: buId,
 				APlusQuota:     aPlusQuota,
@@ -134,7 +137,7 @@ func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 				CQuota:         cQuota,
 				DQuota:         dQuota,
 			}
-			ratingQuotas = append(ratingQuotas, actualScore)
+			ratingQuotas = append(ratingQuotas, ratingQuota)
 		}
 	}
 

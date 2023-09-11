@@ -4,14 +4,18 @@ import (
 	"fmt"
 	"mime/multipart"
 
+	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
 	"calibration-system.com/repository"
+	"calibration-system.com/utils"
 	"github.com/360EntSecGroup-Skylar/excelize"
 )
 
 type BusinessUnitUsecase interface {
 	BaseUsecase[model.BusinessUnit]
 	BulkInsert(file *multipart.FileHeader) ([]string, error)
+	FindPagination(param request.PaginationParam) ([]model.BusinessUnit, response.Paging, error)
 }
 
 type businessUnitUsecase struct {
@@ -21,6 +25,11 @@ type businessUnitUsecase struct {
 
 func (r *businessUnitUsecase) FindAll() ([]model.BusinessUnit, error) {
 	return r.repo.List()
+}
+
+func (r *businessUnitUsecase) FindPagination(param request.PaginationParam) ([]model.BusinessUnit, response.Paging, error) {
+	paginationQuery := utils.GetPaginationParams(param)
+	return r.repo.PaginateList(paginationQuery)
 }
 
 func (r *businessUnitUsecase) FindById(id string) (*model.BusinessUnit, error) {

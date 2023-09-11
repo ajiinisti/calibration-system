@@ -8,7 +8,10 @@ import (
 )
 
 type RatingQuotaRepo interface {
-	BaseRepository[model.RatingQuota]
+	Save(payload *model.RatingQuota) error
+	Get(id string) (*model.RatingQuota, error)
+	List() ([]model.RatingQuota, error)
+	Delete(projectId, businessunitId string) error
 	Bulksave(payload *[]model.RatingQuota) error
 }
 
@@ -64,11 +67,11 @@ func (r *ratingQuotaRepo) List() ([]model.RatingQuota, error) {
 	return ratingQuotas, nil
 }
 
-func (r *ratingQuotaRepo) Delete(id string) error {
+func (r *ratingQuotaRepo) Delete(projectId, businessunitId string) error {
 	result := r.db.Delete(&model.RatingQuota{
-		BaseModel: model.BaseModel{
-			ID: id,
-		},
+		ProjectID:      projectId,
+		BusinessUnit:   model.BusinessUnit{},
+		BusinessUnitID: businessunitId,
 	})
 	if result.Error != nil {
 		return result.Error

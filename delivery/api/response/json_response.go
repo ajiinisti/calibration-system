@@ -24,3 +24,14 @@ func SendErrorResponse(c *gin.Context, code int, desc string) {
 		},
 	})
 }
+
+func SendPagedResponse(c *gin.Context, data []interface{}, description string, paging Paging) {
+	c.JSON(http.StatusOK, &PagedResponse{
+		Status: Status{
+			Code:        http.StatusOK,
+			Description: description,
+		},
+		Data:   data,
+		Paging: paging,
+	})
+}

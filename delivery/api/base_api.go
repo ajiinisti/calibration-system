@@ -21,3 +21,7 @@ func (b *BaseApi) NewSuccessSingleResponse(c *gin.Context, data interface{}, des
 func (b *BaseApi) NewFailedResponse(c *gin.Context, code int, desc string) {
 	response.SendErrorResponse(c, code, desc)
 }
+
+func (b *BaseApi) NewSuccesPagedResponse(c *gin.Context, data []interface{}, description string, paging response.Paging) {
+	response.SendPagedResponse(c, data, description, paging)
+}

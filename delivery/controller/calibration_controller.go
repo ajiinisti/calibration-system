@@ -67,8 +67,10 @@ func (r *CalibrationController) updateHandler(c *gin.Context) {
 }
 
 func (r *CalibrationController) deleteHandler(c *gin.Context) {
-	id := c.Param("id")
-	if err := r.uc.DeleteData(id); err != nil {
+	projectId := c.Param("projectId")
+	projectPhaseId := c.Param("projectPhaseId")
+	employeeId := c.Param("employeeId")
+	if err := r.uc.DeleteData(projectId, projectPhaseId, employeeId); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -146,6 +148,6 @@ func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *Cal
 	r.POST("/calibrations/upload", controller.uploadHandler)
 	r.POST("/calibrations/upload-employee", controller.uploadNikHandler)
 	r.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)
-	r.DELETE("/calibrations/:id", controller.deleteHandler)
+	r.DELETE("/calibrations/:projectId/:projectPhaseId/:employeeId", controller.deleteHandler)
 	return &controller
 }

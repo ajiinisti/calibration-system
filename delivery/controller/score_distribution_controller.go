@@ -66,8 +66,9 @@ func (r *ScoreDistributionController) updateHandler(c *gin.Context) {
 }
 
 func (r *ScoreDistributionController) deleteHandler(c *gin.Context) {
-	id := c.Param("id")
-	if err := r.uc.DeleteData(id); err != nil {
+	projectId := c.Param("projectId")
+	groupBusinessUnitId := c.Param("groupBusinessUnitId")
+	if err := r.uc.DeleteData(projectId, groupBusinessUnitId); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -83,6 +84,6 @@ func NewScoreDistributionController(r *gin.Engine, uc usecase.ScoreDistributionU
 	r.GET("/score-distribution/:id", controller.getByIdHandler)
 	r.PUT("/score-distribution", controller.updateHandler)
 	r.POST("/score-distribution", controller.createHandler)
-	r.DELETE("/score-distribution/:id", controller.deleteHandler)
+	r.DELETE("/score-distribution/:projectId/:groupBusinessUnitId", controller.deleteHandler)
 	return &controller
 }

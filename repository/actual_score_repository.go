@@ -8,7 +8,10 @@ import (
 )
 
 type ActualScoreRepo interface {
-	BaseRepository[model.ActualScore]
+	Save(payload *model.ActualScore) error
+	Get(id string) (*model.ActualScore, error)
+	List() ([]model.ActualScore, error)
+	Delete(projectId, employeeId string) error
 	Bulksave(payload *[]model.ActualScore) error
 }
 
@@ -64,11 +67,10 @@ func (r *actualScoreRepo) List() ([]model.ActualScore, error) {
 	return actualScores, nil
 }
 
-func (r *actualScoreRepo) Delete(id string) error {
+func (r *actualScoreRepo) Delete(projectId, employeeId string) error {
 	result := r.db.Delete(&model.ActualScore{
-		BaseModel: model.BaseModel{
-			ID: id,
-		},
+		ProjectID:  projectId,
+		EmployeeID: employeeId,
 	})
 	if result.Error != nil {
 		return result.Error

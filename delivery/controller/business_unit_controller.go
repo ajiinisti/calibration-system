@@ -2,9 +2,11 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"calibration-system.com/delivery/api"
+	"calibration-system.com/delivery/api/request"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
 	"github.com/gin-gonic/gin"
@@ -17,12 +19,34 @@ type BusinessUnitController struct {
 }
 
 func (r *BusinessUnitController) listHandler(c *gin.Context) {
-	businessUnits, err := r.uc.FindAll()
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+
+	param := request.PaginationParam{
+		Page:   page,
+		Limit:  limit,
+		Offset: 0,
+	}
+
+	businessUnits, pagination, err := r.uc.FindPagination(param)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	r.NewSuccessSingleResponse(c, businessUnits, "OK")
+
+	var newBu []interface{}
+	for _, v := range businessUnits {
+		newBu = append(newBu, v)
+	}
+
+	r.NewSuccesPagedResponse(c, newBu, "OK", pagination)
 }
 
 func (r *BusinessUnitController) getByIdHandler(c *gin.Context) {

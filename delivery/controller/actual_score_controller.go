@@ -67,8 +67,9 @@ func (r *ActualScoreController) updateHandler(c *gin.Context) {
 }
 
 func (r *ActualScoreController) deleteHandler(c *gin.Context) {
-	id := c.Param("id")
-	if err := r.uc.DeleteData(id); err != nil {
+	projectId := c.Param("projectId")
+	employeeId := c.Param("employeeId")
+	if err := r.uc.DeleteData(projectId, employeeId); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -107,6 +108,6 @@ func NewActualScoreController(r *gin.Engine, uc usecase.ActualScoreUsecase) *Act
 	r.PUT("/actual-scores", controller.updateHandler)
 	r.POST("/actual-scores", controller.createHandler)
 	r.POST("/actual-scores/upload", controller.uploadHandler)
-	r.DELETE("/actual-scores/:id", controller.deleteHandler)
+	r.DELETE("/actual-scores/:projectId/:employeeId", controller.deleteHandler)
 	return &controller
 }

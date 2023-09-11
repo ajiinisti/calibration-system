@@ -3,13 +3,17 @@ package repository
 import (
 	"fmt"
 
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
+	"calibration-system.com/utils"
 	"gorm.io/gorm"
 )
 
 type BusinessUnitRepo interface {
 	BaseRepository[model.BusinessUnit]
 	Bulksave(payload *[]model.BusinessUnit) error
+	PaginateList(pagination model.PaginationQuery) ([]model.BusinessUnit, response.Paging, error)
+	GetTotalRows() (int, error)
 }
 
 type businessUnitRepo struct {
@@ -62,6 +66,30 @@ func (r *businessUnitRepo) List() ([]model.BusinessUnit, error) {
 		return nil, err
 	}
 	return businessUnits, nil
+}
+
+func (r *businessUnitRepo) PaginateList(pagination model.PaginationQuery) ([]model.BusinessUnit, response.Paging, error) {
+	var businessUnits []model.BusinessUnit
+	err := r.db.Preload("GroupBusinessUnit").Limit(pagination.Take).Offset(pagination.Skip).Find(&businessUnits).Error
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	totalRows, err := r.GetTotalRows()
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	return businessUnits, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
+}
+
+func (r *businessUnitRepo) GetTotalRows() (int, error) {
+	var count int64
+	err := r.db.Model(&model.BusinessUnit{}).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
 }
 
 func (r *businessUnitRepo) Delete(id string) error {

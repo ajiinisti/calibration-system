@@ -1,11 +1,19 @@
 package model
 
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
 type RatingQuota struct {
-	BaseModel
+	CreatedAt      time.Time      `gorm:"<-:create" json:"-"`
+	UpdatedAt      time.Time      `json:"-"`
+	DeletedAt      gorm.DeletedAt `json:"-"`
 	Project        Project
-	ProjectID      string
+	ProjectID      string `gorm:"primaryKey"`
 	BusinessUnit   BusinessUnit
-	BusinessUnitID string
+	BusinessUnitID string `gorm:"primaryKey"`
 	APlusQuota     float64
 	AQuota         float64
 	BPlusQuota     float64
