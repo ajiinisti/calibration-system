@@ -3,12 +3,16 @@ package repository
 import (
 	"fmt"
 
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
+	"calibration-system.com/utils"
 	"gorm.io/gorm"
 )
 
 type ProjectRepo interface {
 	BaseRepository[model.Project]
+	PaginateList(pagination model.PaginationQuery) ([]model.Project, response.Paging, error)
+	GetTotalRows() (int, error)
 }
 
 type projectRepo struct {
@@ -30,6 +34,7 @@ func (r *projectRepo) Get(id string) (*model.Project, error) {
 		Preload("ProjectPhases").
 		Preload("ProjectPhases.Phase").
 		Preload("ScoreDistributions").
+		Preload("ScoreDistributions.GroupBusinessUnit").
 		First(&project, "id = ?", id).Error
 	if err != nil {
 		return nil, err
@@ -44,6 +49,7 @@ func (r *projectRepo) List() ([]model.Project, error) {
 		Preload("ProjectPhases").
 		Preload("ProjectPhases.Phase").
 		Preload("ScoreDistributions").
+		Preload("ScoreDistributions.GroupBusinessUnit").
 		Find(&projects).Error
 	if err != nil {
 		return nil, err
@@ -63,6 +69,36 @@ func (r *projectRepo) Delete(id string) error {
 		return fmt.Errorf("Project not found!")
 	}
 	return nil
+}
+
+func (r *projectRepo) PaginateList(pagination model.PaginationQuery) ([]model.Project, response.Paging, error) {
+	var projects []model.Project
+	err := r.db.
+		Preload("ActualScores").
+		Preload("ProjectPhases").
+		Preload("ProjectPhases.Phase").
+		Preload("ScoreDistributions").
+		Preload("ScoreDistributions.GroupBusinessUnit").
+		Limit(pagination.Take).Offset(pagination.Skip).Find(&projects).Error
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	totalRows, err := r.GetTotalRows()
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	return projects, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
+}
+
+func (r *projectRepo) GetTotalRows() (int, error) {
+	var count int64
+	err := r.db.Model(&model.Project{}).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
 }
 
 func NewProjectRepo(db *gorm.DB) ProjectRepo {

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"calibration-system.com/config"
+	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
 	"calibration-system.com/repository"
 	"calibration-system.com/utils"
@@ -20,6 +22,7 @@ type UserUsecase interface {
 	UpdateData(payload *model.User) error
 	BulkInsert(file *multipart.FileHeader) ([]string, error)
 	FindByNik(nik string) (*model.User, error)
+	FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error)
 }
 
 type userUsecase struct {
@@ -43,6 +46,11 @@ func (u *userUsecase) FindAll() ([]model.User, error) {
 
 func (u *userUsecase) FindById(id string) (*model.User, error) {
 	return u.repo.Get(id)
+}
+
+func (u *userUsecase) FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error) {
+	paginationQuery := utils.GetPaginationParams(param)
+	return u.repo.PaginateList(paginationQuery)
 }
 
 func (u *userUsecase) CreateUser(payload model.User, role []string) error {

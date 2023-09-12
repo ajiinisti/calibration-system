@@ -3,16 +3,20 @@ package repository
 import (
 	"fmt"
 
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
+	"calibration-system.com/utils"
 	"gorm.io/gorm"
 )
 
 type RatingQuotaRepo interface {
 	Save(payload *model.RatingQuota) error
-	Get(id string) (*model.RatingQuota, error)
+	Get(id string) ([]*model.RatingQuota, error)
 	List() ([]model.RatingQuota, error)
 	Delete(projectId, businessunitId string) error
 	Bulksave(payload *[]model.RatingQuota) error
+	PaginateList(pagination model.PaginationQuery, id string) ([]model.RatingQuota, response.Paging, error)
+	GetTotalRows() (int, error)
 }
 
 type ratingQuotaRepo struct {
@@ -49,13 +53,13 @@ func (r *ratingQuotaRepo) Bulksave(payload *[]model.RatingQuota) error {
 	return nil
 }
 
-func (r *ratingQuotaRepo) Get(id string) (*model.RatingQuota, error) {
-	var ratingQuota model.RatingQuota
-	err := r.db.Preload("Project").Preload("BusinessUnit").First(&ratingQuota, "id = ?", id).Error
+func (r *ratingQuotaRepo) Get(id string) ([]*model.RatingQuota, error) {
+	var ratingQuota []*model.RatingQuota
+	err := r.db.Preload("Project").Preload("BusinessUnit").Find(&ratingQuota, "project_id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
-	return &ratingQuota, nil
+	return ratingQuota, nil
 }
 
 func (r *ratingQuotaRepo) List() ([]model.RatingQuota, error) {
@@ -79,6 +83,30 @@ func (r *ratingQuotaRepo) Delete(projectId, businessunitId string) error {
 		return fmt.Errorf("Rating Quota not found!")
 	}
 	return nil
+}
+
+func (r *ratingQuotaRepo) PaginateList(pagination model.PaginationQuery, id string) ([]model.RatingQuota, response.Paging, error) {
+	var ratingQuota []model.RatingQuota
+	err := r.db.Preload("Project").Preload("BusinessUnit").Limit(pagination.Take).Offset(pagination.Skip).Find(&ratingQuota, "project_id = ?", id).Error
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	totalRows, err := r.GetTotalRows()
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	return ratingQuota, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
+}
+
+func (r *ratingQuotaRepo) GetTotalRows() (int, error) {
+	var count int64
+	err := r.db.Model(&model.RatingQuota{}).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
 }
 
 func NewRatingQuotaRepo(db *gorm.DB) RatingQuotaRepo {

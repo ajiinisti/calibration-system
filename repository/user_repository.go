@@ -3,7 +3,9 @@ package repository
 import (
 	"fmt"
 
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
+	"calibration-system.com/utils"
 	"gorm.io/gorm"
 )
 
@@ -13,6 +15,8 @@ type UserRepo interface {
 	SearchByNik(nik string) (*model.User, error)
 	Update(payload *model.User) error
 	Bulksave(payload *[]model.User) error
+	PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error)
+	GetTotalRows() (int, error)
 }
 
 type userRepo struct {
@@ -71,7 +75,6 @@ func (u *userRepo) Get(id string) (*model.User, error) {
 	var user model.User
 	err := u.db.
 		Preload("Roles").
-		Preload("BusinessUnit").
 		Preload("ActualScores").
 		Preload("CalibrationScores").
 		Preload("SpmoCalibrations").
@@ -87,7 +90,6 @@ func (u *userRepo) List() ([]model.User, error) {
 	var users []model.User
 	err := u.db.
 		Preload("Roles").
-		Preload("BusinessUnit").
 		Preload("ActualScores").
 		Preload("CalibrationScores").
 		Preload("SpmoCalibrations").
@@ -116,6 +118,36 @@ func (u *userRepo) Update(payload *model.User) error {
 		return err.Error
 	}
 	return nil
+}
+
+func (u *userRepo) PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error) {
+	var users []model.User
+	err := u.db.
+		Preload("Roles").
+		Preload("ActualScores").
+		Preload("CalibrationScores").
+		Preload("SpmoCalibrations").
+		Preload("CalibratorCalibrations").
+		Limit(pagination.Take).Offset(pagination.Skip).Find(&users).Error
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	totalRows, err := u.GetTotalRows()
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	return users, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
+}
+
+func (u *userRepo) GetTotalRows() (int, error) {
+	var count int64
+	err := u.db.Model(&model.User{}).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
 }
 
 func NewUserRepo(db *gorm.DB) UserRepo {

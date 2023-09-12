@@ -90,9 +90,9 @@ func NewServer() *Server {
 	})
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://talent-connect-dev.netlify.app", "http://localhost:3000", "http://167.172.84.203.nip.io", "http://167.172.84.203"},
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowHeaders:     []string{"Content-Type", " Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "accept", "origin", "Cache-Control", "X-Requested-With"},
+		AllowHeaders:     []string{"Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "accept", "origin", "Cache-Control", "X-Requested-With"},
 		AllowCredentials: true,
 	}))
 

@@ -5,17 +5,21 @@ import (
 	"mime/multipart"
 	"strconv"
 
+	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
 	"calibration-system.com/repository"
+	"calibration-system.com/utils"
 	"github.com/360EntSecGroup-Skylar/excelize"
 )
 
 type RatingQuotaUsecase interface {
 	FindAll() ([]model.RatingQuota, error)
-	FindById(id string) (*model.RatingQuota, error)
+	FindById(id string) ([]*model.RatingQuota, error)
 	SaveData(payload *model.RatingQuota) error
 	DeleteData(projectId, businessUnitId string) error
 	BulkInsert(file *multipart.FileHeader, projectId string) ([]string, error)
+	FindPagination(param request.PaginationParam, id string) ([]model.RatingQuota, response.Paging, error)
 }
 
 type ratingQuotaUsecase struct {
@@ -28,8 +32,13 @@ func (r *ratingQuotaUsecase) FindAll() ([]model.RatingQuota, error) {
 	return r.repo.List()
 }
 
-func (r *ratingQuotaUsecase) FindById(id string) (*model.RatingQuota, error) {
+func (r *ratingQuotaUsecase) FindById(id string) ([]*model.RatingQuota, error) {
 	return r.repo.Get(id)
+}
+
+func (r *ratingQuotaUsecase) FindPagination(param request.PaginationParam, id string) ([]model.RatingQuota, response.Paging, error) {
+	paginationQuery := utils.GetPaginationParams(param)
+	return r.repo.PaginateList(paginationQuery, id)
 }
 
 func (r *ratingQuotaUsecase) SaveData(payload *model.RatingQuota) error {

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"calibration-system.com/delivery/api"
@@ -18,12 +19,32 @@ type UserController struct {
 }
 
 func (u *UserController) listHandler(c *gin.Context) {
-	user, err := u.uc.FindAll()
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+
+	users, pagination, err := u.uc.FindPagination(request.PaginationParam{
+		Page:   page,
+		Limit:  limit,
+		Offset: 0,
+	})
 	if err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	u.NewSuccessSingleResponse(c, user, "OK")
+
+	var newUsers []interface{}
+	for _, v := range users {
+		newUsers = append(newUsers, v)
+	}
+
+	u.NewSuccesPagedResponse(c, newUsers, "OK", pagination)
 }
 
 func (u *UserController) getByIdHandler(c *gin.Context) {
