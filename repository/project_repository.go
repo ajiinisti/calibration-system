@@ -13,6 +13,8 @@ type ProjectRepo interface {
 	BaseRepository[model.Project]
 	PaginateList(pagination model.PaginationQuery) ([]model.Project, response.Paging, error)
 	GetTotalRows() (int, error)
+	ActivateByID(id string) error
+	DeactivateAllExceptID(id string) error
 }
 
 type projectRepo struct {
@@ -101,6 +103,23 @@ func (r *projectRepo) GetTotalRows() (int, error) {
 	return int(count), nil
 }
 
+func (r *projectRepo) ActivateByID(id string) error {
+	result := r.db.Model(&model.Project{}).Where("id = ?", id).Updates(map[string]interface{}{"active": true})
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (r *projectRepo) DeactivateAllExceptID(id string) error {
+	// Update all rows where 'id' is not equal to the specified 'id'
+	result := r.db.Model(&model.Project{}).Where("id <> ?", id).Update("active", false)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
 func NewProjectRepo(db *gorm.DB) ProjectRepo {
 	return &projectRepo{
 		db: db,

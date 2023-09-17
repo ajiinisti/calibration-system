@@ -11,6 +11,7 @@ import (
 type ProjectUsecase interface {
 	BaseUsecase[model.Project]
 	FindPagination(param request.PaginationParam) ([]model.Project, response.Paging, error)
+	PublishProject(id string) error
 }
 
 type projectUsecase struct {
@@ -36,6 +37,15 @@ func (r *projectUsecase) SaveData(payload *model.Project) error {
 
 func (r *projectUsecase) DeleteData(id string) error {
 	return r.repo.Delete(id)
+}
+
+func (r *projectUsecase) PublishProject(id string) error {
+	err := r.repo.ActivateByID(id)
+	if err != nil {
+		return err
+	}
+
+	return r.repo.DeactivateAllExceptID(id)
 }
 
 func NewProjectUsecase(repo repository.ProjectRepo) ProjectUsecase {

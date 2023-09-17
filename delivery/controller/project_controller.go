@@ -73,6 +73,16 @@ func (r *ProjectController) createHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
+func (r *ProjectController) publishHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := r.uc.PublishProject(id); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, "Success Publish", "OK")
+}
+
 func (r *ProjectController) updateHandler(c *gin.Context) {
 	var payload model.Project
 
@@ -107,6 +117,7 @@ func NewProjectController(r *gin.Engine, uc usecase.ProjectUsecase) *ProjectCont
 	r.GET("/projects/:id", controller.getByIdHandler)
 	r.PUT("/projects", controller.updateHandler)
 	r.POST("/projects", controller.createHandler)
+	r.POST("/projects/publish/:id", controller.publishHandler)
 	r.DELETE("/projects/:id", controller.deleteHandler)
 	return &controller
 }
