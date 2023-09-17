@@ -198,8 +198,10 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 
 	//Asc by phase order
 	for _, v := range project.ProjectPhases {
-		phases = append(phases, v.Phase.ID)
+		phases = append(phases, v.ID)
 	}
+
+	fmt.Println("phase: ", project.ProjectPhases)
 
 	excelFile, err := file.Open()
 	if err != nil {
@@ -229,7 +231,7 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		for j := lenProjectPhase; j > 0; j-- {
 			calibratorNik := row[j]
 			calibratorEs, exist := calibrators[calibratorNik]
-			// fmt.Println(fmt.Sprintln("NIK: ", calibratorNik))
+			fmt.Sprintln(calibratorNik != "None", " NIK: ", calibratorNik)
 			if calibratorNik != "None" {
 				var calibratorId string
 				if !exist {
@@ -248,20 +250,21 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 					calibratorId = calibratorEs.EmployeeID
 				}
 				cali := model.Calibration{
-					ProjectID:         projectId,
-					ProjectPhaseID:    phases[j-1],
-					EmployeeID:        employee.ID,
-					CalibratorID:      calibratorId,
-					SpmoID:            calibratorId,
-					CalibrationScore:  5.4,
-					CalibrationRating: "A",
+					ProjectID:      projectId,
+					ProjectPhaseID: phases[j-1],
+					EmployeeID:     employee.ID,
+					CalibratorID:   calibratorId,
+					SpmoID:         calibratorId,
+					// CalibrationScore:  5.4,
+					// CalibrationRating: "A",
 				}
-				fmt.Println("calibration:", cali)
+				// fmt.Println("KALIBRASI XX:", cali)
 				calibrations = append(calibrations, cali)
 			}
 			supervisorNIK = calibratorNik
 		}
 	}
+	// fmt.Println("KALIBRASI X:", calibrations)
 
 	return r.repo.Bulksave(&calibrations)
 }

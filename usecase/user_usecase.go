@@ -3,6 +3,7 @@ package usecase
 import (
 	"fmt"
 	"mime/multipart"
+	"sort"
 	"time"
 
 	"calibration-system.com/config"
@@ -23,6 +24,7 @@ type UserUsecase interface {
 	BulkInsert(file *multipart.FileHeader) ([]string, error)
 	FindByNik(nik string) (*model.User, error)
 	FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error)
+	FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.User, response.Paging, error)
 }
 
 type userUsecase struct {
@@ -51,6 +53,23 @@ func (u *userUsecase) FindById(id string) (*model.User, error) {
 func (u *userUsecase) FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error) {
 	paginationQuery := utils.GetPaginationParams(param)
 	return u.repo.PaginateList(paginationQuery)
+}
+
+func (u *userUsecase) FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.User, response.Paging, error) {
+	paginationQuery := utils.GetPaginationParams(param)
+
+	users, paging, err := u.repo.PaginateByProjectId(paginationQuery, projectId)
+	if err != nil {
+		return []model.User{}, response.Paging{}, err
+	}
+
+	for _, user := range users {
+		sort.Slice(user.CalibrationScores, func(i, j int) bool {
+			return user.CalibrationScores[i].ProjectPhase.Phase.Order < user.CalibrationScores[j].ProjectPhase.Phase.Order
+		})
+	}
+
+	return users, paging, err
 }
 
 func (u *userUsecase) CreateUser(payload model.User, role []string) error {

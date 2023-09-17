@@ -16,6 +16,7 @@ type UserRepo interface {
 	Update(payload *model.User) error
 	Bulksave(payload *[]model.User) error
 	PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error)
+	PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error)
 	GetTotalRows() (int, error)
 }
 
@@ -129,6 +130,37 @@ func (u *userRepo) PaginateList(pagination model.PaginationQuery) ([]model.User,
 		Preload("SpmoCalibrations").
 		Preload("CalibratorCalibrations").
 		Limit(pagination.Take).Offset(pagination.Skip).Find(&users).Error
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	totalRows, err := u.GetTotalRows()
+	if err != nil {
+		return nil, response.Paging{}, err
+	}
+
+	return users, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
+}
+
+func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error) {
+	var users []model.User
+	err := u.db.
+		Preload("Roles").
+		Preload("ActualScores").
+		Preload("CalibrationScores").
+		Preload("CalibrationScores.Calibrator").
+		Preload("CalibrationScores.ProjectPhase").
+		Preload("CalibrationScores.ProjectPhase.Phase").
+		Preload("SpmoCalibrations").
+		Preload("CalibratorCalibrations").
+		Joins("JOIN actual_scores ON users.id = actual_scores.employee_id").
+		Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
+		Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
+		Group("users.id").
+		Limit(pagination.Take).Offset(pagination.Skip).
+		Find(&users).Error
+
+	fmt.Println("MASUKK", users)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}

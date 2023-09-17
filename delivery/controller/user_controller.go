@@ -57,6 +57,37 @@ func (u *UserController) getByIdHandler(c *gin.Context) {
 	u.NewSuccessSingleResponse(c, roles, "OK")
 }
 
+func (u *UserController) getByProjectId(c *gin.Context) {
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+
+	projectId := c.Param("projectId")
+	users, pagination, err := u.uc.FindByProjectIdPagination(request.PaginationParam{
+		Page:   page,
+		Limit:  limit,
+		Offset: 0,
+	}, projectId)
+
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	var newUsers []interface{}
+	for _, v := range users {
+		newUsers = append(newUsers, v)
+	}
+
+	u.NewSuccesPagedResponse(c, newUsers, "OK", pagination)
+}
+
 func (u *UserController) createHandler(c *gin.Context) {
 	var payload request.CreateUser
 
@@ -160,6 +191,7 @@ func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
 	}
 	u.GET("/users", controller.listHandler)
 	u.GET("/users/:id", controller.getByIdHandler)
+	u.GET("/users/project/:projectId", controller.getByProjectId)
 	u.PUT("/users", controller.updateHandler)
 	u.POST("/users", controller.createHandler)
 	u.POST("/users/upload", controller.uploadHandler)

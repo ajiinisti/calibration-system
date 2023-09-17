@@ -20,4 +20,6 @@ type RatingQuota struct {
 	BQuota         float64
 	CQuota         float64
 	DQuota         float64
+	Remaining      string
+	Excess         string
 }

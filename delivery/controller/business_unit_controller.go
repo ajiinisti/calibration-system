@@ -59,6 +59,15 @@ func (r *BusinessUnitController) getByIdHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, groupBusinessUnits, "OK")
 }
 
+func (r *BusinessUnitController) getAllHandler(c *gin.Context) {
+	groupBusinessUnits, err := r.uc.FindAll()
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, groupBusinessUnits, "OK")
+}
+
 func (r *BusinessUnitController) createHandler(c *gin.Context) {
 	var payload model.BusinessUnit
 	if err := r.ParseRequestBody(c, &payload); err != nil {
@@ -126,6 +135,7 @@ func NewBusinessUnitController(r *gin.Engine, uc usecase.BusinessUnitUsecase) *B
 		uc:     uc,
 	}
 	r.GET("/business-units", controller.listHandler)
+	r.GET("/business-units/all", controller.getAllHandler)
 	r.GET("/business-units/:id", controller.getByIdHandler)
 	r.PUT("/business-units", controller.updateHandler)
 	r.POST("/business-units", controller.createHandler)
