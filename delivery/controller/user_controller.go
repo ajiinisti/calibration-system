@@ -184,6 +184,16 @@ func (u *UserController) uploadHandler(c *gin.Context) {
 	u.NewSuccessSingleResponse(c, "", "OK")
 }
 
+func (u *UserController) generatePasswordHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := u.uc.GeneratePasswordById(id); err != nil {
+		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	u.NewSuccessSingleResponse(c, "Success Generate Password", "OK")
+}
+
 func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
 	controller := UserController{
 		router: u,
@@ -194,6 +204,7 @@ func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
 	u.GET("/users/project/:projectId", controller.getByProjectId)
 	u.PUT("/users", controller.updateHandler)
 	u.POST("/users", controller.createHandler)
+	u.POST("/users/generate-password/:id", controller.generatePasswordHandler)
 	u.POST("/users/upload", controller.uploadHandler)
 	u.DELETE("/users/:id", controller.deleteHandler)
 	return &controller

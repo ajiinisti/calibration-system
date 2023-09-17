@@ -7,5 +7,5 @@ type Project struct {
 	ActualScores       []ActualScore  `gorm:"foreignKey:ProjectID"`
 	ProjectPhases      []ProjectPhase `gorm:"foreignKey:ProjectID"`
 	ScoreDistributions []ScoreDistribution
-	Active             bool
+	Active             bool `gorm:"default:false"`
 }

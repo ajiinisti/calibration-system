@@ -25,6 +25,7 @@ type UserUsecase interface {
 	FindByNik(nik string) (*model.User, error)
 	FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error)
 	FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.User, response.Paging, error)
+	GeneratePasswordById(id string) error
 }
 
 type userUsecase struct {
@@ -119,7 +120,6 @@ func (u *userUsecase) SaveUser(payload model.User, role []string) error {
 		roles = append(roles, *getRole)
 	}
 	payload.Roles = roles
-	fmt.Println("DATA", payload)
 
 	if err := u.repo.Update(&payload); err != nil {
 		return err
@@ -208,6 +208,7 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			Grade:            row[9],
 			HRBP:             row[10],
 			Position:         row[8],
+			GeneratePassword: false,
 		}
 
 		if passed {
@@ -225,6 +226,27 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 	}
 
 	return logs, nil
+}
+
+func (u *userUsecase) GeneratePasswordById(id string) error {
+	password, err := utils.SaltPassword([]byte("password"))
+	if err != nil {
+		return err
+	}
+
+	user := model.User{
+		BaseModel: model.BaseModel{
+			ID: id,
+		},
+		Password:         password,
+		GeneratePassword: true,
+	}
+
+	if err := u.repo.Update(&user); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func NewUserUseCase(

@@ -22,6 +22,7 @@ type User struct {
 	Grade                  string
 	HRBP                   string
 	Position               string
+	GeneratePassword       bool   `gorm:"default:false"`
 	Password               string `json:"-"`
 	Roles                  []Role `gorm:"many2many:user_roles"`
 	ResetPasswordToken     string
