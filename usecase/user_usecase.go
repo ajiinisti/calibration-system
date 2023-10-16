@@ -199,7 +199,7 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			Name:             row[1],
 			Nik:              row[0],
 			DateOfBirth:      time.Time{},
-			SupervisorName:   row[3],
+			SupervisorNik:    row[3],
 			BusinessUnitId:   nil,
 			OrganizationUnit: row[5],
 			Division:         row[6],

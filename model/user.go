@@ -12,7 +12,7 @@ type User struct {
 	Name                   string
 	Nik                    string
 	DateOfBirth            time.Time `gorm:"type:timestamp without time zone"`
-	SupervisorName         string
+	SupervisorNik          string
 	BusinessUnit           BusinessUnit
 	BusinessUnitId         *string
 	OrganizationUnit       string

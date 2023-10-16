@@ -18,6 +18,7 @@ type UserRepo interface {
 	PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error)
 	PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error)
 	GetTotalRows() (int, error)
+	GetTotalRowsByProjectID(projectId string) (int, error)
 }
 
 type userRepo struct {
@@ -160,12 +161,12 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 		Limit(pagination.Take).Offset(pagination.Skip).
 		Find(&users).Error
 
-	fmt.Println("MASUKK", users)
+	// fmt.Println("MASUKK", users)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
 
-	totalRows, err := u.GetTotalRows()
+	totalRows, err := u.GetTotalRowsByProjectID(projectId)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
@@ -175,7 +176,24 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 
 func (u *userRepo) GetTotalRows() (int, error) {
 	var count int64
-	err := u.db.Model(&model.User{}).Count(&count).Error
+	err := u.db.
+		Model(&model.User{}).
+		Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+func (u *userRepo) GetTotalRowsByProjectID(projectId string) (int, error) {
+	var count int64
+	err := u.db.
+		Model(&model.User{}).
+		Joins("JOIN actual_scores ON users.id = actual_scores.employee_id").
+		Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
+		Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
+		Group("users.id").
+		Count(&count).Error
 	if err != nil {
 		return 0, err
 	}

@@ -7,7 +7,7 @@ type CreateUser struct {
 	Name             string
 	Nik              string
 	DateOfBirth      time.Time
-	SupervisorName   string
+	SupervisorNik    string
 	BusinessUnitId   string
 	OrganizationUnit string
 	Division         string
@@ -25,7 +25,7 @@ type UpdateUser struct {
 	Name             string
 	Nik              string
 	DateOfBirth      time.Time
-	SupervisorName   string
+	SupervisorNik    string
 	BusinessUnitId   string
 	OrganizationUnit string
 	Division         string
