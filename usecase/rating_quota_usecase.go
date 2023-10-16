@@ -147,6 +147,7 @@ func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 				DQuota:         dQuota,
 				Remaining:      row[7],
 				Excess:         row[8],
+				ScoringMethod:  row[9],
 			}
 			ratingQuotas = append(ratingQuotas, ratingQuota)
 		}

@@ -22,4 +22,5 @@ type RatingQuota struct {
 	DQuota         float64
 	Remaining      string
 	Excess         string
+	ScoringMethod  string
 }
