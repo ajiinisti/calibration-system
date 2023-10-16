@@ -39,6 +39,7 @@ func (s *Server) initController() {
 	controller.NewCalibrationController(s.engine, s.ucManager.CalibrationUc())
 	controller.NewRatingQuotaController(s.engine, s.ucManager.RatingQuotaUc())
 	controller.NewScoreDistributionController(s.engine, s.ucManager.ScoreDistributionUc())
+	controller.NewRemarkSettingController(s.engine, s.ucManager.RemarkSettingUc())
 }
 
 func (s *Server) Run() {
@@ -81,6 +82,7 @@ func NewServer() *Server {
 			&model.GroupBusinessUnit{},
 			&model.Phase{},
 			&model.Project{},
+			&model.RemarkSetting{},
 			&model.ProjectPhase{},
 			&model.ActualScore{},
 			&model.Calibration{},

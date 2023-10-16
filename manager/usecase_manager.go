@@ -18,6 +18,7 @@ type UsecaseManager interface {
 	ProjectPhaseUc() usecase.ProjectPhaseUsecase
 	RatingQuotaUc() usecase.RatingQuotaUsecase
 	ScoreDistributionUc() usecase.ScoreDistributionUsecase
+	RemarkSettingUc() usecase.RemarkSettingUsecase
 }
 
 type usecaseManager struct {
@@ -71,6 +72,10 @@ func (u *usecaseManager) RatingQuotaUc() usecase.RatingQuotaUsecase {
 
 func (u *usecaseManager) ScoreDistributionUc() usecase.ScoreDistributionUsecase {
 	return usecase.NewScoreDistributionUsecase(u.repo.ScoreDistributionRepo(), u.GroupBusinessUnitUc(), u.ProjectUc())
+}
+
+func (u *usecaseManager) RemarkSettingUc() usecase.RemarkSettingUsecase {
+	return usecase.NewRemarkSettingUsecase(u.repo.RemarkSettingRepo(), u.ProjectUc())
 }
 
 func NewUsecaseManager(repo RepoManager, cfg *config.Config) UsecaseManager {
