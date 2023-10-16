@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 
+	"calibration-system.com/delivery/api/request"
 	"calibration-system.com/model"
 	"gorm.io/gorm"
 )
@@ -13,6 +14,8 @@ type CalibrationRepo interface {
 	List() ([]model.Calibration, error)
 	Delete(projectId, projectPhaseId, employeeId string) error
 	Bulksave(payload *[]model.Calibration) error
+	BulkUpdate(payload *request.CalibrationRequest, phaseOrder int) error
+	SaveChanges(payload *request.CalibrationRequest) error
 }
 
 type calibrationRepo struct {
@@ -79,6 +82,46 @@ func (r *calibrationRepo) Delete(projectId, projectPhaseId, employeeId string) e
 		return fmt.Errorf("Calibration not found!")
 	}
 	return nil
+}
+
+func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, phaseOrder int) error {
+	var employeeId []string
+	var employeeCalibrationScore []model.Calibration
+	for _, calibrations := range payload.RequestData {
+		employeeId = append(employeeId, calibrations.EmployeeID)
+		employeeCalibrationScore = append(employeeCalibrationScore, calibrations)
+	}
+
+	err := r.db.Save(employeeCalibrationScore).Error
+	if err != nil {
+		return err
+	}
+
+	for _, employeeCalibration := range employeeCalibrationScore {
+		err := r.db.Model(&model.Calibration{}).
+			Joins("ProjectPhase").
+			Joins("Phase").
+			Joins("Project").
+			Where("projects.active = ? AND phases.order > ?", true, phaseOrder).
+			Where("employee_id = ?", employeeCalibration.EmployeeID).
+			Update("calibration_score", employeeCalibration.CalibrationScore).Error
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *calibrationRepo) SaveChanges(payload *request.CalibrationRequest) error {
+	var employeeId []string
+	var employeeCalibrationScore []model.Calibration
+	for _, calibrations := range payload.RequestData {
+		employeeId = append(employeeId, calibrations.EmployeeID)
+		employeeCalibrationScore = append(employeeCalibrationScore, calibrations)
+	}
+
+	return r.db.Save(employeeCalibrationScore).Error
 }
 
 func NewCalibrationRepo(db *gorm.DB) CalibrationRepo {

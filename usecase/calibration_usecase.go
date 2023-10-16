@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mime/multipart"
 
+	"calibration-system.com/delivery/api/request"
 	"calibration-system.com/model"
 	"calibration-system.com/repository"
 	"github.com/360EntSecGroup-Skylar/excelize"
@@ -17,6 +18,8 @@ type CalibrationUsecase interface {
 	CheckEmployee(file *multipart.FileHeader, projectId string) ([]string, error)
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
 	BulkInsert(file *multipart.FileHeader, projectId string) error
+	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error
+	SaveCalibrations(payload *request.CalibrationRequest) error
 }
 
 type calibrationUsecase struct {
@@ -267,6 +270,18 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 	// fmt.Println("KALIBRASI X:", calibrations)
 
 	return r.repo.Bulksave(&calibrations)
+}
+
+func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error {
+	projectPhase, err := r.project.FindCalibratorPhase(calibratorID)
+	if err != nil {
+		return err
+	}
+	return r.repo.BulkUpdate(payload, projectPhase.Phase.Order)
+}
+
+func (r *calibrationUsecase) SaveCalibrations(payload *request.CalibrationRequest) error {
+	return r.repo.SaveChanges(payload)
 }
 
 func NewCalibrationUsecase(repo repository.CalibrationRepo, user UserUsecase, project ProjectUsecase, projectPhase ProjectPhaseUsecase) CalibrationUsecase {

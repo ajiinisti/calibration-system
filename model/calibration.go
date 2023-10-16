@@ -22,4 +22,6 @@ type Calibration struct {
 	SpmoID            string
 	CalibrationScore  float64
 	CalibrationRating string
+	Status            string
+	SpmoStatus        string
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"calibration-system.com/delivery/api"
+	"calibration-system.com/delivery/api/request"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
 	"github.com/gin-gonic/gin"
@@ -136,6 +137,37 @@ func (r *CalibrationController) uploadCalibratorHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
+func (r *CalibrationController) saveCalibrationsHandler(c *gin.Context) {
+	var payload request.CalibrationRequest
+	if err := r.ParseRequestBody(c, &payload); err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := r.uc.SaveCalibrations(&payload); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
+func (r *CalibrationController) submitCalibrationsHandler(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	var payload request.CalibrationRequest
+	if err := r.ParseRequestBody(c, &payload); err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := r.uc.SubmitCalibrations(&payload, calibratorID); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
 func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
 		router: r,
@@ -148,6 +180,8 @@ func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *Cal
 	r.POST("/calibrations/upload", controller.uploadHandler)
 	r.POST("/calibrations/upload-employee", controller.uploadNikHandler)
 	r.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)
+	r.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
+	r.POST("/calibrations/submit-calibrations/:calibratorID", controller.submitCalibrationsHandler)
 	r.DELETE("/calibrations/:projectId/:projectPhaseId/:employeeId", controller.deleteHandler)
 	return &controller
 }
