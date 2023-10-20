@@ -11,7 +11,8 @@ import (
 
 type RatingQuotaRepo interface {
 	Save(payload *model.RatingQuota) error
-	Get(id string) ([]*model.RatingQuota, error)
+	Get(projectID, businessUnitID string) (*model.RatingQuota, error)
+	GetByProject(id string) ([]*model.RatingQuota, error)
 	List() ([]model.RatingQuota, error)
 	Delete(projectId, businessunitId string) error
 	Bulksave(payload *[]model.RatingQuota) error
@@ -53,9 +54,18 @@ func (r *ratingQuotaRepo) Bulksave(payload *[]model.RatingQuota) error {
 	return nil
 }
 
-func (r *ratingQuotaRepo) Get(id string) ([]*model.RatingQuota, error) {
+func (r *ratingQuotaRepo) GetByProject(id string) ([]*model.RatingQuota, error) {
 	var ratingQuota []*model.RatingQuota
 	err := r.db.Preload("Project").Preload("BusinessUnit").Find(&ratingQuota, "project_id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return ratingQuota, nil
+}
+
+func (r *ratingQuotaRepo) Get(projectID, businessUnitID string) (*model.RatingQuota, error) {
+	var ratingQuota *model.RatingQuota
+	err := r.db.Preload("Project").Preload("BusinessUnit").Find(&ratingQuota, "project_id = ? AND business_unit_id = ?", projectID, businessUnitID).Error
 	if err != nil {
 		return nil, err
 	}

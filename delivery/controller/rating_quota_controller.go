@@ -50,9 +50,20 @@ func (r *RatingQuotaController) listHandler(c *gin.Context) {
 	r.NewSuccesPagedResponse(c, newRatings, "OK", pagination)
 }
 
-func (r *RatingQuotaController) getByIdHandler(c *gin.Context) {
+func (r *RatingQuotaController) getByProjectHandler(c *gin.Context) {
 	projectId := c.Param("projectId")
-	ratingQuotas, err := r.uc.FindById(projectId)
+	ratingQuotas, err := r.uc.FindByProject(projectId)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, ratingQuotas, "OK")
+}
+
+func (r *RatingQuotaController) getByIDHandler(c *gin.Context) {
+	projectId := c.Param("projectId")
+	businessUnitId := c.Param("businessUnitId")
+	ratingQuotas, err := r.uc.FindById(projectId, businessUnitId)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -102,7 +113,6 @@ func (r *RatingQuotaController) deleteHandler(c *gin.Context) {
 }
 
 func (r *RatingQuotaController) uploadHandler(c *gin.Context) {
-	// Menerima file Excel dari permintaan HTTP POST
 	projectId := c.Request.FormValue("projectId")
 	file, err := c.FormFile("excelFile")
 	if err != nil {
@@ -129,7 +139,8 @@ func NewRatingQuotaController(r *gin.Engine, uc usecase.RatingQuotaUsecase) *Rat
 		uc:     uc,
 	}
 	r.GET("/rating-quotas", controller.listHandler)
-	r.GET("/rating-quotas/:projectId", controller.getByIdHandler)
+	r.GET("/rating-quotas/:projectId/:businessUnitId", controller.getByIDHandler)
+	r.GET("/rating-quotas/:projectId", controller.getByProjectHandler)
 	r.PUT("/rating-quotas", controller.updateHandler)
 	r.POST("/rating-quotas", controller.createHandler)
 	r.POST("/rating-quotas/upload", controller.uploadHandler)

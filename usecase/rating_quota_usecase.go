@@ -15,7 +15,8 @@ import (
 
 type RatingQuotaUsecase interface {
 	FindAll() ([]model.RatingQuota, error)
-	FindById(id string) ([]*model.RatingQuota, error)
+	FindByProject(id string) ([]*model.RatingQuota, error)
+	FindById(projectID, businessUnitID string) (*model.RatingQuota, error)
 	SaveData(payload *model.RatingQuota) error
 	DeleteData(projectId, businessUnitId string) error
 	BulkInsert(file *multipart.FileHeader, projectId string) ([]string, error)
@@ -32,8 +33,12 @@ func (r *ratingQuotaUsecase) FindAll() ([]model.RatingQuota, error) {
 	return r.repo.List()
 }
 
-func (r *ratingQuotaUsecase) FindById(id string) ([]*model.RatingQuota, error) {
-	return r.repo.Get(id)
+func (r *ratingQuotaUsecase) FindByProject(id string) ([]*model.RatingQuota, error) {
+	return r.repo.GetByProject(id)
+}
+
+func (r *ratingQuotaUsecase) FindById(projectID, businessUnitID string) (*model.RatingQuota, error) {
+	return r.repo.Get(projectID, businessUnitID)
 }
 
 func (r *ratingQuotaUsecase) FindPagination(param request.PaginationParam, id string) ([]model.RatingQuota, response.Paging, error) {
@@ -147,7 +152,6 @@ func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 				DQuota:         dQuota,
 				Remaining:      row[7],
 				Excess:         row[8],
-				ScoringMethod:  row[9],
 			}
 			ratingQuotas = append(ratingQuotas, ratingQuota)
 		}
