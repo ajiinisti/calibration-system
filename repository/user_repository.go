@@ -79,8 +79,6 @@ func (u *userRepo) Get(id string) (*model.User, error) {
 		Preload("Roles").
 		Preload("ActualScores").
 		Preload("CalibrationScores").
-		Preload("SpmoCalibrations").
-		Preload("CalibratorCalibrations").
 		First(&user, "id = ?", id).Error
 	if err != nil {
 		return nil, err
@@ -94,8 +92,7 @@ func (u *userRepo) List() ([]model.User, error) {
 		Preload("Roles").
 		Preload("ActualScores").
 		Preload("CalibrationScores").
-		Preload("SpmoCalibrations").
-		Preload("CalibratorCalibrations").
+		Preload("BusinessUnit").
 		Find(&users).Error
 	if err != nil {
 		return nil, err
@@ -126,10 +123,6 @@ func (u *userRepo) PaginateList(pagination model.PaginationQuery) ([]model.User,
 	var users []model.User
 	err := u.db.
 		Preload("Roles").
-		Preload("ActualScores").
-		Preload("CalibrationScores").
-		Preload("SpmoCalibrations").
-		Preload("CalibratorCalibrations").
 		Limit(pagination.Take).Offset(pagination.Skip).Find(&users).Error
 	if err != nil {
 		return nil, response.Paging{}, err
@@ -150,18 +143,16 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 		Preload("ActualScores").
 		Preload("CalibrationScores").
 		Preload("CalibrationScores.Calibrator").
+		Preload("CalibrationScores.Spmo").
+		Preload("CalibrationScores.Hrbp").
 		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
-		Preload("SpmoCalibrations").
-		Preload("CalibratorCalibrations").
 		Joins("JOIN actual_scores ON users.id = actual_scores.employee_id").
 		Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
 		Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
 		Group("users.id").
 		Limit(pagination.Take).Offset(pagination.Skip).
 		Find(&users).Error
-
-	// fmt.Println("MASUKK", users)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
