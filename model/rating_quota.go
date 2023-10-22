@@ -10,10 +10,10 @@ type RatingQuota struct {
 	CreatedAt      time.Time      `gorm:"<-:create" json:"-"`
 	UpdatedAt      time.Time      `json:"-"`
 	DeletedAt      gorm.DeletedAt `json:"-"`
-	Project        Project
-	ProjectID      string `gorm:"primaryKey"`
-	BusinessUnit   BusinessUnit
-	BusinessUnitID string `gorm:"primaryKey"`
+	Project        Project        `gorm:"primaryKey"`
+	ProjectID      string         `gorm:"primaryKey"`
+	BusinessUnit   BusinessUnit   `gorm:"primaryKey"`
+	BusinessUnitID string         `gorm:"primaryKey"`
 	APlusQuota     float64
 	AQuota         float64
 	BPlusQuota     float64
@@ -22,5 +22,4 @@ type RatingQuota struct {
 	DQuota         float64
 	Remaining      string
 	Excess         string
-	ScoringMethod  string
 }

@@ -15,6 +15,8 @@ type RepoManager interface {
 	RatingQuotaRepo() repository.RatingQuotaRepo
 	ScoreDistributionRepo() repository.ScoreDistributionRepo
 	RemarkSettingRepo() repository.RemarkSettingRepo
+	TopRemarkRepo() repository.TopRemarkRepo
+	BottomRemarkRepo() repository.BottomRemarkRepo
 }
 
 type repoManager struct {
@@ -67,6 +69,14 @@ func (r *repoManager) ScoreDistributionRepo() repository.ScoreDistributionRepo {
 
 func (r *repoManager) RemarkSettingRepo() repository.RemarkSettingRepo {
 	return repository.NewRemarkSettingRepo(r.infra.Conn())
+}
+
+func (r *repoManager) TopRemarkRepo() repository.TopRemarkRepo {
+	return repository.NewTopRemarkRepo(r.infra.Conn())
+}
+
+func (r *repoManager) BottomRemarkRepo() repository.BottomRemarkRepo {
+	return repository.NewBottomRemarkRepo(r.infra.Conn())
 }
 
 func NewRepoManager(infra InfraManager) RepoManager {

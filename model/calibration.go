@@ -20,8 +20,15 @@ type Calibration struct {
 	CalibratorID      string
 	Spmo              User
 	SpmoID            string
+	Hrbp              User
+	HrbpID            string
 	CalibrationScore  float64
 	CalibrationRating string
-	Status            string
-	SpmoStatus        string
+	Status            string `gorm:"default:'Wait'"`
+	SpmoStatus        string `gorm:"default:'-'"`
+	Comment           string
+	SpmoComment       string       `gorm:"default:'-'"`
+	JustificationType string       `gorm:"default:'default'"`
+	BottomRemark      BottomRemark `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID"`
+	TopRemarks        []TopRemark  `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID"`
 }
