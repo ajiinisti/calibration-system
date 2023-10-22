@@ -160,9 +160,7 @@ func (r *calibrationUsecase) CheckCalibrator(file *multipart.FileHeader, project
 		for j := lenProjectPhase; j > 0; j-- {
 			calibratorNik := row[j]
 			_, exist := calibrators[calibratorNik]
-			// fmt.Println(fmt.Sprintln("NIK: ", calibratorNik))
 			if !exist && calibratorNik != "None" {
-				// fmt.Println("Not exist")
 				calibrator, err := r.user.FindByNik(calibratorNik)
 				if err != nil {
 					logs = append(logs, fmt.Sprintf("Calibrator not available in database %s", calibratorNik))
@@ -252,22 +250,29 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 				} else {
 					calibratorId = calibratorEs.EmployeeID
 				}
+
+				spmo, err := r.user.FindByNik(row[lenProjectPhase+1])
+				if err != nil {
+					return fmt.Errorf("SPMO ID not available in database %s", row[lenProjectPhase+1])
+				}
+
+				hrbp, err := r.user.FindByNik(row[lenProjectPhase+2])
+				if err != nil {
+					return fmt.Errorf("HRBP ID not available in database %s", row[lenProjectPhase+2])
+				}
 				cali := model.Calibration{
 					ProjectID:      projectId,
 					ProjectPhaseID: phases[j-1],
 					EmployeeID:     employee.ID,
 					CalibratorID:   calibratorId,
-					SpmoID:         calibratorId,
-					// CalibrationScore:  5.4,
-					// CalibrationRating: "A",
+					SpmoID:         spmo.ID,
+					HrbpID:         hrbp.ID,
 				}
-				// fmt.Println("KALIBRASI XX:", cali)
 				calibrations = append(calibrations, cali)
 			}
 			supervisorNIK = calibratorNik
 		}
 	}
-	// fmt.Println("KALIBRASI X:", calibrations)
 
 	return r.repo.Bulksave(&calibrations)
 }
