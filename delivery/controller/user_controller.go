@@ -47,6 +47,15 @@ func (u *UserController) listHandler(c *gin.Context) {
 	u.NewSuccesPagedResponse(c, newUsers, "OK", pagination)
 }
 
+func (u *UserController) allListHandler(c *gin.Context) {
+	userList, err := u.uc.FindAll()
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	u.NewSuccessSingleResponse(c, userList, "OK")
+}
+
 func (u *UserController) getByIdHandler(c *gin.Context) {
 	id := c.Param("id")
 	roles, err := u.uc.FindById(id)
@@ -110,6 +119,7 @@ func (u *UserController) createHandler(c *gin.Context) {
 		Grade:            payload.Grade,
 		HRBP:             payload.HRBP,
 		Position:         payload.Position,
+		ScoringMethod:    payload.ScoringMethod,
 	}
 	if err := u.uc.CreateUser(user, payload.Role); err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -145,6 +155,7 @@ func (u *UserController) updateHandler(c *gin.Context) {
 		Grade:            payload.Grade,
 		HRBP:             payload.HRBP,
 		Position:         payload.Position,
+		ScoringMethod:    payload.ScoringMethod,
 	}
 	if err := u.uc.SaveUser(user, payload.Role); err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -200,6 +211,7 @@ func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
 		uc:     uc,
 	}
 	u.GET("/users", controller.listHandler)
+	u.GET("/users/all", controller.allListHandler)
 	u.GET("/users/:id", controller.getByIdHandler)
 	u.GET("/users/project/:projectId", controller.getByProjectId)
 	u.PUT("/users", controller.updateHandler)

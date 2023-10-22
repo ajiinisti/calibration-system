@@ -17,6 +17,7 @@ type CreateUser struct {
 	Role             []string
 	HRBP             string
 	Position         string
+	ScoringMethod    string
 }
 
 type UpdateUser struct {
@@ -35,4 +36,5 @@ type UpdateUser struct {
 	HRBP             string
 	Position         string
 	Role             []string
+	ScoringMethod    string
 }

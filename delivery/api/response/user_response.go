@@ -24,6 +24,7 @@ type UserResponse struct {
 	Grade                  string
 	HRBP                   string
 	Position               string
+	ScoringMethod          string
 	GeneratePassword       bool         `gorm:"default:false"`
 	Password               string       `json:"-"`
 	Roles                  []model.Role `gorm:"many2many:user_roles"`
