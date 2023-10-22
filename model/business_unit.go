@@ -15,5 +15,5 @@ type BusinessUnit struct {
 	Name                string
 	GroupBusinessUnit   GroupBusinessUnit
 	GroupBusinessUnitId string
-	RatingQuotas        []RatingQuota `gorm:"foreignKey:ProjectID;references:ID"`
+	RatingQuotas        []RatingQuota
 }

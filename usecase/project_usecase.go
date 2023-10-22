@@ -102,13 +102,12 @@ func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibra
 	totalCalibrations := len(calibrations)
 	// fmt.Println("TOTAL CALIBRATIONS = ", totalCalibrations)
 	responses := response.RatingQuota{
-		APlus:         int(math.Round(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
-		A:             int(math.Round(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
-		BPlus:         int(math.Round(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
-		B:             int(math.Round(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
-		C:             int(math.Round(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
-		D:             int(math.Round(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
-		ScoringMethod: ratingQuota.ScoringMethod,
+		APlus: int(math.Round(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
+		A:     int(math.Round(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
+		BPlus: int(math.Round(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
+		B:     int(math.Round(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
+		C:     int(math.Round(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
+		D:     int(math.Round(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
 	}
 
 	var total = responses.APlus + responses.A +
@@ -264,7 +263,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 				B:                      0,
 				C:                      0,
 				D:                      0,
-				Status:                 "Completed",
+				Status:                 "Complete",
 			}
 
 			// resp.APlus += 1
@@ -280,10 +279,11 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 				resp.C += 1
 			} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "D" {
 				resp.D += 1
-			} else if user.CalibrationScores[calibrationLength-1].Status == "" {
-				resp.Status = "Pending"
 			}
 
+			if user.CalibrationScores[calibrationLength-1].Status != "Complete" {
+				resp.Status = "Pending"
+			}
 			result.Summary = append(result.Summary, resp)
 			// fmt.Println("SUMMARY 2A", result.Summary)
 		} else {
@@ -301,7 +301,9 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 						summary.C += 1
 					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "D" {
 						summary.D += 1
-					} else if user.CalibrationScores[calibrationLength-1].Status == "" {
+					}
+
+					if user.CalibrationScores[calibrationLength-1].Status != "Complete" {
 						summary.Status = "Pending"
 					}
 				}
@@ -383,7 +385,6 @@ func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(c
 		return nil, err
 	}
 
-	fmt.Println("========================DATAAA USECASE========================")
 	for _, data := range calibration {
 		fmt.Println(data.Name)
 		fmt.Println(data.CalibrationScores)
