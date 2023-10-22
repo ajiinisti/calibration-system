@@ -348,6 +348,8 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 				Where("proj2.active = ? AND p.order <= ?", true, phase).
 				Order("p.order")
 		}).
+		Preload("CalibrationScores.TopRemarks").
+		Preload("CalibrationScores.BottomRemark").
 		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
@@ -402,6 +404,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 			CalibrationScores:      user.CalibrationScores,
 			SpmoCalibrations:       user.SpmoCalibrations,
 			CalibratorCalibrations: user.CalibratorCalibrations,
+			ScoringMethod:          user.ScoringMethod,
 		})
 	}
 	if err != nil {
@@ -454,6 +457,8 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 				Where("proj2.active = ? AND p.order <= ?", true, phase).
 				Order("p.order")
 		}).
+		Preload("CalibrationScores.TopRemarks").
+		Preload("CalibrationScores.BottomRemark").
 		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
@@ -515,6 +520,7 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 			CalibrationScores:      user.CalibrationScores,
 			SpmoCalibrations:       user.SpmoCalibrations,
 			CalibratorCalibrations: user.CalibratorCalibrations,
+			ScoringMethod:          user.ScoringMethod,
 		})
 	}
 	if err != nil {
@@ -527,7 +533,6 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int) ([]response.UserResponse, error) {
 	var users []model.User
 	var resultUsers []response.UserResponse
-	fmt.Println("MASUK SINI")
 
 	err := r.db.
 		Table("users u").
@@ -544,6 +549,8 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 				Where("proj2.active = ? AND p.order <= ?", true, phase).
 				Order("p.order")
 		}).
+		Preload("CalibrationScores.TopRemarks").
+		Preload("CalibrationScores.BottomRemark").
 		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
@@ -597,13 +604,13 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 			CalibrationScores:      user.CalibrationScores,
 			SpmoCalibrations:       user.SpmoCalibrations,
 			CalibratorCalibrations: user.CalibratorCalibrations,
+			ScoringMethod:          user.ScoringMethod,
 		})
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("========================DATA REPO========================")
 	for _, data := range resultUsers {
 		fmt.Println(data.Name)
 		fmt.Println(data.CalibrationScores)
