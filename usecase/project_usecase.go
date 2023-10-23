@@ -220,8 +220,6 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		picName := "N-1"
 		calibrationLength := len(user.CalibrationScores)
 		for _, calibration := range user.CalibrationScores {
-			// fmt.Println("SUMMARY :=", prevCalibrator, calibration.ProjectPhase.Phase.Order)
-			// fmt.Println("SUMMARY 0:=", user.Name, picName, user.BusinessUnit.Name, calibration.ProjectPhase.Phase.Order, phase)
 			if calibration.ProjectPhase.Phase.Order == phase && calibration.CalibratorID == calibratorId {
 				if _, isExist := prevCalibrator[user.Name]; calibrationLength == 1 && isExist {
 					picName = user.Name
@@ -229,16 +227,13 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 					picName = name
 				}
 
-				// fmt.Println("SUMMARY 0A:=", user.Name, picName, user.BusinessUnit.Name)
 				pic = true
 				break
 			} else if calibration.ProjectPhase.Phase.Order == phase && calibration.CalibratorID != calibratorId {
-				// fmt.Println("SUMMARY 0B:=", user.Name, picName, user.BusinessUnit.Name)
 				break
 			}
 
 			if calibration.ProjectPhase.Phase.Order < phase {
-				// fmt.Println("SUMMARY 0C:=", user.Name, picName, user.BusinessUnit.Name)
 				prevCalibrator[calibration.Calibrator.Name] = calibration.Calibrator.Name
 				picName = calibration.Calibrator.Name
 			}
@@ -252,8 +247,6 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		}
 
 		if _, isExist := businessUnit[user.BusinessUnit.Name]; bu && pic && (picName != "N-1" || !isExist) {
-			// fmt.Println("SUMMARY 1A:= ", user.Name, picName, user.BusinessUnit.Name)
-			// fmt.Println("SUMMARY 1A cont:= ", bu && pic, picName != "N-1", !isExist)
 			resp := &response.CalibratorBusinessUnit{
 				CalibratorName:         picName,
 				CalibratorBusinessUnit: user.BusinessUnit.Name,
@@ -266,7 +259,6 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 				Status:                 "Complete",
 			}
 
-			// resp.APlus += 1
 			if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
 				resp.APlus += 1
 			} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A" {

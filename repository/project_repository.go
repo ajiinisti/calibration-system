@@ -219,7 +219,8 @@ func (r *projectRepo) GetAllCalibrationByCalibratorID(calibratorID string, calib
 				Joins("JOIN projects ON calibrations.project_id = projects.id").
 				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
 				Joins("JOIN phases p ON p.id = pp.phase_id ").
-				Where("projects.active = ? AND p.order <= ?", true, calibratorPhase)
+				Where("projects.active = ? AND p.order <= ?", true, calibratorPhase).
+				Order("p.order ASC")
 		}).
 		Preload("CalibrationScores.Calibrator").
 		Preload("CalibrationScores.ProjectPhase").
