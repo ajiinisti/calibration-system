@@ -12,6 +12,7 @@ import (
 
 type CalibrationUsecase interface {
 	FindAll() ([]model.Calibration, error)
+	FindActiveBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindById(id string) (*model.Calibration, error)
 	SaveData(payload *model.Calibration) error
 	DeleteData(projectId, projectPhaseId, employeeId string) error
@@ -31,6 +32,10 @@ type calibrationUsecase struct {
 
 func (r *calibrationUsecase) FindAll() ([]model.Calibration, error) {
 	return r.repo.List()
+}
+
+func (r *calibrationUsecase) FindActiveBySPMOID(spmoID string) ([]model.Calibration, error) {
+	return r.repo.GetActiveBySPMOID(spmoID)
 }
 
 func (r *calibrationUsecase) FindById(id string) (*model.Calibration, error) {
@@ -282,7 +287,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 	if err != nil {
 		return err
 	}
-	return r.repo.BulkUpdate(payload, projectPhase.Phase.Order)
+	return r.repo.BulkUpdate(payload, *projectPhase)
 }
 
 func (r *calibrationUsecase) SaveCalibrations(payload *request.CalibrationRequest) error {

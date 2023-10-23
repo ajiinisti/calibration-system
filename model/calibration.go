@@ -24,7 +24,7 @@ type Calibration struct {
 	HrbpID            string
 	CalibrationScore  float64
 	CalibrationRating string
-	Status            string `gorm:"default:'Wait'"`
+	Status            string `gorm:"default:'Waiting'"`
 	SpmoStatus        string `gorm:"default:'-'"`
 	Comment           string
 	SpmoComment       string       `gorm:"default:'-'"`

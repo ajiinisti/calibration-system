@@ -362,7 +362,6 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 		Where("p.order <= ? AND u.id IN (?)", phase, subqueryResults).
 		Group("u.id").
 		Order("calibration_count ASC").
-		Limit(10).Offset(0).
 		Find(&users).Error
 
 	for _, user := range users {
@@ -478,7 +477,6 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 		Or("(p.order = ? AND c1.calibrator_id = ? AND b.name = ? AND u.id NOT IN (?))", phase, calibratorId, businessUnit, exceptUsers).
 		Group("u.id").
 		Order("calibration_count ASC").
-		Limit(10).Offset(0).
 		Find(&users).Error
 
 	for _, user := range users {
@@ -562,7 +560,6 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Joins("JOIN business_units b ON u.business_unit_id = b.id").
 		Joins("JOIN users u2 ON c1.calibrator_id = u2.id").
 		Where("p.order = ? AND b.name = ? ", phase, businessUnit).
-		Limit(10).Offset(0).
 		Find(&users).Error
 
 	for _, user := range users {
@@ -611,10 +608,10 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		return nil, err
 	}
 
-	for _, data := range resultUsers {
-		fmt.Println(data.Name)
-		fmt.Println(data.CalibrationScores)
-	}
+	// for _, data := range resultUsers {
+	// 	fmt.Println(data.Name)
+	// 	fmt.Println(data.CalibrationScores)
+	// }
 
 	return resultUsers, nil
 }

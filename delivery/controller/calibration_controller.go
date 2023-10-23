@@ -168,6 +168,18 @@ func (r *CalibrationController) submitCalibrationsHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
+func (r *CalibrationController) getAllActiveCalibrationsBySPMOIDHandler(c *gin.Context) {
+	spmoID := c.Param("spmoID")
+
+	payload, err := r.uc.FindActiveBySPMOID(spmoID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
 func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
 		router: r,
@@ -175,6 +187,7 @@ func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *Cal
 	}
 	r.GET("/calibrations", controller.listHandler)
 	r.GET("/calibrations/:id", controller.getByIdHandler)
+	r.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
 	r.PUT("/calibrations", controller.updateHandler)
 	r.POST("/calibrations", controller.createHandler)
 	r.POST("/calibrations/upload", controller.uploadHandler)
