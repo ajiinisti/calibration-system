@@ -62,17 +62,9 @@ func (r *projectUsecase) PublishProject(id string) error {
 	return r.repo.DeactivateAllExceptID(id)
 }
 
-// func (r *projectUsecase) FindActiveProject() (*model.Project, error) {
-// 	return r.repo.GetActiveProject()
-// }
-
 func (r *projectUsecase) FindActiveProject() (*model.Project, error) {
 	return r.repo.GetActiveProject()
 }
-
-// func (r *projectUsecase) FindActiveProjectByCalibratorID(calibratorId string) (*response.ProjectCalibrationResponse, error) {
-// 	return r.repo.GetActiveProjectByCalibratorID(calibratorId)
-// }
 
 func (r *projectUsecase) FindScoreDistributionByCalibratorID(businessUnitName string) (*model.Project, error) {
 	return r.repo.GetScoreDistributionByCalibratorID(businessUnitName)
@@ -210,6 +202,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 
 	prevCalibrator := map[string]string{}
 	businessUnit := map[string]string{}
+	picIDs := map[string]string{}
 	users, err := r.repo.GetAllCalibrationByCalibratorID(calibratorId, phase)
 	if err != nil {
 		return nil, err
@@ -218,13 +211,16 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 	for _, user := range users {
 		pic := false
 		picName := "N-1"
+		var picId string
 		calibrationLength := len(user.CalibrationScores)
 		for _, calibration := range user.CalibrationScores {
 			if calibration.ProjectPhase.Phase.Order == phase && calibration.CalibratorID == calibratorId {
 				if _, isExist := prevCalibrator[user.Name]; calibrationLength == 1 && isExist {
 					picName = user.Name
+					picId = user.ID
 				} else if name, isExist := businessUnit[user.BusinessUnit.Name]; calibrationLength == 1 && isExist {
 					picName = name
+					picId = picIDs[user.BusinessUnit.Name]
 				}
 
 				pic = true
@@ -236,6 +232,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 			if calibration.ProjectPhase.Phase.Order < phase {
 				prevCalibrator[calibration.Calibrator.Name] = calibration.Calibrator.Name
 				picName = calibration.Calibrator.Name
+				picId = calibration.CalibratorID
 			}
 		}
 
@@ -248,15 +245,23 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 
 		if _, isExist := businessUnit[user.BusinessUnit.Name]; bu && pic && (picName != "N-1" || !isExist) {
 			resp := &response.CalibratorBusinessUnit{
-				CalibratorName:         picName,
-				CalibratorBusinessUnit: user.BusinessUnit.Name,
-				APlus:                  0,
-				A:                      0,
-				BPlus:                  0,
-				B:                      0,
-				C:                      0,
-				D:                      0,
-				Status:                 "Complete",
+				CalibratorName:           picName,
+				CalibratorID:             picId,
+				CalibratorBusinessUnit:   user.BusinessUnit.Name,
+				CalibratorBusinessUnitID: *user.BusinessUnitId,
+				APlus:                    0,
+				A:                        0,
+				BPlus:                    0,
+				B:                        0,
+				C:                        0,
+				D:                        0,
+				APlusGuidance:            0,
+				AGuidance:                0,
+				BPlusGuidance:            0,
+				BGuidance:                0,
+				CGuidance:                0,
+				DGuidance:                0,
+				Status:                   "Complete",
 			}
 
 			if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
@@ -304,6 +309,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 
 		if _, isExist := businessUnit[user.BusinessUnit.Name]; !isExist && picName != "N-1" {
 			businessUnit[user.BusinessUnit.Name] = picName
+			picIDs[user.BusinessUnit.Name] = picId
 		}
 		// fmt.Println("Business Unit:= ", businessUnit)
 
@@ -318,7 +324,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 			if summary.CalibratorName == "N-1" {
 				types = "n-1"
 			}
-			guidance, err := r.FindRatingQuotaByCalibratorID(calibratorId, summary.CalibratorName, summary.CalibratorBusinessUnit, types)
+			guidance, err := r.FindRatingQuotaByCalibratorID(calibratorId, summary.CalibratorID, summary.CalibratorBusinessUnitID, types)
 			if err != nil {
 				return nil, err
 			}

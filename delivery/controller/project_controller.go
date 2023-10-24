@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -211,11 +210,6 @@ func (r *ProjectController) getNMinusOneCalibrationsByPrevCalibratorBusinessUnit
 	calibratorID := c.Param("calibratorID")
 	businessUnit := c.Param("businessUnit")
 	projects, err := r.uc.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit)
-	fmt.Println("========================DATAAA CONTROLLER========================")
-	for _, data := range projects {
-		fmt.Println(data.Name)
-		fmt.Println(data.CalibrationScores)
-	}
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
