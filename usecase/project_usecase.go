@@ -102,12 +102,12 @@ func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibra
 	totalCalibrations := len(calibrations)
 	// fmt.Println("TOTAL CALIBRATIONS = ", totalCalibrations)
 	responses := response.RatingQuota{
-		APlus: int(math.Round(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
-		A:     int(math.Round(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
-		BPlus: int(math.Round(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
-		B:     int(math.Round(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
-		C:     int(math.Round(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
-		D:     int(math.Round(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
+		APlus: int(math.Floor(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
+		A:     int(math.Floor(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
+		BPlus: int(math.Floor(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
+		B:     int(math.Floor(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
+		C:     int(math.Floor(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
+		D:     int(math.Floor(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
 	}
 
 	var total = responses.APlus + responses.A +

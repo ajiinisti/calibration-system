@@ -75,8 +75,7 @@ func (r *calibrationRepo) GetActiveBySPMOID(id string) ([]model.Calibration, err
 		Joins("JOIN projects pr ON pr.id = c.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c.project_phase_id AND pp.review_spmo = true").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
-		Where("spmo_id", id).
-		// Where("c.spmo_id AND c.status = 'Waiting' ", id).
+		Where("c.spmo_id = ? AND c.spmo_status = 'Waiting' ", id).
 		Order("p.order ASC").
 		// Limit(10).Offset(0).
 		Find(&calibration).Error
