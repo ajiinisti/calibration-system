@@ -13,6 +13,8 @@ import (
 type CalibrationUsecase interface {
 	FindAll() ([]model.Calibration, error)
 	FindActiveBySPMOID(spmoID string) ([]model.Calibration, error)
+	FindAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
+	FindRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindById(id string) (*model.Calibration, error)
 	SaveData(payload *model.Calibration) error
 	DeleteData(projectId, projectPhaseId, employeeId string) error
@@ -21,6 +23,8 @@ type CalibrationUsecase interface {
 	BulkInsert(file *multipart.FileHeader, projectId string) error
 	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error
 	SaveCalibrations(payload *request.CalibrationRequest) error
+	SpmoAcceptApproval(payload *request.AcceptJustification) error
+	SpmoRejectApproval(payload *request.RejectJustification) error
 }
 
 type calibrationUsecase struct {
@@ -36,6 +40,14 @@ func (r *calibrationUsecase) FindAll() ([]model.Calibration, error) {
 
 func (r *calibrationUsecase) FindActiveBySPMOID(spmoID string) ([]model.Calibration, error) {
 	return r.repo.GetActiveBySPMOID(spmoID)
+}
+
+func (r *calibrationUsecase) FindAcceptedBySPMOID(spmoID string) ([]model.Calibration, error) {
+	return r.repo.GetAcceptedBySPMOID(spmoID)
+}
+
+func (r *calibrationUsecase) FindRejectedBySPMOID(spmoID string) ([]model.Calibration, error) {
+	return r.repo.GetRejectedBySPMOID(spmoID)
 }
 
 func (r *calibrationUsecase) FindById(id string) (*model.Calibration, error) {
@@ -292,6 +304,18 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 
 func (r *calibrationUsecase) SaveCalibrations(payload *request.CalibrationRequest) error {
 	return r.repo.SaveChanges(payload)
+}
+
+func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustification) error {
+	projectPhase, err := r.project.FindCalibratorPhase(payload.CalibratorID)
+	if err != nil {
+		return err
+	}
+	return r.repo.AcceptCalibration(payload, projectPhase.Phase.Order)
+}
+
+func (r *calibrationUsecase) SpmoRejectApproval(payload *request.RejectJustification) error {
+	return r.repo.RejectCalibration(payload)
 }
 
 func NewCalibrationUsecase(repo repository.CalibrationRepo, user UserUsecase, project ProjectUsecase, projectPhase ProjectPhaseUsecase) CalibrationUsecase {

@@ -183,10 +183,10 @@ func (r *projectRepo) GetScoreDistributionByCalibratorID(businessUnitID string) 
 		Preload("ScoreDistributions", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Joins("JOIN group_business_units AS gbu ON gbu.id = score_distributions.group_business_unit_id").
-				Joins("JOIN business_units as bu ON bu.group_business_unit_id = gbu.id").
-				Where("bu.id = ?", businessUnitID)
+				Joins("JOIN business_units as bu ON bu.group_business_unit_id = gbu.id AND bu.id = ?", businessUnitID)
 		}).
-		First(&project, "projects.active = ?", true).Error
+		Where("projects.active = ?", true).
+		First(&project).Error
 	if err != nil {
 		return nil, err
 	}

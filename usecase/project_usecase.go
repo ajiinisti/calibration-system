@@ -211,7 +211,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 	for _, user := range users {
 		pic := false
 		picName := "N-1"
-		var picId string
+		picId := "N-1"
 		calibrationLength := len(user.CalibrationScores)
 		for _, calibration := range user.CalibrationScores {
 			if calibration.ProjectPhase.Phase.Order == phase && calibration.CalibratorID == calibratorId {
@@ -278,7 +278,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 				resp.D += 1
 			}
 
-			if user.CalibrationScores[calibrationLength-1].Status != "Complete" {
+			if user.CalibrationScores[calibrationLength-1].Status != "Complete" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
 				resp.Status = "Pending"
 			}
 			result.Summary = append(result.Summary, resp)
