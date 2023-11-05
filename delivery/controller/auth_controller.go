@@ -44,9 +44,11 @@ func (a *AuthController) login(c *gin.Context) {
 	}
 
 	cred := model.TokenModel{
-		Email: user.Email,
-		Role:  roles,
-		ID:    user.ID,
+		Username: "",
+		Email:    user.Email,
+		Role:     roles,
+		ID:       user.ID,
+		Name:     user.Name,
 	}
 	tokenDetail, err := a.tokenService.CreateAccessToken(&cred)
 	if err != nil {
