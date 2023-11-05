@@ -23,3 +23,40 @@ type CalibratorBusinessUnit struct {
 	DGuidance                int
 	Status                   string
 }
+
+// DB Result Query
+type SPMOSummaryResult struct {
+	Count            int
+	BusinessUnitName string
+	BusinessUnitID   string
+	Department       string
+	CalibratorName   string
+	CalibratorID     string
+	ProjectPhaseID   string
+	Order            int
+}
+
+// Response to User
+type SummarySPMO struct {
+	SummaryData []BUPerformanceSummarySPMO
+}
+
+type BUPerformanceSummarySPMO struct {
+	BusinessUnitName string
+	BusinessUnitID   string
+	DepartmentData   []DepartmentCountSummarySPMO
+}
+
+type DepartmentCountSummarySPMO struct {
+	DepartmentName   string
+	ProjectPhaseData []*ProjectPhaseSummarySPMO
+}
+
+type ProjectPhaseSummarySPMO struct {
+	CalibratorName string
+	CalibratorID   string
+	ProjectPhaseID string
+	Order          int
+	Count          int
+	Status         string
+}

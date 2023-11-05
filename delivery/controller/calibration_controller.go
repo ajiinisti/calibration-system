@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"calibration-system.com/delivery/api"
@@ -170,7 +171,7 @@ func (r *CalibrationController) submitCalibrationsHandler(c *gin.Context) {
 
 func (r *CalibrationController) getSummaryCalibrationsBySPMOIDHandler(c *gin.Context) {
 	spmoID := c.Param("spmoID")
-	payload, err := r.uc.FindActiveBySPMOID(spmoID)
+	payload, err := r.uc.FindSummaryCalibrationBySPMOID(spmoID)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -243,6 +244,47 @@ func (r *CalibrationController) spmoRejectApprovalHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
+func (r *CalibrationController) getAllDetailActiveCalibrationsBySPMOIDHandler(c *gin.Context) {
+	spmoID := c.Param("spmoID")
+	calibratorID := c.Param("calibratorID")
+	businessUnitID := c.Param("businessUnitID")
+	order := c.Param("order")
+	department := c.Param("department")
+
+	intOrder, err := strconv.Atoi(order)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	payload, err := r.uc.FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department, intOrder)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
+func (r *CalibrationController) getAllDetailActiveCalibrations2BySPMOIDHandler(c *gin.Context) {
+	spmoID := c.Param("spmoID")
+	calibratorID := c.Param("calibratorID")
+	businessUnitID := c.Param("businessUnitID")
+	order := c.Param("order")
+
+	intOrder, err := strconv.Atoi(order)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	payload, err := r.uc.FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, intOrder)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
 func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
 		router: r,
@@ -252,6 +294,8 @@ func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *Cal
 	r.GET("/calibrations/:id", controller.getByIdHandler)
 	r.GET("/summary-calibrations/spmo/:spmoID", controller.getSummaryCalibrationsBySPMOIDHandler)
 	r.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
+	r.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:department", controller.getAllDetailActiveCalibrationsBySPMOIDHandler)
+	r.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
 	r.GET("/calibrations/spmo-accepted/:spmoID", controller.getAllAcceptedCalibrationsBySPMOIDHandler)
 	r.GET("/calibrations/spmo-rejected/:spmoID", controller.getAllRejectdCalibrationsBySPMOIDHandler)
 	r.PUT("/calibrations", controller.updateHandler)

@@ -3,8 +3,10 @@ package usecase
 import (
 	"fmt"
 	"mime/multipart"
+	"sort"
 
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
 	"calibration-system.com/repository"
 	"github.com/360EntSecGroup-Skylar/excelize"
@@ -25,6 +27,9 @@ type CalibrationUsecase interface {
 	SaveCalibrations(payload *request.CalibrationRequest) error
 	SpmoAcceptApproval(payload *request.AcceptJustification) error
 	SpmoRejectApproval(payload *request.RejectJustification) error
+	FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error)
+	FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
+	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
 }
 
 type calibrationUsecase struct {
@@ -289,6 +294,7 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 			}
 			supervisorNIK = calibratorNik
 		}
+		calibrations[len(calibrations)-1].Status = "Calibrate"
 	}
 
 	return r.repo.Bulksave(&calibrations)
@@ -316,6 +322,117 @@ func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustifica
 
 func (r *calibrationUsecase) SpmoRejectApproval(payload *request.RejectJustification) error {
 	return r.repo.RejectCalibration(payload)
+}
+
+type ByBusinessUnitName []response.BUPerformanceSummarySPMO
+
+func (a ByBusinessUnitName) Len() int           { return len(a) }
+func (a ByBusinessUnitName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByBusinessUnitName) Less(i, j int) bool { return a[i].BusinessUnitName < a[j].BusinessUnitName }
+
+func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error) {
+	results, err := r.repo.GetSummaryBySPMOID(spmoID)
+	if err != nil {
+		return response.SummarySPMO{}, err
+	}
+
+	// Grouping the query output
+	groupedList := make(map[string]response.BUPerformanceSummarySPMO)
+
+	for _, res := range results {
+		departmentCount := response.ProjectPhaseSummarySPMO{
+			CalibratorName: res.CalibratorName,
+			CalibratorID:   res.CalibratorID,
+			ProjectPhaseID: res.ProjectPhaseID,
+			Order:          res.Order,
+			Count:          res.Count,
+			Status:         "Pending",
+		}
+
+		departmentData := response.DepartmentCountSummarySPMO{
+			DepartmentName:   res.Department,
+			ProjectPhaseData: []*response.ProjectPhaseSummarySPMO{&departmentCount},
+		}
+
+		businessUnitData, ok := groupedList[res.BusinessUnitID]
+
+		if ok {
+			departmentExists := false
+			for i, department := range businessUnitData.DepartmentData {
+				if department.DepartmentName == res.Department {
+					groupedList[res.BusinessUnitID].DepartmentData[i].ProjectPhaseData = append(department.ProjectPhaseData, &departmentCount)
+					departmentExists = true
+					break
+				}
+			}
+
+			if !departmentExists {
+				groupedList[res.BusinessUnitID] = response.BUPerformanceSummarySPMO{
+					BusinessUnitName: res.BusinessUnitName,
+					BusinessUnitID:   res.BusinessUnitID,
+					DepartmentData:   append(businessUnitData.DepartmentData, departmentData),
+				}
+			}
+		} else {
+			businessUnitData = response.BUPerformanceSummarySPMO{
+				BusinessUnitName: res.BusinessUnitName,
+				BusinessUnitID:   res.BusinessUnitID,
+				DepartmentData:   []response.DepartmentCountSummarySPMO{departmentData},
+			}
+			groupedList[res.BusinessUnitID] = businessUnitData
+		}
+	}
+
+	// Transforming map to slice
+	var finalResult []response.BUPerformanceSummarySPMO
+	for _, value := range groupedList {
+		finalResult = append(finalResult, value)
+	}
+
+	// Assigning the final result to the SummarySPMO struct
+	summary := response.SummarySPMO{SummaryData: finalResult}
+	sort.Sort(ByBusinessUnitName(summary.SummaryData))
+
+	for _, smry := range summary.SummaryData {
+		for _, department := range smry.DepartmentData {
+			for _, projectPhase := range department.ProjectPhaseData {
+				status := "-"
+				data, err := r.repo.GetAllDetailCalibration2BySPMOID(spmoID, projectPhase.CalibratorID, smry.BusinessUnitID, projectPhase.Order)
+				if err != nil {
+					return response.SummarySPMO{}, err
+				}
+
+				allSubmitted := true
+				for _, user := range data {
+					lastCalibrationStatus := user.CalibrationScores[len(user.CalibrationScores)-1].SpmoStatus
+					if lastCalibrationStatus == "Waiting" {
+						status = "Pending"
+						allSubmitted = allSubmitted && false
+						break
+					} else if lastCalibrationStatus == "Accepted" || lastCalibrationStatus == "Rejected" {
+						allSubmitted = allSubmitted && true
+					} else {
+						allSubmitted = allSubmitted && false
+					}
+				}
+
+				if allSubmitted {
+					status = "Completed"
+				}
+				projectPhase.Status = status
+			}
+		}
+	}
+
+	return summary, nil
+}
+
+func (r *calibrationUsecase) FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error) {
+	return r.repo.GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department, order)
+}
+
+func (r *calibrationUsecase) FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error) {
+	return r.repo.GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID, order)
 }
 
 func NewCalibrationUsecase(repo repository.CalibrationRepo, user UserUsecase, project ProjectUsecase, projectPhase ProjectPhaseUsecase) CalibrationUsecase {

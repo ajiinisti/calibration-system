@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
 	"gorm.io/gorm"
 )
@@ -21,6 +22,9 @@ type CalibrationRepo interface {
 	SaveChanges(payload *request.CalibrationRequest) error
 	AcceptCalibration(payload *request.AcceptJustification, phaseOrder int) error
 	RejectCalibration(payload *request.RejectJustification) error
+	GetSummaryBySPMOID(spmoID string) ([]response.SPMOSummaryResult, error)
+	GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
+	GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
 }
 
 type calibrationRepo struct {
@@ -49,9 +53,9 @@ func (r *calibrationRepo) Bulksave(payload *[]model.Calibration) error {
 	remainingItems := (*payload)[numFullBatches*batchSize:]
 
 	if len(remainingItems) > 0 {
-		err := r.db.Save(&remainingItems)
+		err := r.db.Save(&remainingItems).Error
 		if err != nil {
-			return r.db.Save(&remainingItems).Error
+			return err
 		}
 	}
 	return nil
@@ -317,6 +321,117 @@ func (r *calibrationRepo) RejectCalibration(payload *request.RejectJustification
 
 	tx.Commit()
 	return nil
+}
+
+func (r *calibrationRepo) GetSummaryBySPMOID(spmoID string) ([]response.SPMOSummaryResult, error) {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Assuming db is your GORM database instance
+	var results []response.SPMOSummaryResult
+	err := tx.Table("calibrations c").
+		Select("COUNT(c.*) as count, u.business_unit_id, b.name as business_unit_name, u2.name as calibrator_name, c.calibrator_id, c.project_phase_id, p.order").
+		Joins("JOIN project_phases pp on pp.id = c.project_phase_id").
+		Joins("JOIN phases p on pp.phase_id = p.id").
+		Joins("JOIN users u on c.employee_id = u.id").
+		Joins("JOIN business_units b on u.business_unit_id = b.id").
+		Joins("JOIN users u2 on c.calibrator_id = u2.id").
+		Where("spmo_id = ? AND p.order NOT IN (SELECT MAX(\"order\") FROM phases)", spmoID).
+		Group("u.business_unit_id, b.name, u2.name, c.calibrator_id, c.project_phase_id, p.order").
+		Order("p.order ASC").
+		Scan(&results).Error
+
+	// err := tx.Table("calibrations c").
+	// 	Select("COUNT(c.*) as count, u.business_unit_id, b.name as business_unit_name ,u.department, u2.name as calibrator_name, c.calibrator_id, c.project_phase_id, p.order").
+	// 	Joins("JOIN project_phases pp on pp.id = c.project_phase_id").
+	// 	Joins("JOIN phases p on pp.phase_id = p.id").
+	// 	Joins("JOIN users u on c.employee_id = u.id").
+	// 	Joins("JOIN business_units b on u.business_unit_id = b.id").
+	// 	Joins("JOIN users u2 on c.calibrator_id = u2.id").
+	// 	Where("spmo_id = ? AND p.order NOT IN (SELECT MAX(\"order\") FROM phases)", "23105b4e-e33c-4841-8e49-e23b8a745257").
+	// 	Group("u.business_unit_id, b.name, u.department, u2.name, c.calibrator_id, c.project_phase_id, p.order").
+	// 	Order("p.order ASC").
+	// 	Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	tx.Commit()
+	return results, nil
+}
+
+func (r *calibrationRepo) GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error) {
+	var calibration []response.UserResponse
+	err := r.db.
+		Table("users u").
+		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id").
+				Where("proj1.active = ?", true)
+		}).
+		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN projects ON calibrations.project_id = projects.id").
+				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+				Joins("JOIN phases p ON p.id = pp.phase_id ").
+				Where("projects.active = true AND p.order <= ?", order).
+				Order("p.order ASC")
+		}).
+		Preload("CalibrationScores.ProjectPhase").
+		Preload("CalibrationScores.ProjectPhase.Phase").
+		Preload("CalibrationScores.TopRemarks").
+		Preload("CalibrationScores.BottomRemark").
+		Select("u.*, u2.name as supervisor_names").
+		Joins("JOIN business_units b ON u.business_unit_id = b.id AND b.id = ?", businessUnitID).
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.spmo_id = ? AND c1.calibrator_id = ?", spmoID, calibratorID).
+		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
+		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
+		Where("u.department = ?", department).
+		Find(&calibration).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return calibration, nil
+}
+
+func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error) {
+	var calibration []response.UserResponse
+	err := r.db.
+		Table("users u").
+		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id").
+				Where("proj1.active = ?", true)
+		}).
+		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN projects ON calibrations.project_id = projects.id").
+				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+				Joins("JOIN phases p ON p.id = pp.phase_id ").
+				Where("projects.active = true AND p.order <= ?", order).
+				Order("p.order ASC")
+		}).
+		Preload("CalibrationScores.ProjectPhase").
+		Preload("CalibrationScores.ProjectPhase.Phase").
+		Preload("CalibrationScores.TopRemarks").
+		Preload("CalibrationScores.BottomRemark").
+		Select("u.*, u2.name as supervisor_names").
+		Joins("JOIN business_units b ON u.business_unit_id = b.id AND b.id = ?", businessUnitID).
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.spmo_id = ? AND c1.calibrator_id = ?", spmoID, calibratorID).
+		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
+		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
+		Find(&calibration).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return calibration, nil
 }
 
 func NewCalibrationRepo(db *gorm.DB) CalibrationRepo {
