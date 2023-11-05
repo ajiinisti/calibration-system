@@ -19,6 +19,7 @@ type ProjectRepo interface {
 	GetProjectPhaseOrder(calibratorID string) (int, error)
 	GetProjectPhase(calibratorID string) (*model.ProjectPhase, error)
 	GetActiveProject() (*model.Project, error)
+	GetActiveProjectPhase() ([]model.ProjectPhase, error)
 	GetScoreDistributionByCalibratorID(businessUnitID string) (*model.Project, error)
 	GetRatingQuotaByCalibratorID(businessUnitID string) (*model.Project, error)
 	GetNumberOneUserWhoCalibrator(calibratorID string, businessUnit string, calibratorPhase int) ([]string, error)
@@ -145,6 +146,19 @@ func (r *projectRepo) GetActiveProject() (*model.Project, error) {
 		return nil, err
 	}
 	return &project, nil
+}
+
+func (r *projectRepo) GetActiveProjectPhase() ([]model.ProjectPhase, error) {
+	var project model.Project
+	err := r.db.
+		Preload("ProjectPhases").
+		Preload("ProjectPhases.Phase").
+		First(&project, "active = ?", true).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return project.ProjectPhases, nil
 }
 
 func (r *projectRepo) GetProjectPhase(calibratorID string) (*model.ProjectPhase, error) {

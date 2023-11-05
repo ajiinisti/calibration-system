@@ -227,6 +227,15 @@ func (r *ProjectController) getProjectPhaseByCalibratorId(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
+func (r *ProjectController) getActiveProjectPhaseHandler(c *gin.Context) {
+	projects, err := r.uc.FindActiveProjectPhase()
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
 func NewProjectController(r *gin.Engine, uc usecase.ProjectUsecase) *ProjectController {
 	controller := ProjectController{
 		router: r,
@@ -243,6 +252,7 @@ func NewProjectController(r *gin.Engine, uc usecase.ProjectUsecase) *ProjectCont
 	r.GET("/projects/calibrations-one/:calibratorID/:prevCalibrator/:businessUnit", controller.getNumberOneCalibrationsByPrevCalibratorBusinessUnit)
 	r.GET("/projects/calibrations-n-minus-one/:calibratorID/:businessUnit", controller.getNMinusOneCalibrationsByPrevCalibratorBusinessUnit)
 	r.GET("/projects/project-phase/:calibratorID", controller.getProjectPhaseByCalibratorId)
+	r.GET("/projects/project-phase/active", controller.getActiveProjectPhaseHandler)
 	r.GET("/projects/:id", controller.getByIdHandler)
 	r.PUT("/projects", controller.updateHandler)
 	r.POST("/projects", controller.createHandler)

@@ -25,6 +25,7 @@ type ProjectUsecase interface {
 	FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) ([]response.UserResponse, error)
 	FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit string) ([]response.UserResponse, error)
 	FindCalibratorPhase(calibratorId string) (*model.ProjectPhase, error)
+	FindActiveProjectPhase() ([]model.ProjectPhase, error)
 	FindActiveProject() (*model.Project, error)
 }
 
@@ -397,6 +398,15 @@ func (r *projectUsecase) FindCalibratorPhase(calibratorId string) (*model.Projec
 	}
 
 	return phase, nil
+}
+
+func (r *projectUsecase) FindActiveProjectPhase() ([]model.ProjectPhase, error) {
+	projectPhase, err := r.repo.GetActiveProjectPhase()
+	if err != nil {
+		return nil, err
+	}
+
+	return projectPhase, nil
 }
 
 func NewProjectUsecase(repo repository.ProjectRepo) ProjectUsecase {
