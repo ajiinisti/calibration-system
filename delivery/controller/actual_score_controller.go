@@ -78,14 +78,14 @@ func (r *ActualScoreController) deleteHandler(c *gin.Context) {
 
 func (r *ActualScoreController) uploadHandler(c *gin.Context) {
 	// Menerima file Excel dari permintaan HTTP POST
-	projectId := c.Request.FormValue("projectId")
+	projectID := c.Request.FormValue("projectID")
 	file, err := c.FormFile("excelFile")
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	logs, err := r.uc.BulkInsert(file, projectId)
+	logs, err := r.uc.BulkInsert(file, projectID)
 	if err != nil {
 		if len(logs) > 0 {
 			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
