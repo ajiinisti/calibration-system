@@ -227,7 +227,21 @@ func (r *CalibrationController) spmoAcceptApprovalHandler(c *gin.Context) {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.String(http.StatusNoContent, "")
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
+func (r *CalibrationController) spmoAcceptMultipleApprovalHandler(c *gin.Context) {
+	var payload request.AcceptMultipleJustification
+	if err := r.ParseRequestBody(c, &payload); err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := r.uc.SpmoAcceptMultipleApproval(&payload); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
 func (r *CalibrationController) spmoRejectApprovalHandler(c *gin.Context) {
@@ -241,7 +255,7 @@ func (r *CalibrationController) spmoRejectApprovalHandler(c *gin.Context) {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.String(http.StatusNoContent, "")
+	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
 func (r *CalibrationController) getAllDetailActiveCalibrationsBySPMOIDHandler(c *gin.Context) {
@@ -294,10 +308,10 @@ func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *Cal
 	r.GET("/calibrations/:id", controller.getByIdHandler)
 	r.GET("/summary-calibrations/spmo/:spmoID", controller.getSummaryCalibrationsBySPMOIDHandler)
 	r.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
-	r.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:department", controller.getAllDetailActiveCalibrationsBySPMOIDHandler)
+	// r.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:department", controller.getAllDetailActiveCalibrationsBySPMOIDHandler)
 	r.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
-	r.GET("/calibrations/spmo-accepted/:spmoID", controller.getAllAcceptedCalibrationsBySPMOIDHandler)
-	r.GET("/calibrations/spmo-rejected/:spmoID", controller.getAllRejectdCalibrationsBySPMOIDHandler)
+	// r.GET("/calibrations/spmo-accepted/:spmoID", controller.getAllAcceptedCalibrationsBySPMOIDHandler)
+	// r.GET("/calibrations/spmo-rejected/:spmoID", controller.getAllRejectdCalibrationsBySPMOIDHandler)
 	r.PUT("/calibrations", controller.updateHandler)
 	r.POST("/calibrations", controller.createHandler)
 	r.POST("/calibrations/upload", controller.uploadHandler)
@@ -306,6 +320,7 @@ func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *Cal
 	r.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
 	r.POST("/calibrations/submit-calibrations/:calibratorID", controller.submitCalibrationsHandler)
 	r.POST("/calibrations/accept-approval", controller.spmoAcceptApprovalHandler)
+	r.POST("/calibrations/accept-multiple-approval", controller.spmoAcceptMultipleApprovalHandler)
 	r.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)
 	r.DELETE("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.deleteHandler)
 	return &controller

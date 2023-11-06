@@ -26,6 +26,7 @@ type CalibrationUsecase interface {
 	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error
 	SaveCalibrations(payload *request.CalibrationRequest) error
 	SpmoAcceptApproval(payload *request.AcceptJustification) error
+	SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error
 	SpmoRejectApproval(payload *request.RejectJustification) error
 	FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error)
 	FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
@@ -318,6 +319,10 @@ func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustifica
 		return err
 	}
 	return r.repo.AcceptCalibration(payload, projectPhase.Phase.Order)
+}
+
+func (r *calibrationUsecase) SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error {
+	return r.repo.AcceptMultipleCalibration(payload)
 }
 
 func (r *calibrationUsecase) SpmoRejectApproval(payload *request.RejectJustification) error {

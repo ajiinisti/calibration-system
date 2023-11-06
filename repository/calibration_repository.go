@@ -21,6 +21,7 @@ type CalibrationRepo interface {
 	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) error
 	SaveChanges(payload *request.CalibrationRequest) error
 	AcceptCalibration(payload *request.AcceptJustification, phaseOrder int) error
+	AcceptMultipleCalibration(payload *request.AcceptMultipleJustification) error
 	RejectCalibration(payload *request.RejectJustification) error
 	GetSummaryBySPMOID(spmoID string) ([]response.SPMOSummaryResult, error)
 	GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
@@ -244,6 +245,66 @@ func (r *calibrationRepo) SaveChanges(payload *request.CalibrationRequest) error
 		} else if result.RowsAffected == 0 {
 			tx.Rollback()
 			return fmt.Errorf("Calibrations not found!")
+		}
+	}
+
+	tx.Commit()
+	return nil
+}
+
+func (r *calibrationRepo) AcceptMultipleCalibration(payload *request.AcceptMultipleJustification) error {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, justification := range payload.ArrayOfAcceptsJustification {
+		err := tx.Updates(model.Calibration{
+			ProjectID:      justification.ProjectID,
+			ProjectPhaseID: justification.ProjectPhaseID,
+			EmployeeID:     justification.EmployeeID,
+			SpmoStatus:     "Accepted",
+		}).Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		var calibration model.Calibration
+		err = r.db.
+			Preload("ProjectPhase").
+			Preload("ProjectPhase.Phase").
+			Joins("JOIN projects ON projects.id = calibrations.project_id").
+			Where("projects.active = ? AND calibrations.calibrator_id = ? ", true, justification.CalibratorID).
+			First(&calibration).Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		var calibrations []model.Calibration
+		err = tx.Table("calibrations").
+			Select("calibrations.*").
+			Joins("JOIN projects ON projects.id = calibrations.project_id").
+			Joins("JOIN project_phases ON project_phases.id = calibrations.project_phase_id").
+			Joins("JOIN phases ON phases.id = project_phases.phase_id").
+			Where("projects.active = true AND phases.order > ? AND calibrations.employee_id = ?", calibration.ProjectPhase.Phase.Order, justification.EmployeeID).
+			Order("phases.order ASC").
+			Find(&calibrations).Error
+
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if len(calibrations) > 0 {
+			calibrations[0].Status = "Calibrate"
+			if err := tx.Updates(calibrations[0]).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
 		}
 	}
 

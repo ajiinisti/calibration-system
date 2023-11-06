@@ -13,3 +13,7 @@ type AcceptJustification struct {
 	ProjectPhaseID string
 	CalibratorID   string
 }
+
+type AcceptMultipleJustification struct {
+	ArrayOfAcceptsJustification []AcceptJustification
+}
