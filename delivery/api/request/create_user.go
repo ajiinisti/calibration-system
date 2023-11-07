@@ -14,7 +14,7 @@ type CreateUser struct {
 	Department       string
 	JoinDate         time.Time
 	Grade            string
-	Role             []string
+	Roles            []string
 	HRBP             string
 	Position         string
 	ScoringMethod    string
@@ -35,6 +35,6 @@ type UpdateUser struct {
 	Grade            string
 	HRBP             string
 	Position         string
-	Role             []string
+	Roles            []string
 	ScoringMethod    string
 }

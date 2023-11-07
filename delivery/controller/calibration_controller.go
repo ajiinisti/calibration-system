@@ -28,8 +28,21 @@ func (r *CalibrationController) listHandler(c *gin.Context) {
 }
 
 func (r *CalibrationController) getByIdHandler(c *gin.Context) {
-	id := c.Param("id")
-	groupCalibrations, err := r.uc.FindById(id)
+	projectID := c.Param("projectID")
+	projectPhaseID := c.Param("projectPhaseID")
+	employeeID := c.Param("employeeID")
+	groupCalibrations, err := r.uc.FindById(projectID, projectPhaseID, employeeID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, groupCalibrations, "OK")
+}
+
+func (r *CalibrationController) getByProjectEmployeeIdHandler(c *gin.Context) {
+	projectID := c.Param("projectID")
+	employeeID := c.Param("employeeID")
+	groupCalibrations, err := r.uc.FindByProjectEmployeeId(projectID, employeeID)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -299,13 +312,29 @@ func (r *CalibrationController) getAllDetailActiveCalibrations2BySPMOIDHandler(c
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
+func (r *CalibrationController) createByUserHandler(c *gin.Context) {
+	var payload request.CalibrationForm
+	if err := r.ParseRequestBody(c, &payload); err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := r.uc.SaveDataByUser(&payload); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
 func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
 		router: r,
 		uc:     uc,
 	}
 	r.GET("/calibrations", controller.listHandler)
-	r.GET("/calibrations/:id", controller.getByIdHandler)
+	r.GET("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.getByIdHandler)
+	r.GET("/calibrations-project-employee/:projectID/:employeeID", controller.getByProjectEmployeeIdHandler)
 	r.GET("/summary-calibrations/spmo/:spmoID", controller.getSummaryCalibrationsBySPMOIDHandler)
 	r.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
 	// r.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:department", controller.getAllDetailActiveCalibrationsBySPMOIDHandler)
@@ -314,6 +343,7 @@ func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *Cal
 	// r.GET("/calibrations/spmo-rejected/:spmoID", controller.getAllRejectdCalibrationsBySPMOIDHandler)
 	r.PUT("/calibrations", controller.updateHandler)
 	r.POST("/calibrations", controller.createHandler)
+	r.POST("/calibrations-user", controller.createByUserHandler)
 	r.POST("/calibrations/upload", controller.uploadHandler)
 	r.POST("/calibrations/upload-employee", controller.uploadNikHandler)
 	r.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)

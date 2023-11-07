@@ -17,8 +17,10 @@ type CalibrationUsecase interface {
 	FindActiveBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
-	FindById(id string) (*model.Calibration, error)
+	FindById(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
+	FindByProjectEmployeeId(projectID, employeeID string) ([]model.Calibration, error)
 	SaveData(payload *model.Calibration) error
+	SaveDataByUser(payload *request.CalibrationForm) error
 	DeleteData(projectId, projectPhaseId, employeeId string) error
 	CheckEmployee(file *multipart.FileHeader, projectId string) ([]string, error)
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
@@ -56,8 +58,12 @@ func (r *calibrationUsecase) FindRejectedBySPMOID(spmoID string) ([]model.Calibr
 	return r.repo.GetRejectedBySPMOID(spmoID)
 }
 
-func (r *calibrationUsecase) FindById(id string) (*model.Calibration, error) {
-	return r.repo.Get(id)
+func (r *calibrationUsecase) FindById(projectID, projectPhaseID, employeeID string) (*model.Calibration, error) {
+	return r.repo.Get(projectID, projectPhaseID, employeeID)
+}
+
+func (r *calibrationUsecase) FindByProjectEmployeeId(projectID, employeeID string) ([]model.Calibration, error) {
+	return r.repo.GetByProjectEmployeeID(projectID, employeeID)
 }
 
 func (r *calibrationUsecase) SaveData(payload *model.Calibration) error {
@@ -96,6 +102,10 @@ func (r *calibrationUsecase) SaveData(payload *model.Calibration) error {
 		}
 	}
 	return r.repo.Save(payload)
+}
+
+func (r *calibrationUsecase) SaveDataByUser(payload *request.CalibrationForm) error {
+	return r.repo.SaveByUser(payload)
 }
 
 func (r *calibrationUsecase) DeleteData(projectId, projectPhaseId, employeeId string) error {

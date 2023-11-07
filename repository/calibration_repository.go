@@ -11,7 +11,9 @@ import (
 
 type CalibrationRepo interface {
 	Save(payload *model.Calibration) error
-	Get(id string) (*model.Calibration, error)
+	SaveByUser(payload *request.CalibrationForm) error
+	Get(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
+	GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error)
 	List() ([]model.Calibration, error)
 	GetActiveBySPMOID(spmoID string) ([]model.Calibration, error)
 	GetAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
@@ -40,6 +42,43 @@ func (r *calibrationRepo) Save(payload *model.Calibration) error {
 	return nil
 }
 
+func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, calibrationData := range payload.CalibrationDataForms {
+		data := model.Calibration{
+			ProjectID:      calibrationData.ProjectID,
+			ProjectPhaseID: calibrationData.ProjectPhaseID,
+			EmployeeID:     calibrationData.EmployeeID,
+			CalibratorID:   calibrationData.CalibratorID,
+			SpmoID:         calibrationData.SpmoID,
+			HrbpID:         calibrationData.HrbpID,
+		}
+
+		if calibrationData.Spmo2ID != "" {
+			data.Spmo2ID = &calibrationData.Spmo2ID
+		}
+
+		if calibrationData.Spmo3ID != "" {
+			data.Spmo2ID = &calibrationData.Spmo3ID
+		}
+
+		err := tx.Updates(data).Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	tx.Commit()
+	return nil
+}
+
 func (r *calibrationRepo) Bulksave(payload *[]model.Calibration) error {
 	batchSize := 100
 	numFullBatches := len(*payload) / batchSize
@@ -62,13 +101,42 @@ func (r *calibrationRepo) Bulksave(payload *[]model.Calibration) error {
 	return nil
 }
 
-func (r *calibrationRepo) Get(id string) (*model.Calibration, error) {
+func (r *calibrationRepo) Get(projectID, projectPhaseID, employeeID string) (*model.Calibration, error) {
 	var calibration model.Calibration
-	err := r.db.Preload("Project").Preload("Employee").Preload("ProjectPhase").Preload("Calibrator").First(&calibration, "id = ?", id).Error
+	err := r.db.
+		Preload("Project").
+		Preload("Employee").
+		Preload("ProjectPhase").
+		Preload("Calibrator").
+		First(&calibration, "project_id = ? AND project_phase_id = ? AND employee_id = ?", projectID, projectPhaseID, employeeID).Error
 	if err != nil {
 		return nil, err
 	}
 	return &calibration, nil
+}
+
+func (r *calibrationRepo) GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error) {
+	var calibration []model.Calibration
+	err := r.db.
+		Preload("Employee").
+		Preload("Employee.BusinessUnit").
+		Preload("ProjectPhase").
+		Preload("ProjectPhase.Phase").
+		Preload("Calibrator").
+		Preload("Calibrator.BusinessUnit").
+		Preload("Hrbp").
+		Preload("Hrbp.BusinessUnit").
+		Preload("Spmo").
+		Preload("Spmo.BusinessUnit").
+		Preload("Spmo2").
+		Preload("Spmo2.BusinessUnit").
+		Preload("Spmo3").
+		Preload("Spmo3.BusinessUnit").
+		Find(&calibration, "project_id = ? AND employee_id = ?", projectID, employeeID).Error
+	if err != nil {
+		return nil, err
+	}
+	return calibration, nil
 }
 
 func (r *calibrationRepo) GetActiveBySPMOID(id string) ([]model.Calibration, error) {
