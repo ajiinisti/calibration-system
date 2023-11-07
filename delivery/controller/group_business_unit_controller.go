@@ -83,7 +83,7 @@ func NewGroupBusinessUnitController(r *gin.Engine, tokenService authenticator.Ac
 		tokenService: tokenService,
 		uc:           uc,
 	}
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/group-business-units", controller.listHandler)
 	auth.GET("/group-business-units/:id", controller.getByIdHandler)
 	auth.PUT("/group-business-units", controller.updateHandler)

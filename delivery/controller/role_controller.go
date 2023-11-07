@@ -94,7 +94,7 @@ func NewRoleController(r *gin.Engine, tokenService authenticator.AccessToken, uc
 		uc:           uc,
 	}
 
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/roles", controller.listHandler)
 	auth.GET("/roles/:name", controller.getByHandler)
 	auth.GET("/roles/id/:id", controller.getByIdHandler)

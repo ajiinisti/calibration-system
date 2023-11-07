@@ -110,7 +110,7 @@ func NewTopRemarkController(r *gin.Engine, tokenService authenticator.AccessToke
 		uc:           uc,
 	}
 
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/top-remark/:projectID/:employeeID/:projectPhaseID", controller.getByIdHandler)
 	auth.PUT("/top-remark", controller.updateHandler)
 	auth.POST("/top-remark", controller.createHandler)

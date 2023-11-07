@@ -141,7 +141,7 @@ func NewRemarkSettingController(r *gin.Engine, tokenService authenticator.Access
 		uc:           uc,
 	}
 
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/remark-settings", controller.listHandler)
 	auth.GET("/remark-settings/:projectId", controller.getByIdHandler)
 	auth.PUT("/remark-settings", controller.updateHandler)

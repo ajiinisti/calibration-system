@@ -336,7 +336,7 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 		tokenService: tokenService,
 		uc:           uc,
 	}
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/calibrations", controller.listHandler)
 	auth.GET("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.getByIdHandler)
 	auth.GET("/calibrations-project-employee/:projectID/:employeeID", controller.getByProjectEmployeeIdHandler)

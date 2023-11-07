@@ -83,7 +83,7 @@ func NewProjectPhaseController(r *gin.Engine, tokenService authenticator.AccessT
 		tokenService: tokenService,
 		uc:           uc,
 	}
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/project-phases", controller.listHandler)
 	auth.GET("/project-phases/:id", controller.getByIdHandler)
 	auth.PUT("/project-phases", controller.updateHandler)

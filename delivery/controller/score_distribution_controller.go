@@ -85,7 +85,7 @@ func NewScoreDistributionController(r *gin.Engine, tokenService authenticator.Ac
 		uc:           uc,
 	}
 
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/score-distribution", controller.listHandler)
 	auth.GET("/score-distribution/:id", controller.getByIdHandler)
 	auth.PUT("/score-distribution", controller.updateHandler)

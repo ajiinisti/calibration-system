@@ -245,7 +245,7 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 		tokenService: tokenService,
 		uc:           uc,
 	}
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/projects", controller.listHandler)
 	auth.GET("/projects/active", controller.getActiveHandler)
 	// auth.GET("/projects/active/:calibratorID", controller.getActiveHandlerByID)

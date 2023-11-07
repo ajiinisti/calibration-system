@@ -78,7 +78,7 @@ func NewBottomRemarkController(r *gin.Engine, tokenService authenticator.AccessT
 		tokenService: tokenService,
 		uc:           uc,
 	}
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/bottom-remark/:projectID/:employeeID/:projectPhaseID", controller.getByIdHandler)
 	auth.PUT("/bottom-remark", controller.updateHandler)
 	auth.POST("/bottom-remark", controller.createHandler)

@@ -83,7 +83,7 @@ func NewPhaseController(r *gin.Engine, tokenService authenticator.AccessToken, u
 		tokenService: tokenService,
 		uc:           uc,
 	}
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/phases", controller.listHandler)
 	auth.GET("/phases/:id", controller.getByIdHandler)
 	auth.PUT("/phases", controller.updateHandler)

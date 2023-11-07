@@ -76,12 +76,17 @@ func (t *accessToken) VerifyAccessToken(tokenString string) (AccessDetail, error
 	}
 	email := claims["Email"].(string)
 	uuid := claims["AccessUUID"].(string)
-	role := claims["Role"].(string)
+	role := claims["Role"].([]interface{})
+	var roles []string
+	for _, v := range role {
+		r := v.(string)
+		roles = append(roles, r)
+	}
 	id := claims["ID"].(string)
 	return AccessDetail{
 		AccessUUID: uuid,
 		Email:      email,
-		Roles:      role,
+		Roles:      roles,
 		ID:         id,
 	}, nil
 }

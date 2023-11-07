@@ -225,7 +225,7 @@ func NewUserController(u *gin.Engine, tokenService authenticator.AccessToken, uc
 		uc:           uc,
 	}
 
-	auth := u.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := u.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/users", controller.listHandler)
 	auth.GET("/users/all", controller.allListHandler)
 	auth.GET("/users/:id", controller.getByIdHandler)

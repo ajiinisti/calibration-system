@@ -142,7 +142,7 @@ func NewRatingQuotaController(r *gin.Engine, tokenService authenticator.AccessTo
 		tokenService: tokenService,
 		uc:           uc,
 	}
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/rating-quotas", controller.listHandler)
 	auth.GET("/rating-quotas/:projectId/:businessUnitId", controller.getByIDHandler)
 	auth.GET("/rating-quotas/:projectId", controller.getByProjectHandler)

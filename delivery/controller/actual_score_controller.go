@@ -107,7 +107,7 @@ func NewActualScoreController(r *gin.Engine, tokenService authenticator.AccessTo
 		tokenService: tokenService,
 		uc:           uc,
 	}
-	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/actual-scores", controller.listHandler)
 	auth.GET("/actual-scores/:id", controller.getByIdHandler)
 	auth.PUT("/actual-scores", controller.updateHandler)
