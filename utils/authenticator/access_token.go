@@ -41,6 +41,10 @@ func (t *accessToken) CreateAccessToken(cred *model.TokenModel) (TokenDetail, er
 		},
 		AccessUUID: tokenDetail.AccessUUID,
 	}
+
+	if cred.Role == nil {
+		claims.TokenModel.Role = []string{}
+	}
 	now := time.Now().UTC()
 	end := now.Add(t.Config.AccessTokenLifeTime)
 	claims.IssuedAt = now.Unix()
