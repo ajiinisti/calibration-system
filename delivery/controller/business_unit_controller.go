@@ -7,14 +7,17 @@ import (
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type BusinessUnitController struct {
-	router *gin.Engine
-	uc     usecase.BusinessUnitUsecase
+	router       *gin.Engine
+	uc           usecase.BusinessUnitUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -129,17 +132,19 @@ func (r *BusinessUnitController) uploadHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
-func NewBusinessUnitController(r *gin.Engine, uc usecase.BusinessUnitUsecase) *BusinessUnitController {
+func NewBusinessUnitController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.BusinessUnitUsecase) *BusinessUnitController {
 	controller := BusinessUnitController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/business-units", controller.listHandler)
-	r.GET("/business-units/all", controller.getAllHandler)
-	r.GET("/business-units/:id", controller.getByIdHandler)
-	r.PUT("/business-units", controller.updateHandler)
-	r.POST("/business-units", controller.createHandler)
-	r.POST("/business-units/upload", controller.uploadHandler)
-	r.DELETE("/business-units/:id", controller.deleteHandler)
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/business-units", controller.listHandler)
+	auth.GET("/business-units/all", controller.getAllHandler)
+	auth.GET("/business-units/:id", controller.getByIdHandler)
+	auth.PUT("/business-units", controller.updateHandler)
+	auth.POST("/business-units", controller.createHandler)
+	auth.POST("/business-units/upload", controller.uploadHandler)
+	auth.DELETE("/business-units/:id", controller.deleteHandler)
 	return &controller
 }

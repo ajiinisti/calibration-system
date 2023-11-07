@@ -6,14 +6,17 @@ import (
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type ProjectController struct {
-	router *gin.Engine
-	uc     usecase.ProjectUsecase
+	router       *gin.Engine
+	uc           usecase.ProjectUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -236,27 +239,29 @@ func (r *ProjectController) getActiveProjectPhaseHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
-func NewProjectController(r *gin.Engine, uc usecase.ProjectUsecase) *ProjectController {
+func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.ProjectUsecase) *ProjectController {
 	controller := ProjectController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/projects", controller.listHandler)
-	r.GET("/projects/active", controller.getActiveHandler)
-	// r.GET("/projects/active/:calibratorID", controller.getActiveHandlerByID)
-	r.GET("/projects/active/score-distribution/:businessUnit", controller.getScoreDistributionHandlerByID)
-	r.GET("/projects/active/rating-quota", controller.getRatingQuotaHandlerByID)
-	r.GET("/projects/active/total-actual-score", controller.getTotalActualScoreHandlerByID)
-	r.GET("/projects/summary-calibration/:calibratorID", controller.getSummaryProjectByCalibratorID)
-	r.GET("/projects/calibrations/:calibratorID/:prevCalibrator/:businessUnit", controller.getCalibrationsByPrevCalibratorBusinessUnit)
-	r.GET("/projects/calibrations-one/:calibratorID/:prevCalibrator/:businessUnit", controller.getNumberOneCalibrationsByPrevCalibratorBusinessUnit)
-	r.GET("/projects/calibrations-n-minus-one/:calibratorID/:businessUnit", controller.getNMinusOneCalibrationsByPrevCalibratorBusinessUnit)
-	r.GET("/projects/project-phase/:calibratorID", controller.getProjectPhaseByCalibratorId)
-	r.GET("/projects/project-phase/active", controller.getActiveProjectPhaseHandler)
-	r.GET("/projects/:id", controller.getByIdHandler)
-	r.PUT("/projects", controller.updateHandler)
-	r.POST("/projects", controller.createHandler)
-	r.POST("/projects/publish/:id", controller.publishHandler)
-	r.DELETE("/projects/:id", controller.deleteHandler)
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/projects", controller.listHandler)
+	auth.GET("/projects/active", controller.getActiveHandler)
+	// auth.GET("/projects/active/:calibratorID", controller.getActiveHandlerByID)
+	auth.GET("/projects/active/score-distribution/:businessUnit", controller.getScoreDistributionHandlerByID)
+	auth.GET("/projects/active/rating-quota", controller.getRatingQuotaHandlerByID)
+	auth.GET("/projects/active/total-actual-score", controller.getTotalActualScoreHandlerByID)
+	auth.GET("/projects/summary-calibration/:calibratorID", controller.getSummaryProjectByCalibratorID)
+	auth.GET("/projects/calibrations/:calibratorID/:prevCalibrator/:businessUnit", controller.getCalibrationsByPrevCalibratorBusinessUnit)
+	auth.GET("/projects/calibrations-one/:calibratorID/:prevCalibrator/:businessUnit", controller.getNumberOneCalibrationsByPrevCalibratorBusinessUnit)
+	auth.GET("/projects/calibrations-n-minus-one/:calibratorID/:businessUnit", controller.getNMinusOneCalibrationsByPrevCalibratorBusinessUnit)
+	auth.GET("/projects/project-phase/:calibratorID", controller.getProjectPhaseByCalibratorId)
+	auth.GET("/projects/project-phase/active", controller.getActiveProjectPhaseHandler)
+	auth.GET("/projects/:id", controller.getByIdHandler)
+	auth.PUT("/projects", controller.updateHandler)
+	auth.POST("/projects", controller.createHandler)
+	auth.POST("/projects/publish/:id", controller.publishHandler)
+	auth.DELETE("/projects/:id", controller.deleteHandler)
 	return &controller
 }

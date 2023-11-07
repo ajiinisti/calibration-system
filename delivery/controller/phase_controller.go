@@ -4,14 +4,17 @@ import (
 	"net/http"
 
 	"calibration-system.com/delivery/api"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type PhaseController struct {
-	router *gin.Engine
-	uc     usecase.PhaseUsecase
+	router       *gin.Engine
+	uc           usecase.PhaseUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -74,15 +77,17 @@ func (r *PhaseController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
-func NewPhaseController(r *gin.Engine, uc usecase.PhaseUsecase) *PhaseController {
+func NewPhaseController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.PhaseUsecase) *PhaseController {
 	controller := PhaseController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/phases", controller.listHandler)
-	r.GET("/phases/:id", controller.getByIdHandler)
-	r.PUT("/phases", controller.updateHandler)
-	r.POST("/phases", controller.createHandler)
-	r.DELETE("/phases/:id", controller.deleteHandler)
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/phases", controller.listHandler)
+	auth.GET("/phases/:id", controller.getByIdHandler)
+	auth.PUT("/phases", controller.updateHandler)
+	auth.POST("/phases", controller.createHandler)
+	auth.DELETE("/phases/:id", controller.deleteHandler)
 	return &controller
 }

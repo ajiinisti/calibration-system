@@ -27,21 +27,21 @@ type Server struct {
 }
 
 func (s *Server) initController() {
-	controller.NewRoleController(s.engine, s.ucManager.RoleUc())
-	controller.NewUserController(s.engine, s.ucManager.UserUc())
+	controller.NewRoleController(s.engine, s.tokenService, s.ucManager.RoleUc())
+	controller.NewUserController(s.engine, s.tokenService, s.ucManager.UserUc())
 	controller.NewAuthController(s.engine, s.ucManager.AuthUc(), s.tokenService, s.cfg)
-	controller.NewGroupBusinessUnitController(s.engine, s.ucManager.GroupBusinessUnitUc())
-	controller.NewBusinessUnitController(s.engine, s.ucManager.BusinessUnitUc())
-	controller.NewPhaseController(s.engine, s.ucManager.PhaseUc())
-	controller.NewProjectController(s.engine, s.ucManager.ProjectUc())
-	controller.NewProjectPhaseController(s.engine, s.ucManager.ProjectPhaseUc())
-	controller.NewActualScoreController(s.engine, s.ucManager.ActualScoreUc())
-	controller.NewCalibrationController(s.engine, s.ucManager.CalibrationUc())
-	controller.NewRatingQuotaController(s.engine, s.ucManager.RatingQuotaUc())
-	controller.NewScoreDistributionController(s.engine, s.ucManager.ScoreDistributionUc())
-	controller.NewRemarkSettingController(s.engine, s.ucManager.RemarkSettingUc())
-	controller.NewTopRemarkController(s.engine, s.ucManager.TopRemarkUc())
-	controller.NewBottomRemarkController(s.engine, s.ucManager.BottomRemarkUc())
+	controller.NewGroupBusinessUnitController(s.engine, s.tokenService, s.ucManager.GroupBusinessUnitUc())
+	controller.NewBusinessUnitController(s.engine, s.tokenService, s.ucManager.BusinessUnitUc())
+	controller.NewPhaseController(s.engine, s.tokenService, s.ucManager.PhaseUc())
+	controller.NewProjectController(s.engine, s.tokenService, s.ucManager.ProjectUc())
+	controller.NewProjectPhaseController(s.engine, s.tokenService, s.ucManager.ProjectPhaseUc())
+	controller.NewActualScoreController(s.engine, s.tokenService, s.ucManager.ActualScoreUc())
+	controller.NewCalibrationController(s.engine, s.tokenService, s.ucManager.CalibrationUc())
+	controller.NewRatingQuotaController(s.engine, s.tokenService, s.ucManager.RatingQuotaUc())
+	controller.NewScoreDistributionController(s.engine, s.tokenService, s.ucManager.ScoreDistributionUc())
+	controller.NewRemarkSettingController(s.engine, s.tokenService, s.ucManager.RemarkSettingUc())
+	controller.NewTopRemarkController(s.engine, s.tokenService, s.ucManager.TopRemarkUc())
+	controller.NewBottomRemarkController(s.engine, s.tokenService, s.ucManager.BottomRemarkUc())
 }
 
 func (s *Server) Run() {

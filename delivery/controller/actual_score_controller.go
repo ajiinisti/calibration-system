@@ -5,14 +5,17 @@ import (
 	"strings"
 
 	"calibration-system.com/delivery/api"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type ActualScoreController struct {
-	router *gin.Engine
-	uc     usecase.ActualScoreUsecase
+	router       *gin.Engine
+	uc           usecase.ActualScoreUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -98,16 +101,18 @@ func (r *ActualScoreController) uploadHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
-func NewActualScoreController(r *gin.Engine, uc usecase.ActualScoreUsecase) *ActualScoreController {
+func NewActualScoreController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.ActualScoreUsecase) *ActualScoreController {
 	controller := ActualScoreController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/actual-scores", controller.listHandler)
-	r.GET("/actual-scores/:id", controller.getByIdHandler)
-	r.PUT("/actual-scores", controller.updateHandler)
-	r.POST("/actual-scores", controller.createHandler)
-	r.POST("/actual-scores/upload", controller.uploadHandler)
-	r.DELETE("/actual-scores/:projectId/:employeeId", controller.deleteHandler)
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/actual-scores", controller.listHandler)
+	auth.GET("/actual-scores/:id", controller.getByIdHandler)
+	auth.PUT("/actual-scores", controller.updateHandler)
+	auth.POST("/actual-scores", controller.createHandler)
+	auth.POST("/actual-scores/upload", controller.uploadHandler)
+	auth.DELETE("/actual-scores/:projectId/:employeeId", controller.deleteHandler)
 	return &controller
 }

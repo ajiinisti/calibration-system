@@ -4,14 +4,17 @@ import (
 	"net/http"
 
 	"calibration-system.com/delivery/api"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type BottomRemarkController struct {
-	router *gin.Engine
-	uc     usecase.BottomRemarkUsecase
+	router       *gin.Engine
+	uc           usecase.BottomRemarkUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -69,14 +72,16 @@ func (r *BottomRemarkController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
-func NewBottomRemarkController(r *gin.Engine, uc usecase.BottomRemarkUsecase) *BottomRemarkController {
+func NewBottomRemarkController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.BottomRemarkUsecase) *BottomRemarkController {
 	controller := BottomRemarkController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/bottom-remark/:projectID/:employeeID/:projectPhaseID", controller.getByIdHandler)
-	r.PUT("/bottom-remark", controller.updateHandler)
-	r.POST("/bottom-remark", controller.createHandler)
-	r.DELETE("/bottom-remark/:projectID/:employeeID/:projectPhaseID", controller.deleteHandler)
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/bottom-remark/:projectID/:employeeID/:projectPhaseID", controller.getByIdHandler)
+	auth.PUT("/bottom-remark", controller.updateHandler)
+	auth.POST("/bottom-remark", controller.createHandler)
+	auth.DELETE("/bottom-remark/:projectID/:employeeID/:projectPhaseID", controller.deleteHandler)
 	return &controller
 }

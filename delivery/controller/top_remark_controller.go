@@ -5,14 +5,17 @@ import (
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type TopRemarkController struct {
-	router *gin.Engine
-	uc     usecase.TopRemarkUsecase
+	router       *gin.Engine
+	uc           usecase.TopRemarkUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -100,16 +103,19 @@ func (r *TopRemarkController) deleteHandlerByProject(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
-func NewTopRemarkController(r *gin.Engine, uc usecase.TopRemarkUsecase) *TopRemarkController {
+func NewTopRemarkController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.TopRemarkUsecase) *TopRemarkController {
 	controller := TopRemarkController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/top-remark/:projectID/:employeeID/:projectPhaseID", controller.getByIdHandler)
-	r.PUT("/top-remark", controller.updateHandler)
-	r.POST("/top-remark", controller.createHandler)
-	r.POST("/top-remark/project", controller.createHandlerByProject)
-	r.POST("/top-remark/delete", controller.deleteHandlerByProject)
-	r.DELETE("/top-remark/:id", controller.deleteHandler)
+
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/top-remark/:projectID/:employeeID/:projectPhaseID", controller.getByIdHandler)
+	auth.PUT("/top-remark", controller.updateHandler)
+	auth.POST("/top-remark", controller.createHandler)
+	auth.POST("/top-remark/project", controller.createHandlerByProject)
+	auth.POST("/top-remark/delete", controller.deleteHandlerByProject)
+	auth.DELETE("/top-remark/:id", controller.deleteHandler)
 	return &controller
 }

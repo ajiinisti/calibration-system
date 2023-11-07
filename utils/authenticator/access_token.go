@@ -37,6 +37,7 @@ func (t *accessToken) CreateAccessToken(cred *model.TokenModel) (TokenDetail, er
 			Email:    cred.Email,
 			Role:     cred.Role,
 			ID:       cred.ID,
+			Name:     cred.Name,
 		},
 		AccessUUID: tokenDetail.AccessUUID,
 	}

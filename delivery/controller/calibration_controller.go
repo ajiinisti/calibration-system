@@ -7,14 +7,17 @@ import (
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type CalibrationController struct {
-	router *gin.Engine
-	uc     usecase.CalibrationUsecase
+	router       *gin.Engine
+	uc           usecase.CalibrationUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -327,31 +330,33 @@ func (r *CalibrationController) createByUserHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
-func NewCalibrationController(r *gin.Engine, uc usecase.CalibrationUsecase) *CalibrationController {
+func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/calibrations", controller.listHandler)
-	r.GET("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.getByIdHandler)
-	r.GET("/calibrations-project-employee/:projectID/:employeeID", controller.getByProjectEmployeeIdHandler)
-	r.GET("/summary-calibrations/spmo/:spmoID", controller.getSummaryCalibrationsBySPMOIDHandler)
-	r.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
-	// r.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:department", controller.getAllDetailActiveCalibrationsBySPMOIDHandler)
-	r.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
-	// r.GET("/calibrations/spmo-accepted/:spmoID", controller.getAllAcceptedCalibrationsBySPMOIDHandler)
-	// r.GET("/calibrations/spmo-rejected/:spmoID", controller.getAllRejectdCalibrationsBySPMOIDHandler)
-	r.PUT("/calibrations", controller.updateHandler)
-	r.POST("/calibrations", controller.createHandler)
-	r.POST("/calibrations-user", controller.createByUserHandler)
-	r.POST("/calibrations/upload", controller.uploadHandler)
-	r.POST("/calibrations/upload-employee", controller.uploadNikHandler)
-	r.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)
-	r.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
-	r.POST("/calibrations/submit-calibrations/:calibratorID", controller.submitCalibrationsHandler)
-	r.POST("/calibrations/accept-approval", controller.spmoAcceptApprovalHandler)
-	r.POST("/calibrations/accept-multiple-approval", controller.spmoAcceptMultipleApprovalHandler)
-	r.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)
-	r.DELETE("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.deleteHandler)
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/calibrations", controller.listHandler)
+	auth.GET("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.getByIdHandler)
+	auth.GET("/calibrations-project-employee/:projectID/:employeeID", controller.getByProjectEmployeeIdHandler)
+	auth.GET("/summary-calibrations/spmo/:spmoID", controller.getSummaryCalibrationsBySPMOIDHandler)
+	auth.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
+	// auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:department", controller.getAllDetailActiveCalibrationsBySPMOIDHandler)
+	auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
+	// auth.GET("/calibrations/spmo-accepted/:spmoID", controller.getAllAcceptedCalibrationsBySPMOIDHandler)
+	// auth.GET("/calibrations/spmo-rejected/:spmoID", controller.getAllRejectdCalibrationsBySPMOIDHandler)
+	auth.PUT("/calibrations", controller.updateHandler)
+	auth.POST("/calibrations", controller.createHandler)
+	auth.POST("/calibrations-user", controller.createByUserHandler)
+	auth.POST("/calibrations/upload", controller.uploadHandler)
+	auth.POST("/calibrations/upload-employee", controller.uploadNikHandler)
+	auth.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)
+	auth.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
+	auth.POST("/calibrations/submit-calibrations/:calibratorID", controller.submitCalibrationsHandler)
+	auth.POST("/calibrations/accept-approval", controller.spmoAcceptApprovalHandler)
+	auth.POST("/calibrations/accept-multiple-approval", controller.spmoAcceptMultipleApprovalHandler)
+	auth.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)
+	auth.DELETE("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.deleteHandler)
 	return &controller
 }

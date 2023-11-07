@@ -4,14 +4,17 @@ import (
 	"net/http"
 
 	"calibration-system.com/delivery/api"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type GroupBusinessUnitController struct {
-	router *gin.Engine
-	uc     usecase.GroupBusinessUnitUsecase
+	router       *gin.Engine
+	uc           usecase.GroupBusinessUnitUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -74,15 +77,17 @@ func (r *GroupBusinessUnitController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
-func NewGroupBusinessUnitController(r *gin.Engine, uc usecase.GroupBusinessUnitUsecase) *GroupBusinessUnitController {
+func NewGroupBusinessUnitController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.GroupBusinessUnitUsecase) *GroupBusinessUnitController {
 	controller := GroupBusinessUnitController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/group-business-units", controller.listHandler)
-	r.GET("/group-business-units/:id", controller.getByIdHandler)
-	r.PUT("/group-business-units", controller.updateHandler)
-	r.POST("/group-business-units", controller.createHandler)
-	r.DELETE("/group-business-units/:id", controller.deleteHandler)
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/group-business-units", controller.listHandler)
+	auth.GET("/group-business-units/:id", controller.getByIdHandler)
+	auth.PUT("/group-business-units", controller.updateHandler)
+	auth.POST("/group-business-units", controller.createHandler)
+	auth.DELETE("/group-business-units/:id", controller.deleteHandler)
 	return &controller
 }

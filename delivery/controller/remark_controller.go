@@ -7,14 +7,17 @@ import (
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type RemarkSettingController struct {
-	router *gin.Engine
-	uc     usecase.RemarkSettingUsecase
+	router       *gin.Engine
+	uc           usecase.RemarkSettingUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -131,17 +134,20 @@ func (r *RemarkSettingController) deleteHandlerByProject(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
-func NewRemarkSettingController(r *gin.Engine, uc usecase.RemarkSettingUsecase) *RemarkSettingController {
+func NewRemarkSettingController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.RemarkSettingUsecase) *RemarkSettingController {
 	controller := RemarkSettingController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/remark-settings", controller.listHandler)
-	r.GET("/remark-settings/:projectId", controller.getByIdHandler)
-	r.PUT("/remark-settings", controller.updateHandler)
-	r.POST("/remark-settings", controller.createHandler)
-	r.POST("/remark-settings/project", controller.createHandlerByProject)
-	r.POST("/remark-settings/delete", controller.deleteHandlerByProject)
-	r.DELETE("/remark-settings/:id", controller.deleteHandler)
+
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/remark-settings", controller.listHandler)
+	auth.GET("/remark-settings/:projectId", controller.getByIdHandler)
+	auth.PUT("/remark-settings", controller.updateHandler)
+	auth.POST("/remark-settings", controller.createHandler)
+	auth.POST("/remark-settings/project", controller.createHandlerByProject)
+	auth.POST("/remark-settings/delete", controller.deleteHandlerByProject)
+	auth.DELETE("/remark-settings/:id", controller.deleteHandler)
 	return &controller
 }

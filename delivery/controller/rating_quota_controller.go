@@ -7,14 +7,17 @@ import (
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type RatingQuotaController struct {
-	router *gin.Engine
-	uc     usecase.RatingQuotaUsecase
+	router       *gin.Engine
+	uc           usecase.RatingQuotaUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -133,17 +136,19 @@ func (r *RatingQuotaController) uploadHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
-func NewRatingQuotaController(r *gin.Engine, uc usecase.RatingQuotaUsecase) *RatingQuotaController {
+func NewRatingQuotaController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.RatingQuotaUsecase) *RatingQuotaController {
 	controller := RatingQuotaController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/rating-quotas", controller.listHandler)
-	r.GET("/rating-quotas/:projectId/:businessUnitId", controller.getByIDHandler)
-	r.GET("/rating-quotas/:projectId", controller.getByProjectHandler)
-	r.PUT("/rating-quotas", controller.updateHandler)
-	r.POST("/rating-quotas", controller.createHandler)
-	r.POST("/rating-quotas/upload", controller.uploadHandler)
-	r.DELETE("/rating-quotas/:projectId/:businessUnitId", controller.deleteHandler)
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/rating-quotas", controller.listHandler)
+	auth.GET("/rating-quotas/:projectId/:businessUnitId", controller.getByIDHandler)
+	auth.GET("/rating-quotas/:projectId", controller.getByProjectHandler)
+	auth.PUT("/rating-quotas", controller.updateHandler)
+	auth.POST("/rating-quotas", controller.createHandler)
+	auth.POST("/rating-quotas/upload", controller.uploadHandler)
+	auth.DELETE("/rating-quotas/:projectId/:businessUnitId", controller.deleteHandler)
 	return &controller
 }

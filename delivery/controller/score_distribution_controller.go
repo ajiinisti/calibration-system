@@ -4,14 +4,17 @@ import (
 	"net/http"
 
 	"calibration-system.com/delivery/api"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type ScoreDistributionController struct {
-	router *gin.Engine
-	uc     usecase.ScoreDistributionUsecase
+	router       *gin.Engine
+	uc           usecase.ScoreDistributionUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -75,15 +78,18 @@ func (r *ScoreDistributionController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
-func NewScoreDistributionController(r *gin.Engine, uc usecase.ScoreDistributionUsecase) *ScoreDistributionController {
+func NewScoreDistributionController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.ScoreDistributionUsecase) *ScoreDistributionController {
 	controller := ScoreDistributionController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/score-distribution", controller.listHandler)
-	r.GET("/score-distribution/:id", controller.getByIdHandler)
-	r.PUT("/score-distribution", controller.updateHandler)
-	r.POST("/score-distribution", controller.createHandler)
-	r.DELETE("/score-distribution/:projectId/:groupBusinessUnitId", controller.deleteHandler)
+
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/score-distribution", controller.listHandler)
+	auth.GET("/score-distribution/:id", controller.getByIdHandler)
+	auth.PUT("/score-distribution", controller.updateHandler)
+	auth.POST("/score-distribution", controller.createHandler)
+	auth.DELETE("/score-distribution/:projectId/:groupBusinessUnitId", controller.deleteHandler)
 	return &controller
 }

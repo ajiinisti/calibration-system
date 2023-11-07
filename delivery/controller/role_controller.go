@@ -4,14 +4,17 @@ import (
 	"net/http"
 
 	"calibration-system.com/delivery/api"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type RoleController struct {
-	router *gin.Engine
-	uc     usecase.RoleUsecase
+	router       *gin.Engine
+	uc           usecase.RoleUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -84,16 +87,19 @@ func (r *RoleController) deleteHandler(c *gin.Context) {
 	c.String(http.StatusNoContent, "")
 }
 
-func NewRoleController(r *gin.Engine, uc usecase.RoleUsecase) *RoleController {
+func NewRoleController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.RoleUsecase) *RoleController {
 	controller := RoleController{
-		router: r,
-		uc:     uc,
+		router:       r,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	r.GET("/roles", controller.listHandler)
-	r.GET("/roles/:name", controller.getByHandler)
-	r.GET("/roles/id/:id", controller.getByIdHandler)
-	r.PUT("/roles", controller.updateHandler)
-	r.POST("/roles", controller.createHandler)
-	r.DELETE("/roles/:id", controller.deleteHandler)
+
+	auth := r.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/roles", controller.listHandler)
+	auth.GET("/roles/:name", controller.getByHandler)
+	auth.GET("/roles/id/:id", controller.getByIdHandler)
+	auth.PUT("/roles", controller.updateHandler)
+	auth.POST("/roles", controller.createHandler)
+	auth.DELETE("/roles/:id", controller.deleteHandler)
 	return &controller
 }

@@ -7,14 +7,17 @@ import (
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/middleware"
 	"calibration-system.com/model"
 	"calibration-system.com/usecase"
+	"calibration-system.com/utils/authenticator"
 	"github.com/gin-gonic/gin"
 )
 
 type UserController struct {
-	router *gin.Engine
-	uc     usecase.UserUsecase
+	router       *gin.Engine
+	uc           usecase.UserUsecase
+	tokenService authenticator.AccessToken
 	api.BaseApi
 }
 
@@ -215,20 +218,23 @@ func (u *UserController) generatePasswordHandler(c *gin.Context) {
 	u.NewSuccessSingleResponse(c, "Success Generate Password", "OK")
 }
 
-func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
+func NewUserController(u *gin.Engine, tokenService authenticator.AccessToken, uc usecase.UserUsecase) *UserController {
 	controller := UserController{
-		router: u,
-		uc:     uc,
+		router:       u,
+		tokenService: tokenService,
+		uc:           uc,
 	}
-	u.GET("/users", controller.listHandler)
-	u.GET("/users/all", controller.allListHandler)
-	u.GET("/users/:id", controller.getByIdHandler)
-	u.GET("/users-switch/:id", controller.getByIdSwitchHandler)
-	u.GET("/users/project/:projectId", controller.getByProjectId)
-	u.PUT("/users", controller.updateHandler)
-	u.POST("/users", controller.createHandler)
-	u.POST("/users/generate-password/:id", controller.generatePasswordHandler)
-	u.POST("/users/upload", controller.uploadHandler)
-	u.DELETE("/users/:id", controller.deleteHandler)
+
+	auth := u.Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	auth.GET("/users", controller.listHandler)
+	auth.GET("/users/all", controller.allListHandler)
+	auth.GET("/users/:id", controller.getByIdHandler)
+	auth.GET("/users-switch/:id", controller.getByIdSwitchHandler)
+	auth.GET("/users/project/:projectId", controller.getByProjectId)
+	auth.PUT("/users", controller.updateHandler)
+	auth.POST("/users", controller.createHandler)
+	auth.POST("/users/generate-password/:id", controller.generatePasswordHandler)
+	auth.POST("/users/upload", controller.uploadHandler)
+	auth.DELETE("/users/:id", controller.deleteHandler)
 	return &controller
 }
