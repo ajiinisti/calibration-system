@@ -79,6 +79,7 @@ func (u *userRepo) Get(id string) (*model.User, error) {
 		Preload("Roles").
 		Preload("ActualScores").
 		Preload("CalibrationScores").
+		Preload("BusinessUnit").
 		First(&user, "id = ?", id).Error
 	if err != nil {
 		return nil, err
@@ -113,7 +114,7 @@ func (u *userRepo) Delete(id string) error {
 }
 
 func (u *userRepo) Update(payload *model.User) error {
-	if err := u.db.Updates(&payload); err.Error != nil {
+	if err := u.db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(&payload); err.Error != nil {
 		return err.Error
 	}
 	return nil

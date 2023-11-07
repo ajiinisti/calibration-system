@@ -66,6 +66,16 @@ func (u *UserController) getByIdHandler(c *gin.Context) {
 	u.NewSuccessSingleResponse(c, roles, "OK")
 }
 
+func (u *UserController) getByIdSwitchHandler(c *gin.Context) {
+	id := c.Param("id")
+	roles, err := u.uc.FindByIdSwitchUser(id)
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	u.NewSuccessSingleResponse(c, roles, "OK")
+}
+
 func (u *UserController) getByProjectId(c *gin.Context) {
 	page, err := strconv.Atoi(c.Query("page"))
 	if err != nil {
@@ -121,7 +131,7 @@ func (u *UserController) createHandler(c *gin.Context) {
 		Position:         payload.Position,
 		ScoringMethod:    payload.ScoringMethod,
 	}
-	if err := u.uc.CreateUser(user, payload.Role); err != nil {
+	if err := u.uc.CreateUser(user, payload.Roles); err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -157,7 +167,7 @@ func (u *UserController) updateHandler(c *gin.Context) {
 		Position:         payload.Position,
 		ScoringMethod:    payload.ScoringMethod,
 	}
-	if err := u.uc.SaveUser(user, payload.Role); err != nil {
+	if err := u.uc.SaveUser(user, payload.Roles); err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -213,6 +223,7 @@ func NewUserController(u *gin.Engine, uc usecase.UserUsecase) *UserController {
 	u.GET("/users", controller.listHandler)
 	u.GET("/users/all", controller.allListHandler)
 	u.GET("/users/:id", controller.getByIdHandler)
+	u.GET("/users-switch/:id", controller.getByIdSwitchHandler)
 	u.GET("/users/project/:projectId", controller.getByProjectId)
 	u.PUT("/users", controller.updateHandler)
 	u.POST("/users", controller.createHandler)

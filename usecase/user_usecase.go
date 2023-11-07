@@ -17,6 +17,7 @@ import (
 
 type UserUsecase interface {
 	BaseUsecase[model.User]
+	FindByIdSwitchUser(id string) (*model.ModifiedTokenModel, error)
 	SearchEmail(email string) (*model.User, error)
 	CreateUser(payload model.User, role []string) error
 	SaveUser(payload model.User, role []string) error
@@ -49,6 +50,29 @@ func (u *userUsecase) FindAll() ([]model.User, error) {
 
 func (u *userUsecase) FindById(id string) (*model.User, error) {
 	return u.repo.Get(id)
+}
+
+func (u *userUsecase) FindByIdSwitchUser(id string) (*model.ModifiedTokenModel, error) {
+	user, err := u.repo.Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	var roles []string
+	for _, v := range user.Roles {
+		roles = append(roles, v.Name)
+	}
+
+	return &model.ModifiedTokenModel{
+		Username:     "",
+		Email:        user.Email,
+		Role:         roles,
+		ID:           user.ID,
+		Name:         user.Name,
+		Nik:          user.Nik,
+		Division:     user.Division,
+		BusinessUnit: user.BusinessUnit,
+	}, nil
 }
 
 func (u *userUsecase) FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error) {
@@ -87,7 +111,7 @@ func (u *userUsecase) CreateUser(payload model.User, role []string) error {
 	//Find Role
 	var roles []model.Role
 	for _, v := range role {
-		getRole, err := u.role.FindByName(v)
+		getRole, err := u.role.FindById(v)
 		if err != nil {
 			return err
 		}
@@ -112,12 +136,14 @@ func (u *userUsecase) CreateUser(payload model.User, role []string) error {
 func (u *userUsecase) SaveUser(payload model.User, role []string) error {
 	//Find Role
 	var roles []model.Role
+	fmt.Println("LA DATA ROLE:=", role)
 	for _, v := range role {
-		getRole, err := u.role.FindByName(v)
+		getRole, err := u.role.FindById(v)
 		if err != nil {
 			return err
 		}
 		roles = append(roles, *getRole)
+		fmt.Println("RoleName := ", getRole.Name)
 	}
 	payload.Roles = roles
 
