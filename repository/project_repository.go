@@ -417,6 +417,8 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 			SpmoCalibrations:       user.SpmoCalibrations,
 			CalibratorCalibrations: user.CalibratorCalibrations,
 			ScoringMethod:          user.ScoringMethod,
+			Directorate:            user.Directorate,
+			PhoneNumber:            user.PhoneNumber,
 		})
 	}
 	if err != nil {
@@ -532,6 +534,8 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 			SpmoCalibrations:       user.SpmoCalibrations,
 			CalibratorCalibrations: user.CalibratorCalibrations,
 			ScoringMethod:          user.ScoringMethod,
+			Directorate:            user.Directorate,
+			PhoneNumber:            user.PhoneNumber,
 		})
 	}
 	if err != nil {
@@ -615,6 +619,8 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 			SpmoCalibrations:       user.SpmoCalibrations,
 			CalibratorCalibrations: user.CalibratorCalibrations,
 			ScoringMethod:          user.ScoringMethod,
+			Directorate:            user.Directorate,
+			PhoneNumber:            user.PhoneNumber,
 		})
 	}
 	if err != nil {

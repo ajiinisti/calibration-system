@@ -4,6 +4,7 @@ type RejectJustification struct {
 	ProjectID      string
 	EmployeeID     string
 	ProjectPhaseID string
+	CalibratorID   string
 	Comment        string
 }
 

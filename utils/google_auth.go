@@ -52,10 +52,10 @@ func GetGoogleOauthToken(config config.Config, code string) (*GoogleOauthToken, 
 	}
 
 	if res.StatusCode != http.StatusOK {
-		fmt.Println("googleauth url: ", req)
-		fmt.Println(values)
-		fmt.Println(query)
-		fmt.Println(config.GoogleOAuthConfig)
+		// fmt.Println("googleauth url: ", req)
+		// fmt.Println(values)
+		// fmt.Println(query)
+		// fmt.Println(config.GoogleOAuthConfig)
 		return nil, errors.New(fmt.Sprint("could not retrieve token"))
 	}
 

@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"math"
 
 	"calibration-system.com/delivery/api/request"
@@ -382,11 +381,6 @@ func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(c
 	calibration, err := r.repo.GetNMinusOneCalibrationsByBusinessUnit(businessUnit, phase)
 	if err != nil {
 		return nil, err
-	}
-
-	for _, data := range calibration {
-		fmt.Println(data.Name)
-		fmt.Println(data.CalibrationScores)
 	}
 	return calibration, nil
 }
