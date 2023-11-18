@@ -24,6 +24,8 @@ type UserResponse struct {
 	Grade                  string
 	HRBP                   string
 	Position               string
+	Directorate            string
+	PhoneNumber            string
 	ScoringMethod          string
 	GeneratePassword       bool         `gorm:"default:false"`
 	Password               string       `json:"-"`

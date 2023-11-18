@@ -136,14 +136,14 @@ func (u *userUsecase) CreateUser(payload model.User, role []string) error {
 func (u *userUsecase) SaveUser(payload model.User, role []string) error {
 	//Find Role
 	var roles []model.Role
-	fmt.Println("LA DATA ROLE:=", role)
+	// fmt.Println("LA DATA ROLE:=", role)
 	for _, v := range role {
 		getRole, err := u.role.FindById(v)
 		if err != nil {
 			return err
 		}
 		roles = append(roles, *getRole)
-		fmt.Println("RoleName := ", getRole.Name)
+		// fmt.Println("RoleName := ", getRole.Name)
 	}
 	payload.Roles = roles
 
@@ -221,7 +221,7 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 		}
 
 		user := model.User{
-			Email:            row[11],
+			Email:            row[10],
 			Name:             row[1],
 			Nik:              row[0],
 			DateOfBirth:      time.Time{},
@@ -232,9 +232,9 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			Department:       row[7],
 			JoinDate:         parsedTime,
 			Grade:            row[9],
-			HRBP:             row[10],
 			Position:         row[8],
 			GeneratePassword: false,
+			PhoneNumber:      row[11],
 		}
 
 		if passed {

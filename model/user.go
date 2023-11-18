@@ -17,11 +17,13 @@ type User struct {
 	BusinessUnitId         *string
 	OrganizationUnit       string
 	Division               string
+	Directorate            string
 	Department             string
 	JoinDate               time.Time `gorm:"type:timestamp without time zone"`
 	Grade                  string
 	HRBP                   string
 	Position               string
+	PhoneNumber            string
 	GeneratePassword       bool   `gorm:"default:false"`
 	Password               string `json:"-"`
 	Roles                  []Role `gorm:"many2many:user_roles"`
