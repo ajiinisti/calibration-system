@@ -21,6 +21,7 @@ type UsecaseManager interface {
 	RemarkSettingUc() usecase.RemarkSettingUsecase
 	TopRemarkUc() usecase.TopRemarkUsecase
 	BottomRemarkUc() usecase.BottomRemarkUsecase
+	NotificationUc() usecase.NotificationUsecase
 }
 
 type usecaseManager struct {
@@ -65,7 +66,7 @@ func (u *usecaseManager) ActualScoreUc() usecase.ActualScoreUsecase {
 }
 
 func (u *usecaseManager) CalibrationUc() usecase.CalibrationUsecase {
-	return usecase.NewCalibrationUsecase(u.repo.CalibrationRepo(), u.UserUc(), u.ProjectUc(), u.ProjectPhaseUc())
+	return usecase.NewCalibrationUsecase(u.repo.CalibrationRepo(), u.UserUc(), u.ProjectUc(), u.ProjectPhaseUc(), u.NotificationUc())
 }
 
 func (u *usecaseManager) RatingQuotaUc() usecase.RatingQuotaUsecase {
@@ -86,6 +87,10 @@ func (u *usecaseManager) TopRemarkUc() usecase.TopRemarkUsecase {
 
 func (u *usecaseManager) BottomRemarkUc() usecase.BottomRemarkUsecase {
 	return usecase.NewBottomRemarkUsecase(u.repo.BottomRemarkRepo(), u.ProjectUc(), u.UserUc(), u.ProjectPhaseUc())
+}
+
+func (u *usecaseManager) NotificationUc() usecase.NotificationUsecase {
+	return usecase.NewNotificationUsecase(u.repo.NotificationRepo(), u.UserUc(), u.ProjectUc(), *u.cfg)
 }
 
 func NewUsecaseManager(repo RepoManager, cfg *config.Config) UsecaseManager {

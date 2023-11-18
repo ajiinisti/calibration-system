@@ -17,6 +17,7 @@ type RepoManager interface {
 	RemarkSettingRepo() repository.RemarkSettingRepo
 	TopRemarkRepo() repository.TopRemarkRepo
 	BottomRemarkRepo() repository.BottomRemarkRepo
+	NotificationRepo() repository.NotificationRepo
 }
 
 type repoManager struct {
@@ -77,6 +78,10 @@ func (r *repoManager) TopRemarkRepo() repository.TopRemarkRepo {
 
 func (r *repoManager) BottomRemarkRepo() repository.BottomRemarkRepo {
 	return repository.NewBottomRemarkRepo(r.infra.Conn())
+}
+
+func (r *repoManager) NotificationRepo() repository.NotificationRepo {
+	return repository.NewNotificationRepo(r.infra.Conn())
 }
 
 func NewRepoManager(infra InfraManager) RepoManager {

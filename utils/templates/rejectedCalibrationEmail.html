@@ -1,0 +1,14 @@
+<div>
+    <p>Dear {{ .FirstName}}</p>
+    <p>SPMO has rejected your calibration worksheet. Please re-do and re-submit your calibration worksheet.</p>
+    <p>Rejection Comment: {{ .Comment}}</p>
+    <p>Follow the below steps to re-submit </p>
+    <ol>
+        <p>1.Login to the <a href="{{ .URL}}">website</a>.</p>
+        <p>2.Click on <b>my Task</b> tab to make necessary changes.</p>
+    </ol>
+    <p>Regards,</p>
+    <p>SPMO Team</p>
+    
+    <p><span style="font-style: italic;">*This is an auto-generated email. Please do not respond to this email.</span></p>
+</div>

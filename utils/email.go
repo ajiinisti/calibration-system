@@ -10,14 +10,17 @@ import (
 	"strconv"
 
 	"calibration-system.com/config"
-	"github.com/k3a/html2text"
 	"gopkg.in/gomail.v2"
 )
 
 type EmailData struct {
-	URL       string
-	FirstName string
-	Subject   string
+	URL        string
+	FirstName  string
+	Subject    string
+	PhaseOrder int
+	Comment    string
+	Calibrator string
+	Deadline   string
 }
 
 func SendMail(to []string, data *EmailData, templateDir string, templatePath string, cfg config.SMTPConfig) error {
@@ -36,8 +39,9 @@ func SendMail(to []string, data *EmailData, templateDir string, templatePath str
 	mailer.SetHeader("From", cfg.SMTPSenderName)
 	mailer.SetHeader("To", to...)
 	mailer.SetHeader("Subject", data.Subject)
+	fmt.Println("SCONTENT BODY", emailContent.String())
 	mailer.SetBody("text/html", emailContent.String())
-	mailer.AddAlternative("text/plain", html2text.HTML2Text(emailContent.String()))
+	// mailer.AddAlternative("text/plain", html2text.HTML2Text(emailContent.String()))
 
 	port, err := strconv.Atoi(cfg.SMTPPort)
 	if err != nil {

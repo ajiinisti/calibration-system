@@ -51,6 +51,13 @@ type GoogleOAuthConfig struct {
 	GoogleOAuthRedirectUrl string
 }
 
+type WhatsAppConfig struct {
+	URL        string
+	TemplateID string
+	ApiKey     string
+	ShortenUrl string
+}
+
 type Config struct {
 	DbConfig
 	ApiConfig
@@ -58,6 +65,7 @@ type Config struct {
 	TokenConfig
 	RedisConfig
 	GoogleOAuthConfig
+	WhatsAppConfig
 }
 
 func (c *Config) ReadConfigFile() error {
@@ -111,6 +119,13 @@ func (c *Config) ReadConfigFile() error {
 	c.GoogleOAuthConfig.GoogleClientID = os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
 	c.GoogleOAuthConfig.GoogleClientSecret = os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET")
 	c.GoogleOAuthConfig.GoogleOAuthRedirectUrl = os.Getenv("GOOGLE_OAUTH_REDIRECT_URL")
+
+	c.WhatsAppConfig = WhatsAppConfig{
+		URL:        os.Getenv("WA_API_URL"),
+		TemplateID: os.Getenv("WA_TEMPLATE_ID"),
+		ApiKey:     os.Getenv("WA_API_KEY"),
+		ShortenUrl: os.Getenv("WA_SHORTEN_URL"),
+	}
 
 	if c.SMTPEmail == "" || c.SMTPHost == "" || c.SMTPPassword == "" || c.SMTPPort == "" || c.SMTPSenderName == "" ||
 		c.DbConfig.Host == "" || c.DbConfig.Name == "" || c.DbConfig.Password == "" || c.DbConfig.Port == "" || c.DbConfig.User == "" {
