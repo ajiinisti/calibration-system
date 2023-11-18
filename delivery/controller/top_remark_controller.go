@@ -1,6 +1,11 @@
 package controller
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 
 	"calibration-system.com/delivery/api"
@@ -23,12 +28,35 @@ func (r *TopRemarkController) getByIdHandler(c *gin.Context) {
 	projectID := c.Param("projectID")
 	employeeID := c.Param("employeeID")
 	projectPhaseID := c.Param("projectPhaseID")
-	TopRemarks, err := r.uc.FindByForeignKeyID(projectID, employeeID, projectPhaseID)
+	topRemarks, err := r.uc.FindByForeignKeyID(projectID, employeeID, projectPhaseID)
+
+	for _, data := range topRemarks {
+		if data.EvidenceName != "" {
+			data.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, data.ID)
+		}
+	}
+
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	r.NewSuccessSingleResponse(c, TopRemarks, "OK")
+	r.NewSuccessSingleResponse(c, topRemarks, "OK")
+}
+
+func (r *TopRemarkController) viewFileHandler(c *gin.Context) {
+	id := c.Param("id")
+	topRemarks, err := r.uc.FindById(id)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%s", topRemarks.EvidenceName)) // Suggest the file name
+
+	// Write the PDF data from the byte slice to the response body
+	c.Data(200, "application/pdf", topRemarks.Evidence)
+	r.NewSuccessSingleResponse(c, topRemarks, "OK")
 }
 
 func (r *TopRemarkController) createHandler(c *gin.Context) {
@@ -47,19 +75,41 @@ func (r *TopRemarkController) createHandler(c *gin.Context) {
 }
 
 func (r *TopRemarkController) createHandlerByProject(c *gin.Context) {
-	var payload []*model.TopRemark
-
-	if err := c.ShouldBind(&payload); err != nil {
-		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	if err := r.uc.SaveDataByProject(payload); err != nil {
+	payloadsJSON := c.Request.FormValue("payloads")
+	var payloads []*model.TopRemark
+	if err := json.Unmarshal([]byte(payloadsJSON), &payloads); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	r.NewSuccessSingleResponse(c, payload, "OK")
+	for index, payloadData := range payloads {
+		file, header, err := c.Request.FormFile(fmt.Sprintf("Evidence_%d", index))
+		if err != nil && err.Error() != "http: no such file" {
+			// Handle file upload error for a specific payload
+			r.NewFailedResponse(c, http.StatusInternalServerError, fmt.Sprintf("file open err: %s %t", err.Error(), file == nil))
+			return
+		}
+		if file != nil {
+			var fileBuffer bytes.Buffer
+			_, err = io.Copy(&fileBuffer, file)
+			if err != nil {
+				// Handle error while copying the file data
+				r.NewFailedResponse(c, http.StatusInternalServerError, fmt.Sprintf("file copy err: %s", err.Error()))
+				return
+			}
+			fileBytes := fileBuffer.Bytes()
+			payloadData.EvidenceName = header.Filename
+			payloadData.Evidence = fileBytes
+		}
+
+	}
+
+	if err := r.uc.SaveDataByProject(payloads); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, fmt.Sprintf("save data error err: %s", err.Error()))
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payloads, "OK")
 }
 
 func (r *TopRemarkController) updateHandler(c *gin.Context) {
@@ -70,6 +120,20 @@ func (r *TopRemarkController) updateHandler(c *gin.Context) {
 		return
 	}
 
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	fileBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	payload.EvidenceName = header.Filename
+	payload.Evidence = fileBytes
 	if err := r.uc.SaveData(&payload); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -112,6 +176,7 @@ func NewTopRemarkController(r *gin.Engine, tokenService authenticator.AccessToke
 
 	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/top-remark/:projectID/:employeeID/:projectPhaseID", controller.getByIdHandler)
+	r.GET("/view-initiative/:id", controller.viewFileHandler)
 	auth.PUT("/top-remark", controller.updateHandler)
 	auth.POST("/top-remark", controller.createHandler)
 	auth.POST("/top-remark/project", controller.createHandlerByProject)

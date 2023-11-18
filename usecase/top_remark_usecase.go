@@ -4,13 +4,15 @@ import (
 	"fmt"
 
 	"calibration-system.com/delivery/api/request"
+	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
 	"calibration-system.com/repository"
 )
 
 type TopRemarkUsecase interface {
 	FindAll() ([]model.TopRemark, error)
-	FindByForeignKeyID(projectID, employeeID, projectPhaseID string) ([]*model.TopRemark, error)
+	FindById(id string) (*model.TopRemark, error)
+	FindByForeignKeyID(projectID, employeeID, projectPhaseID string) ([]*response.TopRemarkResponse, error)
 	SaveData(payload *model.TopRemark) error
 	SaveDataByProject(payload []*model.TopRemark) error
 	DeleteData(projectID, employeeID, projectPhaseID string) error
@@ -28,8 +30,41 @@ func (r *topRemarkUsecase) FindAll() ([]model.TopRemark, error) {
 	return r.repo.List()
 }
 
-func (r *topRemarkUsecase) FindByForeignKeyID(projectID, employeeID, projectPhaseID string) ([]*model.TopRemark, error) {
-	return r.repo.Get(projectID, employeeID, projectPhaseID)
+func (r *topRemarkUsecase) FindById(id string) (*model.TopRemark, error) {
+	data, err := r.repo.GetByID(id)
+	if err != nil {
+		return nil, fmt.Errorf(fmt.Sprintf("ERROR DI DB %s", err.Error()))
+	}
+	return data, nil
+}
+
+func (r *topRemarkUsecase) FindByForeignKeyID(projectID, employeeID, projectPhaseID string) ([]*response.TopRemarkResponse, error) {
+	topRemarks, err := r.repo.Get(projectID, employeeID, projectPhaseID)
+	if err != nil {
+		return nil, err
+	}
+
+	var topRemarksResponse []*response.TopRemarkResponse
+	for _, data := range topRemarks {
+		topRemarksResponse = append(topRemarksResponse, &response.TopRemarkResponse{
+			BaseModel:      data.BaseModel,
+			Project:        data.Project,
+			ProjectID:      data.ProjectID,
+			Employee:       data.Employee,
+			EmployeeID:     data.EmployeeID,
+			ProjectPhase:   data.ProjectPhase,
+			ProjectPhaseID: data.ProjectPhaseID,
+			Initiative:     data.Initiative,
+			Description:    data.Description,
+			Result:         data.Result,
+			StartDate:      data.StartDate,
+			EndDate:        data.EndDate,
+			Comment:        data.Comment,
+			EvidenceName:   data.EvidenceName,
+		})
+	}
+
+	return topRemarksResponse, nil
 }
 
 func (r *topRemarkUsecase) SaveData(payload *model.TopRemark) error {

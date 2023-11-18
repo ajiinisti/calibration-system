@@ -12,6 +12,7 @@ type TopRemarkRepo interface {
 	Save(payload *model.TopRemark) error
 	BulkSave(payload []*model.TopRemark) error
 	Get(projectID, employeeID, projectPhaseID string) ([]*model.TopRemark, error)
+	GetByID(id string) (*model.TopRemark, error)
 	List() ([]model.TopRemark, error)
 	Delete(projectID, employeeID, projectPhaseID string) error
 	BulkDelete(payload request.DeleteTopRemarks) error
@@ -35,6 +36,16 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark) error {
 		return err.Error
 	}
 	return nil
+}
+
+func (r *topRemarkRepo) GetByID(id string) (*model.TopRemark, error) {
+	var topRemark *model.TopRemark
+	err := r.db.First(&topRemark, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return topRemark, nil
 }
 
 func (r *topRemarkRepo) Get(projectID, employeeID, projectPhaseID string) ([]*model.TopRemark, error) {
@@ -70,7 +81,7 @@ func (r *topRemarkRepo) Delete(projectID, employeeID, projectPhaseID string) err
 }
 
 func (r *topRemarkRepo) BulkDelete(payload request.DeleteTopRemarks) error {
-	fmt.Println("ALL ID:=", payload.IDs)
+	// fmt.Println("ALL ID:=", payload.IDs)
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {

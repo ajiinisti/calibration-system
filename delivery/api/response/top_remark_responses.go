@@ -1,16 +1,18 @@
-package model
+package response
 
 import (
 	"time"
+
+	"calibration-system.com/model"
 )
 
-type TopRemark struct {
-	BaseModel
-	Project        Project `gorm:"foreignKey:ProjectID"`
+type TopRemarkResponse struct {
+	model.BaseModel
+	Project        model.Project
 	ProjectID      string
-	Employee       User `gorm:"foreignKey:EmployeeID"`
+	Employee       model.User
 	EmployeeID     string
-	ProjectPhase   ProjectPhase `gorm:"foreignKey:ProjectPhaseID"`
+	ProjectPhase   model.ProjectPhase
 	ProjectPhaseID string
 	Initiative     string
 	Description    string
@@ -18,6 +20,6 @@ type TopRemark struct {
 	StartDate      time.Time
 	EndDate        time.Time
 	Comment        string
+	EvidenceLink   string
 	EvidenceName   string
-	Evidence       []byte
 }

@@ -74,7 +74,7 @@ func (r *remarkSettingRepo) Delete(id string) error {
 }
 
 func (r *remarkSettingRepo) BulkDelete(payload request.DeleteRemark) error {
-	fmt.Println("ALL ID:=", payload.IDs)
+	// fmt.Println("ALL ID:=", payload.IDs)
 	result := r.db.Where("id IN (?)", payload.IDs).Delete(&model.RemarkSetting{})
 	if result.Error != nil {
 		return result.Error
