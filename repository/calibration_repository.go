@@ -20,7 +20,7 @@ type CalibrationRepo interface {
 	GetRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	Delete(projectId, projectPhaseId, employeeId string) error
 	Bulksave(payload *[]model.Calibration) error
-	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) error
+	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, error)
 	SaveChanges(payload *request.CalibrationRequest) error
 	AcceptCalibration(payload *request.AcceptJustification, phaseOrder int) error
 	AcceptMultipleCalibration(payload *request.AcceptMultipleJustification) error
@@ -230,7 +230,7 @@ func (r *calibrationRepo) Delete(projectId, projectPhaseId, employeeId string) e
 	return nil
 }
 
-func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) error {
+func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, error) {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -239,8 +239,14 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 	}()
 
 	reviewSPMO := false
-	var employeeCalibrationScore []model.Calibration
+	var spmoID []*string
+
+	var employeeCalibrationScore []*model.Calibration
 	for _, calibrations := range payload.RequestData {
+		spmoID = append(spmoID, &calibrations.SpmoID)
+		spmoID = append(spmoID, calibrations.Spmo2ID)
+		spmoID = append(spmoID, calibrations.Spmo3ID)
+
 		if projectPhase.ReviewSpmo == true {
 			calibrations.SpmoStatus = "Waiting"
 			reviewSPMO = true
@@ -251,10 +257,10 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 		result := tx.Updates(calibrations)
 		if result.Error != nil {
 			tx.Rollback()
-			return result.Error
+			return nil, result.Error
 		} else if result.RowsAffected == 0 {
 			tx.Rollback()
-			return fmt.Errorf("Calibrations not found!")
+			return nil, fmt.Errorf("Calibrations not found!")
 		}
 	}
 	for _, employeeCalibration := range employeeCalibrationScore {
@@ -270,17 +276,17 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 
 		if err != nil {
 			tx.Rollback()
-			return err
+			return nil, err
 		}
 
 		for _, c := range calibrations {
 			c.CalibrationScore = employeeCalibration.CalibrationScore
 			c.CalibrationRating = employeeCalibration.CalibrationRating
 			c.Status = "Waiting"
-			err := tx.Updates(&c).Error
+			err := tx.Updates(c).Error
 			if err != nil {
 				tx.Rollback()
-				return err
+				return nil, err
 			}
 		}
 
@@ -288,13 +294,13 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 			calibrations[0].Status = "Calibrate"
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()
-				return err
+				return nil, err
 			}
 		}
 	}
 
 	tx.Commit()
-	return nil
+	return spmoID, nil
 }
 
 func (r *calibrationRepo) SaveChanges(payload *request.CalibrationRequest) error {
@@ -435,10 +441,11 @@ func (r *calibrationRepo) RejectCalibration(payload *request.RejectJustification
 	}()
 
 	err := tx.Model(&model.Calibration{}).
-		Where("project_id = ? AND project_phase_id = ? AND employee_id = ?",
+		Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
 			payload.ProjectID,
 			payload.ProjectPhaseID,
 			payload.EmployeeID,
+			payload.CalibratorID,
 		).Updates(map[string]interface{}{
 		"spmo_status":  "Rejected",
 		"spmo_comment": payload.Comment,

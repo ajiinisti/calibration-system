@@ -38,25 +38,31 @@ type SPMOSummaryResult struct {
 
 // Response to User
 type SummarySPMO struct {
-	SummaryData []BUPerformanceSummarySPMO
+	SummaryData []*BUPerformanceSummarySPMO
 }
 
 type BUPerformanceSummarySPMO struct {
-	BusinessUnitName string
-	BusinessUnitID   string
-	DepartmentData   []DepartmentCountSummarySPMO
-}
-
-type DepartmentCountSummarySPMO struct {
-	DepartmentName   string
-	ProjectPhaseData []*ProjectPhaseSummarySPMO
+	BusinessUnitName    string
+	BusinessUnitID      string
+	MaximumTotalData    int
+	ProjectPhaseSummary []*ProjectPhaseSummarySPMO
 }
 
 type ProjectPhaseSummarySPMO struct {
+	ProjectPhaseID     string
+	Order              int
+	DataCount          int
+	CalibratorSummarys []*CalibratorSummary
+}
+
+type CalibratorSummary struct {
 	CalibratorName string
 	CalibratorID   string
-	ProjectPhaseID string
-	Order          int
 	Count          int
 	Status         string
 }
+
+// type DepartmentCountSummarySPMO struct {
+// 	DepartmentName   string
+// 	ProjectPhaseData []*ProjectPhaseSummarySPMO
+// }
