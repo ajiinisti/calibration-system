@@ -22,7 +22,7 @@ type CalibrationRepo interface {
 	Delete(projectId, projectPhaseId, employeeId string) error
 	Bulksave(payload *[]model.Calibration) error
 	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, error)
-	UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, error)
+	UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, string, error)
 	SaveChanges(payload *request.CalibrationRequest) error
 	AcceptCalibration(payload *request.AcceptJustification, phaseOrder int) error
 	AcceptMultipleCalibration(payload *request.AcceptMultipleJustification) error
@@ -324,7 +324,7 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 	return spmoID, nil
 }
 
-func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, error) {
+func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, string, error) {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -337,7 +337,7 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 		employeeCalibrations, err := r.GetAllPreviousEmployeeCalibrationByActiveProject(calibrations.EmployeeID, projectPhase.Phase.Order)
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return nil, "", err
 		}
 
 		if len(employeeCalibrations) == 2 {
@@ -348,15 +348,14 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 		result := tx.Updates(calibrations)
 		if result.Error != nil {
 			tx.Rollback()
-			return nil, result.Error
+			return nil, "", result.Error
 		} else if result.RowsAffected == 0 {
 			tx.Rollback()
-			return nil, fmt.Errorf("Calibrations not found!")
+			return nil, "", fmt.Errorf("Calibrations not found!")
 		}
 	}
 
-	fmt.Println("DAATA EMPLOYEE", employeeCalibrationScore)
-
+	var ppId string
 	var managerCalibratorIDs []string
 	for _, employeeCalibration := range employeeCalibrationScore {
 		var calibrations []*model.Calibration
@@ -372,28 +371,22 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return nil, "", err
 		}
 
-		fmt.Println("DATA EMPLOYEE2", employeeCalibration.EmployeeID, employeeCalibration.Employee.Name)
-		fmt.Println("DATA EMPLOYEE2", calibrations[0])
 		if len(calibrations) > 0 {
-			fmt.Println("masuk sini gasih", calibrations[0].CalibratorID)
+			ppId = calibrations[0].ProjectPhaseID
 			calibrations[0].Status = "Calibrate"
 			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[0].CalibratorID)
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()
-				return nil, err
+				return nil, "", err
 			}
-			fmt.Println("masuk managerCalibratorIDs", managerCalibratorIDs)
 		}
-		fmt.Println("AFTER IN")
 	}
 
-	fmt.Println("SESUDAH ALL")
-
 	tx.Commit()
-	return managerCalibratorIDs, nil
+	return managerCalibratorIDs, ppId, nil
 }
 
 func (r *calibrationRepo) SaveChanges(payload *request.CalibrationRequest) error {

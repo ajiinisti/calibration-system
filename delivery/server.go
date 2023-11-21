@@ -77,7 +77,7 @@ func NewServer() *Server {
 	uc := manager.NewUsecaseManager(repo, cfg)
 
 	c := cron.New()
-	_, err = c.AddFunc("53 13 * * *", func() {
+	_, err = c.AddFunc("2 6 * * *", func() {
 		err = uc.NotificationUc().NotifyCalibrator()
 		if err != nil {
 			panic(err.Error())

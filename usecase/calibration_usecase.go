@@ -363,31 +363,17 @@ func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.Calibrat
 		return err
 	}
 
-	managerCalibratorIDs, err := r.repo.UpdateManagerCalibrations(payload, *projectPhase)
+	managerCalibratorIDs, projectPhaseId, err := r.repo.UpdateManagerCalibrations(payload, *projectPhase)
 	if err != nil {
 		return err
 	}
 
-	// calibrator, err := r.user.FindById(calibratorID)
-	// if err != nil {
-	// 	return err
-	// }
+	projectPhaseNew, err := r.projectPhase.FindById(projectPhaseId)
+	if err != nil {
+		return err
+	}
 
-	// var listOfSpmo []*model.User
-	// for _, spmoID := range spmoIDs {
-	// 	if spmoID != nil {
-	// 		spmo, err := r.user.FindById(*spmoID)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-
-	// 		listOfSpmo = append(listOfSpmo, spmo)
-	// 	}
-	// }
-
-	fmt.Println("SEBELUM NOTIFY", managerCalibratorIDs)
-
-	err = r.notification.NotifyCalibrators(managerCalibratorIDs)
+	err = r.notification.NotifyCalibrators(managerCalibratorIDs, projectPhaseNew.EndDate)
 	if err != nil {
 		return err
 	}
@@ -428,12 +414,25 @@ func (r *calibrationUsecase) SpmoAcceptMultipleApproval(payload *request.AcceptM
 		ids = append(ids, acceptJustification.CalibratorID)
 	}
 
-	err = r.notification.NotifyApprovedCalibrationToCalibrator(ids)
+	results := removeDuplicates(ids)
+	err = r.notification.NotifyApprovedCalibrationToCalibrator(results)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func removeDuplicates(s []string) []string {
+	bucket := make(map[string]bool)
+	var result []string
+	for _, str := range s {
+		if _, ok := bucket[str]; !ok {
+			bucket[str] = true
+			result = append(result, str)
+		}
+	}
+	return result
 }
 
 func (r *calibrationUsecase) SpmoRejectApproval(payload *request.RejectJustification) error {
@@ -446,68 +445,11 @@ func (r *calibrationUsecase) SpmoRejectApproval(payload *request.RejectJustifica
 	return nil
 }
 
-// type ByBusinessUnitName []*response.BUPerformanceSummarySPMO
-
-// func (a ByBusinessUnitName) Len() int           { return len(a) }
-// func (a ByBusinessUnitName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-// func (a ByBusinessUnitName) Less(i, j int) bool { return a[i].BusinessUnitName < a[j].BusinessUnitName }
-
 func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error) {
 	results, err := r.repo.GetSummaryBySPMOID(spmoID)
 	if err != nil {
 		return response.SummarySPMO{}, err
 	}
-
-	// for _, resultData := range results {
-	// 	fmt.Println("RESULT DATA: =", resultData)
-	// }
-
-	// // Grouping the query output
-	// groupedList := make(map[string]response.BUPerformanceSummarySPMO)
-
-	// for _, res := range results {
-	// 	departmentCount := response.ProjectPhaseSummarySPMO{
-	// 		CalibratorName: res.CalibratorName,
-	// 		CalibratorID:   res.CalibratorID,
-	// 		ProjectPhaseID: res.ProjectPhaseID,
-	// 		Order:          res.Order,
-	// 		Count:          res.Count,
-	// 		Status:         "Pending",
-	// 	}
-
-	// 	departmentData := response.DepartmentCountSummarySPMO{
-	// 		DepartmentName:   res.Department,
-	// 		ProjectPhaseData: []*response.ProjectPhaseSummarySPMO{&departmentCount},
-	// 	}
-
-	// 	businessUnitData, ok := groupedList[res.BusinessUnitID]
-
-	// 	if ok {
-	// 		departmentExists := false
-	// 		for i, department := range businessUnitData.DepartmentData {
-	// 			if department.DepartmentName == res.Department {
-	// 				groupedList[res.BusinessUnitID].DepartmentData[i].ProjectPhaseData = append(department.ProjectPhaseData, &departmentCount)
-	// 				departmentExists = true
-	// 				break
-	// 			}
-	// 		}
-
-	// 		if !departmentExists {
-	// 			groupedList[res.BusinessUnitID] = response.BUPerformanceSummarySPMO{
-	// 				BusinessUnitName: res.BusinessUnitName,
-	// 				BusinessUnitID:   res.BusinessUnitID,
-	// 				DepartmentData:   append(businessUnitData.DepartmentData, departmentData),
-	// 			}
-	// 		}
-	// 	} else {
-	// 		businessUnitData = response.BUPerformanceSummarySPMO{
-	// 			BusinessUnitName: res.BusinessUnitName,
-	// 			BusinessUnitID:   res.BusinessUnitID,
-	// 			DepartmentData:   []response.DepartmentCountSummarySPMO{departmentData},
-	// 		}
-	// 		groupedList[res.BusinessUnitID] = businessUnitData
-	// 	}
-	// }
 
 	groupedData := make(map[string]*response.BUPerformanceSummarySPMO)
 	for _, d := range results {
