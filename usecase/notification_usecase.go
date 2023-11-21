@@ -132,6 +132,7 @@ func (n *notificationUsecase) NotifyCalibrator() error {
 }
 
 func (n *notificationUsecase) NotifyCalibrators(ids []string) error {
+	fmt.Println("DATA ID CALIBRATOR", ids)
 	for _, calibratorID := range ids {
 		// employee, err := n.employee.FindById(ids)
 		// if err != nil {

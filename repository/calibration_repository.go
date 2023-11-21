@@ -355,9 +355,11 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 		}
 	}
 
+	fmt.Println("DAATA EMPLOYEE", employeeCalibrationScore)
+
 	var managerCalibratorIDs []string
 	for _, employeeCalibration := range employeeCalibrationScore {
-		var calibrations []model.Calibration
+		var calibrations []*model.Calibration
 		err := tx.Table("calibrations").
 			Select("calibrations.*").
 			Joins("JOIN projects ON projects.id = calibrations.project_id").
@@ -373,15 +375,22 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 			return nil, err
 		}
 
+		fmt.Println("DATA EMPLOYEE2", employeeCalibration.EmployeeID, employeeCalibration.Employee.Name)
+		fmt.Println("DATA EMPLOYEE2", calibrations[0])
 		if len(calibrations) > 0 {
+			fmt.Println("masuk sini gasih", calibrations[0].CalibratorID)
 			calibrations[0].Status = "Calibrate"
 			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[0].CalibratorID)
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()
 				return nil, err
 			}
+			fmt.Println("masuk managerCalibratorIDs", managerCalibratorIDs)
 		}
+		fmt.Println("AFTER IN")
 	}
+
+	fmt.Println("SESUDAH ALL")
 
 	tx.Commit()
 	return managerCalibratorIDs, nil

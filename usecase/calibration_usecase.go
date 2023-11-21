@@ -385,6 +385,8 @@ func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.Calibrat
 	// 	}
 	// }
 
+	fmt.Println("SEBELUM NOTIFY", managerCalibratorIDs)
+
 	err = r.notification.NotifyCalibrators(managerCalibratorIDs)
 	if err != nil {
 		return err

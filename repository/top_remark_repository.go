@@ -31,10 +31,23 @@ func (r *topRemarkRepo) Save(payload *model.TopRemark) error {
 }
 
 func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark) error {
-	err := r.db.Save(&payload)
-	if err.Error != nil {
-		return err.Error
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, remarks := range payload {
+		err := r.db.Save(&remarks)
+		if err.Error != nil {
+			tx.Rollback()
+			return err.Error
+		}
+
 	}
+
+	tx.Commit()
 	return nil
 }
 
