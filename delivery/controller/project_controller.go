@@ -239,6 +239,15 @@ func (r *ProjectController) getActiveProjectPhaseHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
+func (r *ProjectController) getActiveManagerPhaseHandler(c *gin.Context) {
+	projects, err := r.uc.FindActiveManagerPhase()
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
 func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.ProjectUsecase) *ProjectController {
 	controller := ProjectController{
 		router:       r,
@@ -257,6 +266,7 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth.GET("/projects/calibrations-one/:calibratorID/:prevCalibrator/:businessUnit", controller.getNumberOneCalibrationsByPrevCalibratorBusinessUnit)
 	auth.GET("/projects/calibrations-n-minus-one/:calibratorID/:businessUnit", controller.getNMinusOneCalibrationsByPrevCalibratorBusinessUnit)
 	auth.GET("/projects/project-phase/:calibratorID", controller.getProjectPhaseByCalibratorId)
+	auth.GET("/projects/project-phase/manager", controller.getActiveManagerPhaseHandler)
 	auth.GET("/projects/project-phase/active", controller.getActiveProjectPhaseHandler)
 	auth.GET("/projects/:id", controller.getByIdHandler)
 	auth.PUT("/projects", controller.updateHandler)

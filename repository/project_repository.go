@@ -20,13 +20,14 @@ type ProjectRepo interface {
 	GetProjectPhase(calibratorID string) (*model.ProjectPhase, error)
 	GetActiveProject() (*model.Project, error)
 	GetActiveProjectPhase() ([]model.ProjectPhase, error)
+	GetActiveManagerPhase() (model.ProjectPhase, error)
 	GetScoreDistributionByCalibratorID(businessUnitID string) (*model.Project, error)
 	GetRatingQuotaByCalibratorID(businessUnitID string) (*model.Project, error)
 	GetNumberOneUserWhoCalibrator(calibratorID string, businessUnit string, calibratorPhase int) ([]string, error)
 	GetAllCalibrationByCalibratorID(calibratorID string, calibratorPhase int) ([]model.User, error)
-	GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int) ([]response.UserResponse, error)
-	GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int, exceptPrevCalibrator []string) ([]response.UserResponse, error)
-	GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int) ([]response.UserResponse, error)
+	GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int) (response.UserCalibration, error)
+	GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int, exceptUsers []string) (response.UserCalibration, error)
+	GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int) (response.UserCalibration, error)
 }
 
 type projectRepo struct {
@@ -159,6 +160,23 @@ func (r *projectRepo) GetActiveProjectPhase() ([]model.ProjectPhase, error) {
 		return nil, err
 	}
 	return project.ProjectPhases, nil
+}
+
+func (r *projectRepo) GetActiveManagerPhase() (model.ProjectPhase, error) {
+	var project model.Project
+	err := r.db.
+		Preload("ProjectPhases", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN phases p ON project_phases.phase_id = p.id").
+				Order("p.order ASC")
+		}).
+		Preload("ProjectPhases.Phase").
+		First(&project, "active = ?", true).
+		Error
+	if err != nil {
+		return model.ProjectPhase{}, err
+	}
+	return project.ProjectPhases[0], nil
 }
 
 func (r *projectRepo) GetProjectPhase(calibratorID string) (*model.ProjectPhase, error) {
@@ -318,7 +336,7 @@ func (r *projectRepo) GetNumberOneUserWhoCalibrator(calibratorID string, busines
 	return filteredUsers, nil
 }
 
-func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int) ([]response.UserResponse, error) {
+func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int) (response.UserCalibration, error) {
 	var users []model.User
 	var resultUsers []response.UserResponse
 
@@ -343,7 +361,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 
 	var subqueryResults []string
 	if err := subquery.Pluck("u.id", &subqueryResults).Error; err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
 	err := r.db.
@@ -377,11 +395,24 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 		Order("calibration_count ASC").
 		Find(&users).Error
 
+	NPlusOneManagerFlag := false
+	SendToManagerFlag := false
+
 	for _, user := range users {
 		var supervisorName string
 		err = r.db.Raw("SELECT name FROM users WHERE nik = ?", user.SupervisorNik).Scan(&supervisorName).Error
 		if err != nil {
-			return nil, err
+			return response.UserCalibration{}, err
+		}
+
+		if len(user.CalibrationScores) > 1 {
+			if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.Phase.Order == 1 {
+				NPlusOneManagerFlag = NPlusOneManagerFlag || true
+
+				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
+					SendToManagerFlag = SendToManagerFlag || true
+				}
+			}
 		}
 
 		resultUsers = append(resultUsers, response.UserResponse{
@@ -422,13 +453,17 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 		})
 	}
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
-	return resultUsers, nil
+	return response.UserCalibration{
+		NPlusOneManager: NPlusOneManagerFlag,
+		SendToManager:   SendToManagerFlag,
+		UserData:        resultUsers,
+	}, nil
 }
 
-func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int, exceptUsers []string) ([]response.UserResponse, error) {
+func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int, exceptUsers []string) (response.UserCalibration, error) {
 	var users []model.User
 	var resultUsers []response.UserResponse
 
@@ -453,7 +488,7 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 
 	var subqueryResults []string
 	if err := subquery.Pluck("u.id", &subqueryResults).Error; err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
 	err := r.db.
@@ -494,11 +529,24 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 		Order("calibration_count ASC").
 		Find(&users).Error
 
+	NPlusOneManagerFlag := false
+	SendToManagerFlag := false
+
 	for _, user := range users {
 		var supervisorName string
 		err = r.db.Raw("SELECT name FROM users WHERE nik = ?", user.SupervisorNik).Scan(&supervisorName).Error
 		if err != nil {
-			return nil, err
+			return response.UserCalibration{}, err
+		}
+
+		if len(user.CalibrationScores) > 1 {
+			if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.Phase.Order == 1 {
+				NPlusOneManagerFlag = NPlusOneManagerFlag || true
+
+				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
+					SendToManagerFlag = SendToManagerFlag || true
+				}
+			}
 		}
 
 		resultUsers = append(resultUsers, response.UserResponse{
@@ -539,13 +587,17 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 		})
 	}
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
-	return resultUsers, nil
+	return response.UserCalibration{
+		NPlusOneManager: NPlusOneManagerFlag,
+		SendToManager:   SendToManagerFlag,
+		UserData:        resultUsers,
+	}, nil
 }
 
-func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int) ([]response.UserResponse, error) {
+func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int) (response.UserCalibration, error) {
 	var users []model.User
 	var resultUsers []response.UserResponse
 
@@ -579,13 +631,25 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Where("p.order = ? AND b.id = ? ", phase, businessUnit).
 		Find(&users).Error
 
+	NPlusOneManagerFlag := false
+	SendToManagerFlag := false
+
 	for _, user := range users {
 		var supervisorName string
 		err = r.db.Raw("SELECT name FROM users WHERE nik = ?", user.SupervisorNik).Scan(&supervisorName).Error
 		if err != nil {
-			return nil, err
+			return response.UserCalibration{}, err
 		}
 
+		if len(user.CalibrationScores) > 1 {
+			if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.Phase.Order == 1 {
+				NPlusOneManagerFlag = NPlusOneManagerFlag || true
+
+				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
+					SendToManagerFlag = SendToManagerFlag || true
+				}
+			}
+		}
 		resultUsers = append(resultUsers, response.UserResponse{
 			BaseModel: model.BaseModel{
 				ID:        user.ID,
@@ -624,15 +688,14 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		})
 	}
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
-	// for _, data := range resultUsers {
-	// 	fmt.Println(data.Name)
-	// 	fmt.Println(data.CalibrationScores)
-	// }
-
-	return resultUsers, nil
+	return response.UserCalibration{
+		NPlusOneManager: NPlusOneManagerFlag,
+		SendToManager:   SendToManagerFlag,
+		UserData:        resultUsers,
+	}, nil
 }
 
 func NewProjectRepo(db *gorm.DB) ProjectRepo {

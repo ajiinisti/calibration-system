@@ -39,3 +39,9 @@ type UserResponse struct {
 	SpmoCalibrations       []model.Calibration `gorm:"foreignKey:SpmoID"`
 	CalibratorCalibrations []model.Calibration `gorm:"foreignKey:CalibratorID"`
 }
+
+type UserCalibration struct {
+	NPlusOneManager bool
+	SendToManager   bool
+	UserData        []UserResponse
+}

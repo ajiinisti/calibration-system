@@ -20,11 +20,12 @@ type ProjectUsecase interface {
 	FindRatingQuotaByCalibratorID(calibratorId, prevCalibrator, businessUnitName, types string) (*response.RatingQuota, error)
 	FindTotalActualScoreByCalibratorID(calibratorId, prevCalibrator, businessUnitName, types string) (*response.TotalActualScore, error)
 	FindSummaryProjectByCalibratorID(calibratorId string) (*response.SummaryProject, error)
-	FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) ([]response.UserResponse, error)
-	FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) ([]response.UserResponse, error)
-	FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit string) ([]response.UserResponse, error)
+	FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) (response.UserCalibration, error)
+	FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) (response.UserCalibration, error)
+	FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit string) (response.UserCalibration, error)
 	FindCalibratorPhase(calibratorId string) (*model.ProjectPhase, error)
 	FindActiveProjectPhase() ([]model.ProjectPhase, error)
+	FindActiveManagerPhase() (model.ProjectPhase, error)
 	FindActiveProject() (*model.Project, error)
 }
 
@@ -71,7 +72,7 @@ func (r *projectUsecase) FindScoreDistributionByCalibratorID(businessUnitName st
 }
 
 func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibrator, businessUnitName, types string) (*response.RatingQuota, error) {
-	var calibrations []response.UserResponse
+	var calibrations response.UserCalibration
 	var err error
 	if types == "numberOne" {
 		calibrations, err = r.FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnitName)
@@ -91,7 +92,7 @@ func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibra
 	}
 
 	ratingQuota := projects.RatingQuotas[0]
-	totalCalibrations := len(calibrations)
+	totalCalibrations := len(calibrations.UserData)
 	// fmt.Println("TOTAL CALIBRATIONS = ", totalCalibrations)
 	responses := response.RatingQuota{
 		APlus: int(math.Floor(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
@@ -145,7 +146,7 @@ func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibra
 }
 
 func (r *projectUsecase) FindTotalActualScoreByCalibratorID(calibratorId, prevCalibrator, businessUnitName, types string) (*response.TotalActualScore, error) {
-	var calibrations []response.UserResponse
+	var calibrations response.UserCalibration
 	var err error
 	if types == "numberOne" {
 		calibrations, err = r.FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnitName)
@@ -169,7 +170,7 @@ func (r *projectUsecase) FindTotalActualScoreByCalibratorID(calibratorId, prevCa
 		Total: 0,
 	}
 
-	for _, calibration := range calibrations {
+	for _, calibration := range calibrations.UserData {
 		if calibration.ActualScores[0].ActualRating == "A+" {
 			totalActualScore.APlus += 1
 		} else if calibration.ActualScores[0].ActualRating == "A" {
@@ -340,47 +341,47 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 	return result, nil
 }
 
-func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) ([]response.UserResponse, error) {
+func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) (response.UserCalibration, error) {
 	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
 	calibration, err := r.repo.GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit, phase)
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 	return calibration, nil
 }
 
-func (r *projectUsecase) FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) ([]response.UserResponse, error) {
+func (r *projectUsecase) FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) (response.UserCalibration, error) {
 	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
 	users, err := r.repo.GetNumberOneUserWhoCalibrator(calibratorId, businessUnit, phase)
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
 	results, err := r.repo.GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit, phase, users)
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
 	return results, nil
 }
 
-func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit string) ([]response.UserResponse, error) {
+func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit string) (response.UserCalibration, error) {
 	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 
 	calibration, err := r.repo.GetNMinusOneCalibrationsByBusinessUnit(businessUnit, phase)
 	if err != nil {
-		return nil, err
+		return response.UserCalibration{}, err
 	}
 	return calibration, nil
 }
@@ -398,6 +399,15 @@ func (r *projectUsecase) FindActiveProjectPhase() ([]model.ProjectPhase, error) 
 	projectPhase, err := r.repo.GetActiveProjectPhase()
 	if err != nil {
 		return nil, err
+	}
+
+	return projectPhase, nil
+}
+
+func (r *projectUsecase) FindActiveManagerPhase() (model.ProjectPhase, error) {
+	projectPhase, err := r.repo.GetActiveManagerPhase()
+	if err != nil {
+		return model.ProjectPhase{}, err
 	}
 
 	return projectPhase, nil

@@ -26,6 +26,7 @@ type CalibrationUsecase interface {
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
 	BulkInsert(file *multipart.FileHeader, projectId string) error
 	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error
+	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error
 	SaveCalibrations(payload *request.CalibrationRequest) error
 	SpmoAcceptApproval(payload *request.AcceptJustification) error
 	SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error
@@ -332,8 +333,6 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 		return err
 	}
 
-	fmt.Println("SPMO ID:= ", spmoIDs)
-
 	calibrator, err := r.user.FindById(calibratorID)
 	if err != nil {
 		return err
@@ -352,6 +351,41 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 	}
 
 	err = r.notification.NotifyCalibrationToSpmo(calibrator, listOfSpmo)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error {
+	projectPhase, err := r.project.FindCalibratorPhase(calibratorID)
+	if err != nil {
+		return err
+	}
+
+	managerCalibratorIDs, err := r.repo.UpdateManagerCalibrations(payload, *projectPhase)
+	if err != nil {
+		return err
+	}
+
+	// calibrator, err := r.user.FindById(calibratorID)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// var listOfSpmo []*model.User
+	// for _, spmoID := range spmoIDs {
+	// 	if spmoID != nil {
+	// 		spmo, err := r.user.FindById(*spmoID)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+
+	// 		listOfSpmo = append(listOfSpmo, spmo)
+	// 	}
+	// }
+
+	err = r.notification.NotifyCalibrators(managerCalibratorIDs)
 	if err != nil {
 		return err
 	}

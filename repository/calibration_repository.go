@@ -13,6 +13,7 @@ type CalibrationRepo interface {
 	Save(payload *model.Calibration) error
 	SaveByUser(payload *request.CalibrationForm) error
 	Get(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
+	GetAllPreviousEmployeeCalibrationByActiveProject(employeeID string, phaseOrder int) ([]model.Calibration, error)
 	GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error)
 	List() ([]model.Calibration, error)
 	GetActiveBySPMOID(spmoID string) ([]model.Calibration, error)
@@ -21,6 +22,7 @@ type CalibrationRepo interface {
 	Delete(projectId, projectPhaseId, employeeId string) error
 	Bulksave(payload *[]model.Calibration) error
 	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, error)
+	UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, error)
 	SaveChanges(payload *request.CalibrationRequest) error
 	AcceptCalibration(payload *request.AcceptJustification, phaseOrder int) error
 	AcceptMultipleCalibration(payload *request.AcceptMultipleJustification) error
@@ -113,6 +115,25 @@ func (r *calibrationRepo) Get(projectID, projectPhaseID, employeeID string) (*mo
 		return nil, err
 	}
 	return &calibration, nil
+}
+
+func (r *calibrationRepo) GetAllPreviousEmployeeCalibrationByActiveProject(employeeID string, phaseOrder int) ([]model.Calibration, error) {
+	var calibrations []model.Calibration
+	err := r.db.
+		Table("calibrations c").
+		Preload("ProjectPhase").
+		Preload("ProjectPhase.Phase").
+		Joins("JOIN projects pr ON pr.id = c.project_id AND pr.active = true").
+		Joins("JOIN project_phases pp ON pp.id = c.project_phase_id").
+		Joins("JOIN phases p ON p.id = pp.phase_id").
+		Where("c.employee_id = ? AND p.order <= ?", employeeID, phaseOrder).
+		Order("p.order ASC").
+		Find(&calibrations).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return calibrations, nil
 }
 
 func (r *calibrationRepo) GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error) {
@@ -301,6 +322,69 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 
 	tx.Commit()
 	return spmoID, nil
+}
+
+func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, error) {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var employeeCalibrationScore []*model.Calibration
+	for _, calibrations := range payload.RequestData {
+		employeeCalibrations, err := r.GetAllPreviousEmployeeCalibrationByActiveProject(calibrations.EmployeeID, projectPhase.Phase.Order)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		if len(employeeCalibrations) == 2 {
+			calibrations.Status = "Waiting"
+			employeeCalibrationScore = append(employeeCalibrationScore, calibrations)
+		}
+
+		result := tx.Updates(calibrations)
+		if result.Error != nil {
+			tx.Rollback()
+			return nil, result.Error
+		} else if result.RowsAffected == 0 {
+			tx.Rollback()
+			return nil, fmt.Errorf("Calibrations not found!")
+		}
+	}
+
+	var managerCalibratorIDs []string
+	for _, employeeCalibration := range employeeCalibrationScore {
+		var calibrations []model.Calibration
+		err := tx.Table("calibrations").
+			Select("calibrations.*").
+			Joins("JOIN projects ON projects.id = calibrations.project_id").
+			Joins("JOIN project_phases ON project_phases.id = calibrations.project_phase_id").
+			Joins("JOIN phases ON phases.id = project_phases.phase_id").
+			Preload("Calibrator").
+			Where("projects.active = true AND phases.order < ? AND calibrations.employee_id = ?", projectPhase.Phase.Order, employeeCalibration.EmployeeID).
+			Order("phases.order ASC").
+			Find(&calibrations).Error
+
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		if len(calibrations) > 0 {
+			calibrations[0].Status = "Calibrate"
+			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[0].CalibratorID)
+			if err := tx.Updates(calibrations[0]).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+	}
+
+	tx.Commit()
+	return managerCalibratorIDs, nil
 }
 
 func (r *calibrationRepo) SaveChanges(payload *request.CalibrationRequest) error {
