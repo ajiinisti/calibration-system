@@ -67,7 +67,7 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
 		}
 
 		if calibrationData.Spmo3ID != "" {
-			data.Spmo2ID = &calibrationData.Spmo3ID
+			data.Spmo3ID = &calibrationData.Spmo3ID
 		}
 
 		err := tx.Updates(data).Error
