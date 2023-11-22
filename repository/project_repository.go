@@ -39,6 +39,60 @@ func (r *projectRepo) Save(payload *model.Project) error {
 	if err.Error != nil {
 		return err.Error
 	}
+
+	if payload.ID == "" {
+		var project model.Project
+		err := r.db.
+			Preload("ScoreDistributions").
+			Preload("ScoreDistributions.GroupBusinessUnit").
+			Preload("RemarkSettings").
+			Order("created_at DESC").
+			First(&project).Error
+		if err != nil {
+			return err
+		}
+
+		for _, scoreD := range project.ScoreDistributions {
+			payload.ScoreDistributions = append(payload.ScoreDistributions, model.ScoreDistribution{
+				ProjectID:           payload.ID,
+				GroupBusinessUnitID: scoreD.GroupBusinessUnitID,
+				APlusUpperLimit:     scoreD.APlusUpperLimit,
+				APlusLowerLimit:     scoreD.APlusLowerLimit,
+				AUpperLimit:         scoreD.AUpperLimit,
+				ALowerLimit:         scoreD.ALowerLimit,
+				BPlusUpperLimit:     scoreD.BPlusUpperLimit,
+				BPlusLowerLimit:     scoreD.BLowerLimit,
+				BUpperLimit:         scoreD.BUpperLimit,
+				BLowerLimit:         scoreD.BLowerLimit,
+				CUpperLimit:         scoreD.CUpperLimit,
+				CLowerLimit:         scoreD.CLowerLimit,
+				DUpperLimit:         scoreD.DUpperLimit,
+				DLowerLimit:         scoreD.DLowerLimit,
+			})
+		}
+
+		for _, remarks := range project.RemarkSettings {
+			payload.RemarkSettings = append(payload.RemarkSettings, model.RemarkSetting{
+				ProjectID:         payload.ID,
+				JustificationType: remarks.JustificationType,
+				ScoringType:       remarks.ScoringType,
+				Level:             remarks.Level,
+				From:              remarks.From,
+				To:                remarks.To,
+			})
+		}
+
+		// err = r.db.Create(&payload)
+		fmt.Println("DATA PAYLOAD", payload.ID)
+		err = r.db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(&payload).Where("id = ?", payload.ID).Error
+		if err != nil {
+			return err
+		}
+		// if err.Error != nil {
+		// 	return err.Error
+		// }
+
+	}
 	return nil
 }
 

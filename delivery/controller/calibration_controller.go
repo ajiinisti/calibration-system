@@ -346,6 +346,15 @@ func (r *CalibrationController) createByUserHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
+func (r *CalibrationController) sendNotificationFirstCalibratorHandler(c *gin.Context) {
+	err := r.uc.SendNotificationToCurrentCalibrator()
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
 func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
 		router:       r,
@@ -375,5 +384,6 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/accept-multiple-approval", controller.spmoAcceptMultipleApprovalHandler)
 	auth.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)
 	auth.DELETE("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.deleteHandler)
+	auth.POST("/projects/send-notificaition-first-calibrator", controller.sendNotificationFirstCalibratorHandler)
 	return &controller
 }

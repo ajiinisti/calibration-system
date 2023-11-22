@@ -237,6 +237,15 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			PhoneNumber:      row[11],
 		}
 
+		inputedData, err := u.repo.SearchByNik(row[0])
+		if err != nil {
+			return nil, err
+		}
+
+		if inputedData != nil {
+			user.ID = inputedData.ID
+		}
+
 		if passed {
 			user.BusinessUnitId = &buId
 		}

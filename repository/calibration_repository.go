@@ -30,10 +30,28 @@ type CalibrationRepo interface {
 	GetSummaryBySPMOID(spmoID string) ([]response.SPMOSummaryResult, error)
 	GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
 	GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
+	GetCalibrateCalibration() ([]model.Calibration, error)
 }
 
 type calibrationRepo struct {
 	db *gorm.DB
+}
+
+func (r *calibrationRepo) GetCalibrateCalibration() ([]model.Calibration, error) {
+	var calibrations []model.Calibration
+	err := r.db.
+		Table("calibrations c").
+		Preload("ProjectPhase").
+		Preload("ProjectPhase.Phase").
+		Joins("JOIN projects pr ON pr.id = c.project_id AND pr.active = true").
+		Where("c.status = ? AND c.spmo_status = ? ", "Calibrate", "-").
+		Order("p.order ASC").
+		Find(&calibrations).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return calibrations, nil
 }
 
 func (r *calibrationRepo) Save(payload *model.Calibration) error {

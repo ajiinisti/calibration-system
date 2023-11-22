@@ -34,6 +34,7 @@ type CalibrationUsecase interface {
 	FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error)
 	FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
 	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
+	SendNotificationToCurrentCalibrator() error
 }
 
 type calibrationUsecase struct {
@@ -42,6 +43,33 @@ type calibrationUsecase struct {
 	project      ProjectUsecase
 	projectPhase ProjectPhaseUsecase
 	notification NotificationUsecase
+}
+
+func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
+	calibrations, err := r.repo.GetCalibrateCalibration()
+	if err != nil {
+		return err
+	}
+
+	uniqueCalibratorIDs := make(map[string]response.NotificationModel)
+	for _, data := range calibrations {
+		if _, ok := uniqueCalibratorIDs[data.CalibratorID]; !ok {
+			uniqueCalibratorIDs[data.CalibratorID] = response.NotificationModel{
+				CalibratorID: data.CalibratorID,
+				ProjectPhase: data.ProjectPhase.Phase.Order,
+				Deadline:     data.ProjectPhase.EndDate,
+			}
+		}
+	}
+
+	var uniqueCalibratorIDsSlice []response.NotificationModel
+	for _, value := range uniqueCalibratorIDs {
+		uniqueCalibratorIDsSlice = append(uniqueCalibratorIDsSlice, value)
+	}
+
+	r.notification.NotifyThisCalibrators(uniqueCalibratorIDsSlice)
+
+	return nil
 }
 
 func (r *calibrationUsecase) FindAll() ([]model.Calibration, error) {
