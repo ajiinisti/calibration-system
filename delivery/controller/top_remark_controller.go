@@ -100,6 +100,8 @@ func (r *TopRemarkController) createHandlerByProject(c *gin.Context) {
 			fileBytes := fileBuffer.Bytes()
 			payloadData.EvidenceName = header.Filename
 			payloadData.Evidence = fileBytes
+		} else {
+			payloadData.EvidenceName = ""
 		}
 
 	}

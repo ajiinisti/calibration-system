@@ -39,6 +39,17 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark) error {
 	}()
 
 	for _, remarks := range payload {
+		if remarks.ID != "" {
+			topRemarks, err := r.GetByID(remarks.ID)
+			if err != nil {
+				return err
+			}
+
+			if topRemarks.EvidenceName != "" && remarks.EvidenceName == "" {
+				remarks.EvidenceName = topRemarks.EvidenceName
+				remarks.Evidence = topRemarks.Evidence
+			}
+		}
 		err := r.db.Save(&remarks)
 		if err.Error != nil {
 			tx.Rollback()
