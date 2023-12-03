@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"math"
 
 	"calibration-system.com/delivery/api/request"
@@ -204,6 +205,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 	prevCalibrator := map[string]string{}
 	businessUnit := map[string]string{}
 	picIDs := map[string]string{}
+	resultSummary := map[string]*response.CalibratorBusinessUnit{}
 	users, err := r.repo.GetAllCalibrationByCalibratorID(calibratorId, phase)
 	if err != nil {
 		return nil, err
@@ -226,7 +228,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 
 				pic = true
 				break
-			} else if calibration.ProjectPhase.Phase.Order == phase && calibration.CalibratorID != calibratorId {
+			} else if calibration.ProjectPhase.Phase.Order >= phase && calibration.CalibratorID != calibratorId {
 				break
 			}
 
@@ -238,10 +240,8 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		}
 
 		bu := true
-		for _, summary := range result.Summary {
-			if summary.CalibratorName == picName && summary.CalibratorBusinessUnit == user.BusinessUnit.Name {
-				bu = false
-			}
+		if _, ok := resultSummary[picName+user.BusinessUnit.Name]; ok {
+			bu = false
 		}
 
 		if _, isExist := businessUnit[user.BusinessUnit.Name]; bu && pic && (picName != "N-1" || !isExist) {
@@ -282,28 +282,27 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 			if user.CalibrationScores[calibrationLength-1].Status != "Complete" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
 				resp.Status = "Pending"
 			}
-			result.Summary = append(result.Summary, resp)
+			resultSummary[picName+user.BusinessUnit.Name] = resp
+			// result.Summary = append(result.Summary, resp)
 			// fmt.Println("SUMMARY 2A", result.Summary)
 		} else {
-			for _, summary := range result.Summary {
-				if summary.CalibratorName == picName && summary.CalibratorBusinessUnit == user.BusinessUnit.Name {
-					if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
-						summary.APlus += 1
-					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A" {
-						summary.A += 1
-					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "B+" {
-						summary.BPlus += 1
-					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "B" {
-						summary.B += 1
-					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "C" {
-						summary.C += 1
-					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "D" {
-						summary.D += 1
-					}
+			if summary, ok := resultSummary[picName+user.BusinessUnit.Name]; ok {
+				if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
+					summary.APlus += 1
+				} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A" {
+					summary.A += 1
+				} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "B+" {
+					summary.BPlus += 1
+				} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "B" {
+					summary.B += 1
+				} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "C" {
+					summary.C += 1
+				} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "D" {
+					summary.D += 1
+				}
 
-					if user.CalibrationScores[calibrationLength-1].Status != "Complete" {
-						summary.Status = "Pending"
-					}
+				if user.CalibrationScores[calibrationLength-1].Status != "Complete" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
+					summary.Status = "Pending"
 				}
 			}
 		}
@@ -314,30 +313,37 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		}
 		// fmt.Println("Business Unit:= ", businessUnit)
 
-		buCheck := map[string]string{}
-		for _, summary := range result.Summary {
-			types := "default"
-			if _, isExist := buCheck[summary.CalibratorBusinessUnit]; !isExist {
-				types = "numberOne"
-				buCheck[summary.CalibratorBusinessUnit] = summary.CalibratorBusinessUnit
-			}
-
-			if summary.CalibratorName == "N-1" {
-				types = "n-1"
-			}
-			guidance, err := r.FindRatingQuotaByCalibratorID(calibratorId, summary.CalibratorID, summary.CalibratorBusinessUnitID, types)
-			if err != nil {
-				return nil, err
-			}
-
-			summary.APlusGuidance = guidance.APlus
-			summary.AGuidance = guidance.A
-			summary.BPlusGuidance = guidance.BPlus
-			summary.BGuidance = guidance.B
-			summary.CGuidance = guidance.C
-			summary.DGuidance = guidance.D
-		}
 	}
+
+	buCheck := map[string]string{}
+	for _, summary := range resultSummary {
+		types := "default"
+		if _, isExist := buCheck[summary.CalibratorBusinessUnit]; !isExist {
+			types = "numberOne"
+			buCheck[summary.CalibratorBusinessUnit] = summary.CalibratorBusinessUnit
+		}
+
+		if summary.CalibratorName == "N-1" {
+			types = "n-1"
+		}
+		guidance, err := r.FindRatingQuotaByCalibratorID(calibratorId, summary.CalibratorID, summary.CalibratorBusinessUnitID, types)
+		if err != nil {
+			return nil, err
+		}
+
+		summary.APlusGuidance = guidance.APlus
+		summary.AGuidance = guidance.A
+		summary.BPlusGuidance = guidance.BPlus
+		summary.BGuidance = guidance.B
+		summary.CGuidance = guidance.C
+		summary.DGuidance = guidance.D
+	}
+
+	for key, rSummary := range resultSummary {
+		result.Summary = append(result.Summary, rSummary)
+		fmt.Println("ISI BU UNIT", key)
+	}
+
 	return result, nil
 }
 
@@ -379,7 +385,7 @@ func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(c
 		return response.UserCalibration{}, err
 	}
 
-	calibration, err := r.repo.GetNMinusOneCalibrationsByBusinessUnit(businessUnit, phase)
+	calibration, err := r.repo.GetNMinusOneCalibrationsByBusinessUnit(businessUnit, phase, calibratorId)
 	if err != nil {
 		return response.UserCalibration{}, err
 	}

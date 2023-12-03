@@ -27,7 +27,7 @@ type ProjectRepo interface {
 	GetAllCalibrationByCalibratorID(calibratorID string, calibratorPhase int) ([]model.User, error)
 	GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int) (response.UserCalibration, error)
 	GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int, exceptUsers []string) (response.UserCalibration, error)
-	GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int) (response.UserCalibration, error)
+	GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int, calibratorId string) (response.UserCalibration, error)
 }
 
 type projectRepo struct {
@@ -35,10 +35,10 @@ type projectRepo struct {
 }
 
 func (r *projectRepo) Save(payload *model.Project) error {
-	err := r.db.Save(&payload)
-	if err.Error != nil {
-		return err.Error
-	}
+	// err := r.db.Save(&payload)
+	// if err.Error != nil {
+	// 	return err.Error
+	// }
 
 	if payload.ID == "" {
 		var project model.Project
@@ -81,18 +81,13 @@ func (r *projectRepo) Save(payload *model.Project) error {
 				To:                remarks.To,
 			})
 		}
-
-		// err = r.db.Create(&payload)
-		fmt.Println("DATA PAYLOAD", payload.ID)
-		err = r.db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(&payload).Where("id = ?", payload.ID).Error
-		if err != nil {
-			return err
-		}
-		// if err.Error != nil {
-		// 	return err.Error
-		// }
-
 	}
+
+	err := r.db.Save(&payload)
+	if err.Error != nil {
+		return err.Error
+	}
+
 	return nil
 }
 
@@ -312,7 +307,7 @@ func (r *projectRepo) GetAllCalibrationByCalibratorID(calibratorID string, calib
 		Preload("BusinessUnit").
 		Select("u.*, COUNT(u.id) AS calibration_count").
 		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
@@ -352,7 +347,7 @@ func (r *projectRepo) GetNumberOneUserWhoCalibrator(calibratorID string, busines
 		Select("u.*").
 		Distinct().
 		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
@@ -398,7 +393,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 		Table("users u").
 		Select("u.id").
 		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
@@ -525,7 +520,7 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 		Table("users u").
 		Select("u.id").
 		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
@@ -566,7 +561,7 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
 		Select("u.*, COUNT(u.id) AS calibration_count").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
@@ -651,7 +646,7 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 	}, nil
 }
 
-func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int) (response.UserCalibration, error) {
+func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int, calibratorId string) (response.UserCalibration, error) {
 	var users []model.User
 	var resultUsers []response.UserResponse
 
@@ -676,12 +671,12 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
 		Select("u.*").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
 		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN users u2 ON c1.calibrator_id = u2.id").
+		Joins("JOIN users u2 ON c1.calibrator_id = u2.id AND c1.calibrator_id = ?", calibratorId).
 		Where("p.order = ? AND b.id = ? ", phase, businessUnit).
 		Find(&users).Error
 
