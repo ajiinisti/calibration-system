@@ -9,7 +9,7 @@ import (
 
 type ActualScoreRepo interface {
 	Save(payload *model.ActualScore) error
-	Get(id string) (*model.ActualScore, error)
+	Get(projectId, employeeId string) (*model.ActualScore, error)
 	List() ([]model.ActualScore, error)
 	Delete(projectId, employeeId string) error
 	Bulksave(payload *[]model.ActualScore) error
@@ -28,6 +28,13 @@ func (r *actualScoreRepo) Save(payload *model.ActualScore) error {
 }
 
 func (r *actualScoreRepo) Bulksave(payload *[]model.ActualScore) error {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	batchSize := 100
 	numFullBatches := len(*payload) / batchSize
 
@@ -35,23 +42,30 @@ func (r *actualScoreRepo) Bulksave(payload *[]model.ActualScore) error {
 		start := i * batchSize
 		end := (i + 1) * batchSize
 		currentBatch := (*payload)[start:end]
-		return r.db.Save(&currentBatch).Error
+		err := tx.Save(&currentBatch).Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 
 	}
 	remainingItems := (*payload)[numFullBatches*batchSize:]
 
 	if len(remainingItems) > 0 {
-		err := r.db.Save(&remainingItems)
+		err := tx.Save(&remainingItems).Error
 		if err != nil {
-			return r.db.Save(&remainingItems).Error
+			tx.Rollback()
+			return err
 		}
 	}
+
+	tx.Commit()
 	return nil
 }
 
-func (r *actualScoreRepo) Get(id string) (*model.ActualScore, error) {
+func (r *actualScoreRepo) Get(projectId, employeeId string) (*model.ActualScore, error) {
 	var actualScore model.ActualScore
-	err := r.db.Preload("Project").Preload("Employee").First(&actualScore, "id = ?", id).Error
+	err := r.db.Preload("Project").Preload("Employee").First(&actualScore, "project_id = ? AND employee_id = ?", projectId, employeeId).Error
 	if err != nil {
 		return nil, err
 	}

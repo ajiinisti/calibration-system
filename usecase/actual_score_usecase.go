@@ -12,7 +12,7 @@ import (
 
 type ActualScoreUsecase interface {
 	FindAll() ([]model.ActualScore, error)
-	FindById(id string) (*model.ActualScore, error)
+	FindById(projectId, employeeId string) (*model.ActualScore, error)
 	SaveData(payload *model.ActualScore) error
 	DeleteData(projectId, employeeId string) error
 	BulkInsert(file *multipart.FileHeader, projectId string) ([]string, error)
@@ -28,8 +28,8 @@ func (r *actualScoreUsecase) FindAll() ([]model.ActualScore, error) {
 	return r.repo.List()
 }
 
-func (r *actualScoreUsecase) FindById(id string) (*model.ActualScore, error) {
-	return r.repo.Get(id)
+func (r *actualScoreUsecase) FindById(projectId, employeeId string) (*model.ActualScore, error) {
+	return r.repo.Get(projectId, employeeId)
 }
 
 func (r *actualScoreUsecase) SaveData(payload *model.ActualScore) error {
@@ -54,7 +54,7 @@ func (r *actualScoreUsecase) DeleteData(projectId, employeeId string) error {
 }
 
 func (r *actualScoreUsecase) BulkInsert(file *multipart.FileHeader, projectId string) ([]string, error) {
-	var logs []string
+	logs := map[string]string{}
 	var actualScores []model.ActualScore
 
 	_, err := r.project.FindById(projectId)
@@ -90,13 +90,17 @@ func (r *actualScoreUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 
 		employee, err := r.employee.FindByNik(nik)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot get employee nik on row %d ", i))
+			if _, ok := logs[nik]; !ok {
+				logs[nik] = nik
+			}
 			passed = false
 		}
 
 		as, err := strconv.ParseFloat(row[3], 64)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot convert actual score on row %d ", i))
+			if _, ok := logs[nik]; !ok {
+				logs[nik] = nik
+			}
 			passed = false
 		}
 
@@ -113,8 +117,13 @@ func (r *actualScoreUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		}
 	}
 
-	if len(logs) > 0 {
-		return logs, fmt.Errorf("Error when insert data")
+	var dataError []string
+	for _, key := range logs {
+		dataError = append(dataError, key)
+	}
+
+	if len(dataError) > 0 {
+		return dataError, fmt.Errorf("Error when insert data")
 	}
 
 	err = r.repo.Bulksave(&actualScores)
@@ -122,7 +131,7 @@ func (r *actualScoreUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		return nil, err
 	}
 
-	return logs, nil
+	return dataError, nil
 }
 
 func NewActualScoreUsecase(repo repository.ActualScoreRepo, employee UserUsecase, project ProjectUsecase) ActualScoreUsecase {

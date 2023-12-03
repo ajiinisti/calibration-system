@@ -29,8 +29,9 @@ func (r *ActualScoreController) listHandler(c *gin.Context) {
 }
 
 func (r *ActualScoreController) getByIdHandler(c *gin.Context) {
-	id := c.Param("id")
-	groupActualScores, err := r.uc.FindById(id)
+	projectId := c.Param("projectId")
+	employeeId := c.Param("employeeId")
+	groupActualScores, err := r.uc.FindById(projectId, employeeId)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -91,7 +92,7 @@ func (r *ActualScoreController) uploadHandler(c *gin.Context) {
 	logs, err := r.uc.BulkInsert(file, projectID)
 	if err != nil {
 		if len(logs) > 0 {
-			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, ","))
 		} else {
 			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		}
@@ -109,7 +110,7 @@ func NewActualScoreController(r *gin.Engine, tokenService authenticator.AccessTo
 	}
 	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/actual-scores", controller.listHandler)
-	auth.GET("/actual-scores/:id", controller.getByIdHandler)
+	auth.GET("/actual-scores/:projectId/:employeeId", controller.getByIdHandler)
 	auth.PUT("/actual-scores", controller.updateHandler)
 	auth.POST("/actual-scores", controller.createHandler)
 	auth.POST("/actual-scores/upload", controller.uploadHandler)
