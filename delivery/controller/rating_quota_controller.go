@@ -116,7 +116,7 @@ func (r *RatingQuotaController) deleteHandler(c *gin.Context) {
 }
 
 func (r *RatingQuotaController) uploadHandler(c *gin.Context) {
-	projectId := c.Request.FormValue("projectId")
+	projectId := c.Request.FormValue("projectID")
 	file, err := c.FormFile("excelFile")
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
@@ -126,7 +126,7 @@ func (r *RatingQuotaController) uploadHandler(c *gin.Context) {
 	logs, err := r.uc.BulkInsert(file, projectId)
 	if err != nil {
 		if len(logs) > 0 {
-			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, ","))
 		} else {
 			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		}

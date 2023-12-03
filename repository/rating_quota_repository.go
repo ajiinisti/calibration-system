@@ -33,6 +33,13 @@ func (r *ratingQuotaRepo) Save(payload *model.RatingQuota) error {
 }
 
 func (r *ratingQuotaRepo) Bulksave(payload *[]model.RatingQuota) error {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	batchSize := 100
 	numFullBatches := len(*payload) / batchSize
 
@@ -40,17 +47,24 @@ func (r *ratingQuotaRepo) Bulksave(payload *[]model.RatingQuota) error {
 		start := i * batchSize
 		end := (i + 1) * batchSize
 		currentBatch := (*payload)[start:end]
-		return r.db.Save(&currentBatch).Error
+		err := tx.Save(&currentBatch).Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 
 	}
 	remainingItems := (*payload)[numFullBatches*batchSize:]
 
 	if len(remainingItems) > 0 {
-		err := r.db.Save(&remainingItems)
+		err := tx.Save(&remainingItems).Error
 		if err != nil {
-			return r.db.Save(&remainingItems).Error
+			tx.Rollback()
+			return err
 		}
 	}
+
+	tx.Commit()
 	return nil
 }
 

@@ -68,7 +68,7 @@ func (r *ratingQuotaUsecase) DeleteData(projectId, businessUnitId string) error 
 }
 
 func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId string) ([]string, error) {
-	var logs []string
+	logs := map[string]string{}
 	var ratingQuotas []model.RatingQuota
 
 	_, err := r.project.FindById(projectId)
@@ -100,43 +100,57 @@ func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		buId := row[0]
 		_, err := r.businessUnit.FindById(buId)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot get business unit id on database %s", buId))
+			if _, ok := logs[buId]; !ok {
+				logs[buId] = buId
+			}
 			passed = false
 		}
 
 		aPlusQuota, err := strconv.ParseFloat(row[1], 64)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot convert A plus quota on business unit %s ", buId))
+			if _, ok := logs[buId]; !ok {
+				logs[buId] = buId
+			}
 			passed = false
 		}
 
 		aQuota, err := strconv.ParseFloat(row[2], 64)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot convert A quota on business unit %s ", buId))
+			if _, ok := logs[buId]; !ok {
+				logs[buId] = buId
+			}
 			passed = false
 		}
 
 		bPlusQuota, err := strconv.ParseFloat(row[3], 64)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot convert B plus quota on business unit %s ", buId))
+			if _, ok := logs[buId]; !ok {
+				logs[buId] = buId
+			}
 			passed = false
 		}
 
 		bQuota, err := strconv.ParseFloat(row[4], 64)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot convert B quota on business unit %s ", buId))
+			if _, ok := logs[buId]; !ok {
+				logs[buId] = buId
+			}
 			passed = false
 		}
 
 		cQuota, err := strconv.ParseFloat(row[5], 64)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot convert C quota on business unit %s ", buId))
+			if _, ok := logs[buId]; !ok {
+				logs[buId] = buId
+			}
 			passed = false
 		}
 
 		dQuota, err := strconv.ParseFloat(row[6], 64)
 		if err != nil {
-			logs = append(logs, fmt.Sprintf("Error cannot convert D quota on business unit %s ", buId))
+			if _, ok := logs[buId]; !ok {
+				logs[buId] = buId
+			}
 			passed = false
 		}
 
@@ -157,8 +171,13 @@ func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		}
 	}
 
-	if len(logs) > 0 {
-		return logs, fmt.Errorf("Error when insert data")
+	var dataError []string
+	for _, key := range logs {
+		dataError = append(dataError, key)
+	}
+
+	if len(dataError) > 0 {
+		return dataError, fmt.Errorf("Error when insert data")
 	}
 
 	err = r.repo.Bulksave(&ratingQuotas)
@@ -166,7 +185,7 @@ func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		return nil, err
 	}
 
-	return logs, nil
+	return dataError, nil
 }
 
 func NewRatingQuotaUsecase(repo repository.RatingQuotaRepo, businessUnit BusinessUnitUsecase, project ProjectUsecase) RatingQuotaUsecase {
