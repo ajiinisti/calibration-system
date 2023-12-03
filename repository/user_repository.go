@@ -52,6 +52,13 @@ func (u *userRepo) Save(payload *model.User) error {
 }
 
 func (u *userRepo) Bulksave(payload *[]model.User) error {
+	tx := u.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
 	batchSize := 100
 	numFullBatches := len(*payload) / batchSize
 
@@ -59,17 +66,24 @@ func (u *userRepo) Bulksave(payload *[]model.User) error {
 		start := i * batchSize
 		end := (i + 1) * batchSize
 		currentBatch := (*payload)[start:end]
-		return u.db.Save(&currentBatch).Error
+		err := tx.Save(&currentBatch).Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
 
 	}
 	remainingItems := (*payload)[numFullBatches*batchSize:]
 
 	if len(remainingItems) > 0 {
-		err := u.db.Save(&remainingItems)
+		err := tx.Save(&remainingItems).Error
 		if err != nil {
-			return u.db.Save(&remainingItems).Error
+			tx.Rollback()
+			return err
 		}
 	}
+
+	tx.Commit()
 	return nil
 }
 
@@ -124,6 +138,7 @@ func (u *userRepo) PaginateList(pagination model.PaginationQuery) ([]model.User,
 	var users []model.User
 	err := u.db.
 		Preload("Roles").
+		Preload("BusinessUnit").
 		Limit(pagination.Take).Offset(pagination.Skip).Find(&users).Error
 	if err != nil {
 		return nil, response.Paging{}, err
@@ -145,10 +160,9 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 		Preload("CalibrationScores").
 		Preload("CalibrationScores.Calibrator").
 		Preload("CalibrationScores.Spmo").
-		Preload("CalibrationScores.Hrbp").
 		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
-		Joins("JOIN actual_scores ON users.id = actual_scores.employee_id").
+		Joins("JOIN actual_scores ON users.id = actual_scores.employee_id AND actual_scores.deleted_at IS NULL").
 		Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
 		Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
 		Group("users.id").

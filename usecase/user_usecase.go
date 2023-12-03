@@ -235,9 +235,10 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			Position:         row[8],
 			GeneratePassword: false,
 			PhoneNumber:      row[11],
+			ScoringMethod:    row[12],
 		}
 
-		inputedData, err := u.repo.SearchByNik(row[0])
+		inputedData, _ := u.repo.SearchByNik(row[0])
 		if err != nil {
 			return nil, err
 		}

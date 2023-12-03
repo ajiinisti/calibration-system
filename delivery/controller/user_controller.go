@@ -124,7 +124,7 @@ func (u *UserController) createHandler(c *gin.Context) {
 		Nik:              payload.Nik,
 		DateOfBirth:      payload.DateOfBirth,
 		SupervisorNik:    payload.SupervisorNik,
-		BusinessUnitId:   &payload.BusinessUnitId,
+		BusinessUnitId:   payload.BusinessUnitId,
 		OrganizationUnit: payload.OrganizationUnit,
 		Division:         payload.Division,
 		Department:       payload.Department,
@@ -232,6 +232,7 @@ func NewUserController(u *gin.Engine, tokenService authenticator.AccessToken, uc
 	auth.GET("/users-switch/:id", controller.getByIdSwitchHandler)
 	auth.GET("/users/project/:projectId", controller.getByProjectId)
 	auth.PUT("/users", controller.updateHandler)
+	u.POST("/users", controller.createHandler)
 	auth.POST("/users", controller.createHandler)
 	auth.POST("/users/generate-password/:id", controller.generatePasswordHandler)
 	auth.POST("/users/upload", controller.uploadHandler)
