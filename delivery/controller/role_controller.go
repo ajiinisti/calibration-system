@@ -95,6 +95,8 @@ func NewRoleController(r *gin.Engine, tokenService authenticator.AccessToken, uc
 	}
 
 	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
+	r.GET("/roles", controller.listHandler)
+	r.POST("/roles-calibration-system", controller.createHandler)
 	auth.GET("/roles", controller.listHandler)
 	auth.GET("/roles/:name", controller.getByHandler)
 	auth.GET("/roles/id/:id", controller.getByIdHandler)
