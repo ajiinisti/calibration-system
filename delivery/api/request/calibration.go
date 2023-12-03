@@ -8,6 +8,10 @@ type CalibrationRequest struct {
 
 type CalibrationForm struct {
 	CalibrationDataForms []CalibrationDataForm
+	ActualScore          float64
+	ActualRating         string
+	Y1Rating             string
+	Y2Rating             string
 }
 
 type CalibrationDataForm struct {
@@ -18,5 +22,4 @@ type CalibrationDataForm struct {
 	SpmoID         string
 	Spmo2ID        string
 	Spmo3ID        string
-	HrbpID         string
 }

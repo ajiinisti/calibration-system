@@ -86,9 +86,8 @@ func (r *CalibrationController) updateHandler(c *gin.Context) {
 
 func (r *CalibrationController) deleteHandler(c *gin.Context) {
 	projectID := c.Param("projectID")
-	projectPhaseID := c.Param("projectPhaseID")
 	employeeID := c.Param("employeeID")
-	if err := r.uc.DeleteData(projectID, projectPhaseID, employeeID); err != nil {
+	if err := r.uc.DeleteData(projectID, employeeID); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -123,7 +122,7 @@ func (r *CalibrationController) uploadNikHandler(c *gin.Context) {
 	logs, err := r.uc.CheckEmployee(file, projectID)
 	if err != nil {
 		if len(logs) > 0 {
-			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, ","))
 		} else {
 			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		}
@@ -144,7 +143,7 @@ func (r *CalibrationController) uploadCalibratorHandler(c *gin.Context) {
 	logs, err := r.uc.CheckCalibrator(file, projectID)
 	if err != nil {
 		if len(logs) > 0 {
-			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, "."))
+			r.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, ","))
 		} else {
 			r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		}
@@ -290,6 +289,20 @@ func (r *CalibrationController) spmoRejectApprovalHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
+func (r *CalibrationController) spmoSubmitHandler(c *gin.Context) {
+	var payload request.AcceptMultipleJustification
+	if err := r.ParseRequestBody(c, &payload); err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := r.uc.SpmoSubmit(&payload); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, "", "OK")
+}
+
 func (r *CalibrationController) getAllDetailActiveCalibrationsBySPMOIDHandler(c *gin.Context) {
 	spmoID := c.Param("spmoID")
 	calibratorID := c.Param("calibratorID")
@@ -383,7 +396,8 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/accept-approval", controller.spmoAcceptApprovalHandler)
 	auth.POST("/calibrations/accept-multiple-approval", controller.spmoAcceptMultipleApprovalHandler)
 	auth.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)
-	auth.DELETE("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.deleteHandler)
+	auth.POST("/calibrations/spmo/submit", controller.spmoSubmitHandler)
+	auth.DELETE("/calibrations/:projectID/:employeeID", controller.deleteHandler)
 	auth.POST("/projects/send-notificaition-first-calibrator", controller.sendNotificationFirstCalibratorHandler)
 	return &controller
 }

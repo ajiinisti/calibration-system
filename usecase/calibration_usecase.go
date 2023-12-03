@@ -21,7 +21,7 @@ type CalibrationUsecase interface {
 	FindByProjectEmployeeId(projectID, employeeID string) ([]model.Calibration, error)
 	SaveData(payload *model.Calibration) error
 	SaveDataByUser(payload *request.CalibrationForm) error
-	DeleteData(projectId, projectPhaseId, employeeId string) error
+	DeleteData(projectId, employeeId string) error
 	CheckEmployee(file *multipart.FileHeader, projectId string) ([]string, error)
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
 	BulkInsert(file *multipart.FileHeader, projectId string) error
@@ -31,6 +31,7 @@ type CalibrationUsecase interface {
 	SpmoAcceptApproval(payload *request.AcceptJustification) error
 	SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error
 	SpmoRejectApproval(payload *request.RejectJustification) error
+	SpmoSubmit(payload *request.AcceptMultipleJustification) error
 	FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error)
 	FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
 	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
@@ -43,6 +44,7 @@ type calibrationUsecase struct {
 	project      ProjectUsecase
 	projectPhase ProjectPhaseUsecase
 	notification NotificationUsecase
+	actualScore  ActualScoreUsecase
 }
 
 func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
@@ -67,8 +69,10 @@ func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
 		uniqueCalibratorIDsSlice = append(uniqueCalibratorIDsSlice, value)
 	}
 
-	r.notification.NotifyThisCalibrators(uniqueCalibratorIDsSlice)
-
+	err = r.notification.NotifyThisCalibrators(uniqueCalibratorIDsSlice)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -135,11 +139,38 @@ func (r *calibrationUsecase) SaveData(payload *model.Calibration) error {
 }
 
 func (r *calibrationUsecase) SaveDataByUser(payload *request.CalibrationForm) error {
-	return r.repo.SaveByUser(payload)
+	err := r.repo.SaveByUser(payload)
+	if err != nil {
+		return err
+	}
+
+	err = r.actualScore.SaveData(&model.ActualScore{
+		ProjectID:    payload.CalibrationDataForms[0].ProjectID,
+		EmployeeID:   payload.CalibrationDataForms[0].EmployeeID,
+		ActualScore:  payload.ActualScore,
+		ActualRating: payload.ActualRating,
+		Y1Rating:     payload.Y1Rating,
+		Y2Rating:     payload.Y2Rating,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *calibrationUsecase) DeleteData(projectId, projectPhaseId, employeeId string) error {
-	return r.repo.Delete(projectId, projectPhaseId, employeeId)
+func (r *calibrationUsecase) DeleteData(projectId, employeeId string) error {
+	err := r.repo.Delete(projectId, employeeId)
+	if err != nil {
+		return err
+	}
+
+	err = r.actualScore.DeleteData(projectId, employeeId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *calibrationUsecase) CheckEmployee(file *multipart.FileHeader, projectId string) ([]string, error) {
@@ -186,7 +217,7 @@ func (r *calibrationUsecase) CheckEmployee(file *multipart.FileHeader, projectId
 }
 
 func (r *calibrationUsecase) CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error) {
-	var logs []string
+	logs := map[string]string{}
 	type EmployeeSupervisor struct {
 		EmployeeID    string
 		SupervisorNIK string
@@ -211,7 +242,6 @@ func (r *calibrationUsecase) CheckCalibrator(file *multipart.FileHeader, project
 
 	sheetName := xlsFile.GetSheetName(5)
 	rows := xlsFile.GetRows(sheetName)
-	// fmt.Println("rows: ", rows)
 
 	for i, row := range rows {
 		if i == 0 {
@@ -226,7 +256,9 @@ func (r *calibrationUsecase) CheckCalibrator(file *multipart.FileHeader, project
 			if !exist && calibratorNik != "None" {
 				calibrator, err := r.user.FindByNik(calibratorNik)
 				if err != nil {
-					logs = append(logs, fmt.Sprintf("Calibrator not available in database %s", calibratorNik))
+					if _, ok := logs[calibratorNik]; !ok {
+						logs[calibratorNik] = calibratorNik
+					}
 				} else {
 					calibrators[calibratorNik] = EmployeeSupervisor{
 						EmployeeID:    calibrator.ID,
@@ -238,12 +270,16 @@ func (r *calibrationUsecase) CheckCalibrator(file *multipart.FileHeader, project
 		}
 	}
 	// fmt.Println(calibrators)
-
-	if len(logs) > 0 {
-		return logs, fmt.Errorf("Error when checking nik")
+	var dataError []string
+	for _, key := range logs {
+		dataError = append(dataError, key)
 	}
 
-	return logs, nil
+	if len(dataError) > 0 {
+		return dataError, fmt.Errorf("Error when checking nik")
+	}
+
+	return dataError, nil
 }
 
 func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId string) error {
@@ -323,17 +359,17 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 					return fmt.Errorf("SPMO ID not available in database %s", row[lenProjectPhase+1])
 				}
 
-				hrbp, err := r.user.FindByNik(row[lenProjectPhase+2])
-				if err != nil {
-					return fmt.Errorf("HRBP ID not available in database %s", row[lenProjectPhase+2])
-				}
+				// hrbp, err := r.user.FindByNik(row[lenProjectPhase+2])
+				// if err != nil {
+				// 	return fmt.Errorf("HRBP ID not available in database %s", row[lenProjectPhase+2])
+				// }
 				cali := model.Calibration{
 					ProjectID:      projectId,
 					ProjectPhaseID: phases[j-1],
 					EmployeeID:     employee.ID,
 					CalibratorID:   calibratorId,
 					SpmoID:         spmo.ID,
-					HrbpID:         hrbp.ID,
+					// HrbpID:         hrbp.ID,
 				}
 				calibrations = append(calibrations, cali)
 			}
@@ -366,7 +402,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 		return err
 	}
 
-	var listOfSpmo []*model.User
+	mapSpmo := make(map[string]*model.User)
 	for _, spmoID := range spmoIDs {
 		if spmoID != nil {
 			spmo, err := r.user.FindById(*spmoID)
@@ -374,11 +410,18 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 				return err
 			}
 
-			listOfSpmo = append(listOfSpmo, spmo)
+			if _, ok := mapSpmo[*spmoID]; !ok {
+				mapSpmo[*spmoID] = spmo
+			}
 		}
 	}
 
-	err = r.notification.NotifyCalibrationToSpmo(calibrator, listOfSpmo)
+	var listSpmo []*model.User
+	for _, data := range mapSpmo {
+		listSpmo = append(listSpmo, data)
+	}
+
+	err = r.notification.NotifyCalibrationToSpmo(calibrator, listSpmo)
 	if err != nil {
 		return err
 	}
@@ -401,7 +444,9 @@ func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.Calibrat
 		return err
 	}
 
-	err = r.notification.NotifyCalibrators(managerCalibratorIDs, projectPhaseNew.EndDate)
+	uniqueCalibrator := removeDuplicates(managerCalibratorIDs)
+
+	err = r.notification.NotifyCalibrators(uniqueCalibrator, projectPhaseNew.EndDate)
 	if err != nil {
 		return err
 	}
@@ -423,10 +468,10 @@ func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustifica
 		return err
 	}
 
-	err = r.notification.NotifyApprovedCalibrationToCalibrator([]string{payload.CalibratorID})
-	if err != nil {
-		return err
-	}
+	// err = r.notification.NotifyApprovedCalibrationToCalibrator([]string{payload.CalibratorID})
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -442,11 +487,11 @@ func (r *calibrationUsecase) SpmoAcceptMultipleApproval(payload *request.AcceptM
 		ids = append(ids, acceptJustification.CalibratorID)
 	}
 
-	results := removeDuplicates(ids)
-	err = r.notification.NotifyApprovedCalibrationToCalibrator(results)
-	if err != nil {
-		return err
-	}
+	// results := removeDuplicates(ids)
+	// err = r.notification.NotifyApprovedCalibrationToCalibrator(results)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -469,7 +514,52 @@ func (r *calibrationUsecase) SpmoRejectApproval(payload *request.RejectJustifica
 		return err
 	}
 
-	err = r.notification.NotifyRejectedCalibrationToCalibrator(payload.CalibratorID, payload.Comment)
+	employee, err := r.user.FindById(payload.EmployeeID)
+	if err != nil {
+		return err
+	}
+
+	employeeName := fmt.Sprintf("%s(%s) - %s - %s", employee.Name, employee.Nik, employee.BusinessUnit.Name, employee.OrganizationUnit)
+
+	err = r.notification.NotifyRejectedCalibrationToCalibrator(payload.CalibratorID, employeeName, payload.Comment)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *calibrationUsecase) SpmoSubmit(payload *request.AcceptMultipleJustification) error {
+	fmt.Println("DATA PAYLOAD", payload.ArrayOfAcceptsJustification)
+	nextCalibrator, err := r.repo.SubmitReview(payload)
+	if err != nil {
+		return err
+	}
+
+	prevCalibrator := make(map[string]response.NotificationModel)
+	for _, requestData := range payload.ArrayOfAcceptsJustification {
+		if _, ok := prevCalibrator[requestData.CalibratorID]; !ok {
+			prevCalibrator[requestData.CalibratorID] = response.NotificationModel{
+				CalibratorID: requestData.CalibratorID,
+			}
+		}
+	}
+
+	fmt.Println("DATA PREV CAL", prevCalibrator)
+	fmt.Println("DATA NEXT CAL", nextCalibrator)
+
+	var uniquePrev []response.NotificationModel
+	for _, data := range prevCalibrator {
+		uniquePrev = append(uniquePrev, data)
+	}
+
+	err = r.notification.NotifyApprovedCalibrationToCalibrators(uniquePrev)
+	if err != nil {
+		return err
+	}
+	err = r.notification.NotifyThisCalibrators(nextCalibrator)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -583,12 +673,13 @@ func (r *calibrationUsecase) FindAllDetailCalibration2bySPMOID(spmoID, calibrato
 	return r.repo.GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID, order)
 }
 
-func NewCalibrationUsecase(repo repository.CalibrationRepo, user UserUsecase, project ProjectUsecase, projectPhase ProjectPhaseUsecase, notification NotificationUsecase) CalibrationUsecase {
+func NewCalibrationUsecase(repo repository.CalibrationRepo, user UserUsecase, project ProjectUsecase, projectPhase ProjectPhaseUsecase, notification NotificationUsecase, actualScore ActualScoreUsecase) CalibrationUsecase {
 	return &calibrationUsecase{
 		repo:         repo,
 		user:         user,
 		project:      project,
 		projectPhase: projectPhase,
 		notification: notification,
+		actualScore:  actualScore,
 	}
 }

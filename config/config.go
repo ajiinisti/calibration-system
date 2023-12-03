@@ -106,7 +106,7 @@ func (c *Config) ReadConfigFile() error {
 		ApplicationName:     "CalibrationSystem",
 		JwtSignatureKey:     "x/A?D(G+KaPdSgVkYp3s6v9y$B&E)H@M",
 		JwtSigningMethod:    jwt.SigningMethodHS256,
-		AccessTokenLifeTime: time.Minute * 30,
+		AccessTokenLifeTime: time.Hour * 2,
 	}
 
 	c.RedisConfig = RedisConfig{
