@@ -14,13 +14,14 @@ import (
 )
 
 type EmailData struct {
-	URL        string
-	FirstName  string
-	Subject    string
-	PhaseOrder int
-	Comment    string
-	Calibrator string
-	Deadline   string
+	URL          string
+	FirstName    string
+	Subject      string
+	PhaseOrder   int
+	Comment      string
+	Calibrator   string
+	Deadline     string
+	EmployeeName string
 }
 
 func SendMail(to []string, data *EmailData, templateDir string, templatePath string, cfg config.SMTPConfig) error {
