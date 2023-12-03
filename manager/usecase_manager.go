@@ -66,7 +66,7 @@ func (u *usecaseManager) ActualScoreUc() usecase.ActualScoreUsecase {
 }
 
 func (u *usecaseManager) CalibrationUc() usecase.CalibrationUsecase {
-	return usecase.NewCalibrationUsecase(u.repo.CalibrationRepo(), u.UserUc(), u.ProjectUc(), u.ProjectPhaseUc(), u.NotificationUc())
+	return usecase.NewCalibrationUsecase(u.repo.CalibrationRepo(), u.UserUc(), u.ProjectUc(), u.ProjectPhaseUc(), u.NotificationUc(), u.ActualScoreUc())
 }
 
 func (u *usecaseManager) RatingQuotaUc() usecase.RatingQuotaUsecase {
