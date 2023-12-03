@@ -529,7 +529,6 @@ func (r *calibrationUsecase) SpmoRejectApproval(payload *request.RejectJustifica
 }
 
 func (r *calibrationUsecase) SpmoSubmit(payload *request.AcceptMultipleJustification) error {
-	fmt.Println("DATA PAYLOAD", payload.ArrayOfAcceptsJustification)
 	nextCalibrator, err := r.repo.SubmitReview(payload)
 	if err != nil {
 		return err
@@ -543,9 +542,6 @@ func (r *calibrationUsecase) SpmoSubmit(payload *request.AcceptMultipleJustifica
 			}
 		}
 	}
-
-	fmt.Println("DATA PREV CAL", prevCalibrator)
-	fmt.Println("DATA NEXT CAL", nextCalibrator)
 
 	var uniquePrev []response.NotificationModel
 	for _, data := range prevCalibrator {
@@ -637,11 +633,11 @@ func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID string) (resp
 				allSubmitted := true
 				for _, user := range data {
 					lastCalibrationStatus := user.CalibrationScores[len(user.CalibrationScores)-1].SpmoStatus
-					if lastCalibrationStatus == "Waiting" {
+					if lastCalibrationStatus == "Waiting" || (lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == false) {
 						status = "Pending"
 						allSubmitted = allSubmitted && false
 						break
-					} else if lastCalibrationStatus == "Accepted" || lastCalibrationStatus == "Rejected" {
+					} else if (lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == true) || lastCalibrationStatus == "Rejected" {
 						allSubmitted = allSubmitted && true
 					} else {
 						allSubmitted = allSubmitted && false

@@ -70,13 +70,17 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
 		}
 	}()
 
+	fmt.Println("DATA KALIBRASI", len(payload.CalibrationDataForms))
 	for _, calibrationData := range payload.CalibrationDataForms {
+		fmt.Println("DATA KALIBRAASI YANG DIINPUT", calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
 		data := model.Calibration{
 			ProjectID:      calibrationData.ProjectID,
 			ProjectPhaseID: calibrationData.ProjectPhaseID,
 			EmployeeID:     calibrationData.EmployeeID,
 			CalibratorID:   calibrationData.CalibratorID,
 			SpmoID:         calibrationData.SpmoID,
+			Spmo2ID:        nil,
+			Spmo3ID:        nil,
 		}
 
 		if calibrationData.Spmo2ID != "" {
@@ -87,7 +91,7 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
 			data.Spmo3ID = &calibrationData.Spmo3ID
 		}
 
-		err := tx.Updates(data).Error
+		err := tx.Save(&data).Error
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -267,7 +271,7 @@ func (r *calibrationRepo) List() ([]model.Calibration, error) {
 }
 
 func (r *calibrationRepo) Delete(projectId, employeeId string) error {
-	result := r.db.Where("project_id = ? AND employee_id = ?", projectId, employeeId).Delete(&model.Calibration{})
+	result := r.db.Unscoped().Where("project_id = ? AND employee_id = ?", projectId, employeeId).Delete(&model.Calibration{})
 	if result.Error != nil {
 		return result.Error
 	} else if result.RowsAffected == 0 {
@@ -446,7 +450,7 @@ func (r *calibrationRepo) AcceptMultipleCalibration(payload *request.AcceptMulti
 	}()
 
 	for _, justification := range payload.ArrayOfAcceptsJustification {
-		err := tx.Updates(model.Calibration{
+		err := tx.Updates(&model.Calibration{
 			ProjectID:      justification.ProjectID,
 			ProjectPhaseID: justification.ProjectPhaseID,
 			EmployeeID:     justification.EmployeeID,
@@ -470,7 +474,7 @@ func (r *calibrationRepo) AcceptCalibration(payload *request.AcceptJustification
 		}
 	}()
 
-	err := tx.Updates(model.Calibration{
+	err := tx.Updates(&model.Calibration{
 		ProjectID:      payload.ProjectID,
 		ProjectPhaseID: payload.ProjectPhaseID,
 		EmployeeID:     payload.EmployeeID,
@@ -521,8 +525,22 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 
 	mapResult := make(map[string]response.NotificationModel)
 	for _, justification := range payload.ArrayOfAcceptsJustification {
+		err := tx.Model(&model.Calibration{}).
+			Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
+				justification.ProjectID,
+				justification.ProjectPhaseID,
+				justification.EmployeeID,
+				justification.CalibratorID,
+			).Updates(map[string]interface{}{
+			"justification_review_status": true,
+		}).Error
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
 		var projectPhase *model.ProjectPhase
-		err := tx.Table("project_phases").
+		err = tx.Table("project_phases").
 			Select("project_phases.*").
 			Preload("Phase").
 			Where("project_phases.id= ?", justification.ProjectPhaseID).

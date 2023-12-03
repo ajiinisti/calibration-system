@@ -26,14 +26,14 @@ type Calibration struct {
 	Spmo3ID        *string
 	// Hrbp                  User
 	// HrbpID                string
-	CalibrationScore      float64
-	CalibrationRating     string
-	Status                string `gorm:"default:'Waiting'"`
-	SpmoStatus            string `gorm:"default:'-'"`
-	Comment               string
-	SpmoComment           string `gorm:"default:'-'"`
-	CalibrationSpmoStatus string
-	JustificationType     string       `gorm:"default:'default'"`
-	BottomRemark          BottomRemark `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID;constraint:OnDelete:CASCADE"`
-	TopRemarks            []TopRemark  `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID;constraint:OnDelete:CASCADE"`
+	CalibrationScore          float64
+	CalibrationRating         string
+	Status                    string `gorm:"default:'Waiting'"`
+	SpmoStatus                string `gorm:"default:'-'"`
+	Comment                   string
+	SpmoComment               string       `gorm:"default:'-'"`
+	JustificationType         string       `gorm:"default:'default'"`
+	JustificationReviewStatus bool         `gorm:"default:false"`
+	BottomRemark              BottomRemark `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID;constraint:OnDelete:CASCADE"`
+	TopRemarks                []TopRemark  `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID;constraint:OnDelete:CASCADE"`
 }
