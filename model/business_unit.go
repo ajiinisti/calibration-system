@@ -15,5 +15,5 @@ type BusinessUnit struct {
 	Name                string
 	GroupBusinessUnit   GroupBusinessUnit
 	GroupBusinessUnitId string
-	RatingQuotas        []RatingQuota
+	RatingQuotas        []RatingQuota `gorm:"constraint:OnDelete:CASCADE"`
 }
