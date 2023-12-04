@@ -28,6 +28,7 @@ func GetPaginationParams(params request.PaginationParam) model.PaginationQuery {
 		Page: page,
 		Take: take,
 		Skip: skip,
+		Name: params.Name,
 	}
 }
 

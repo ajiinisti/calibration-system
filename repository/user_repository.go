@@ -17,7 +17,7 @@ type UserRepo interface {
 	Bulksave(payload *[]model.User) error
 	PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error)
 	PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error)
-	GetTotalRows() (int, error)
+	GetTotalRows(name string) (int, error)
 	GetTotalRowsByProjectID(projectId string) (int, error)
 }
 
@@ -136,15 +136,28 @@ func (u *userRepo) Update(payload *model.User) error {
 
 func (u *userRepo) PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error) {
 	var users []model.User
-	err := u.db.
-		Preload("Roles").
-		Preload("BusinessUnit").
-		Limit(pagination.Take).Offset(pagination.Skip).Find(&users).Error
-	if err != nil {
-		return nil, response.Paging{}, err
+	var err error
+	if pagination.Name == "" {
+		err := u.db.
+			Preload("Roles").
+			Preload("BusinessUnit").
+			Limit(pagination.Take).Offset(pagination.Skip).Find(&users).Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
+	} else {
+		fmt.Println(len(pagination.Name), pagination.Name)
+		err := u.db.
+			Preload("Roles").
+			Preload("BusinessUnit").
+			Where("name ILIKE ?", "%"+pagination.Name+"%").
+			Limit(pagination.Take).Offset(pagination.Skip).Find(&users).Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
 	}
 
-	totalRows, err := u.GetTotalRows()
+	totalRows, err := u.GetTotalRows(pagination.Name)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
@@ -180,13 +193,24 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 	return users, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
 }
 
-func (u *userRepo) GetTotalRows() (int, error) {
+func (u *userRepo) GetTotalRows(name string) (int, error) {
 	var count int64
-	err := u.db.
-		Model(&model.User{}).
-		Count(&count).Error
-	if err != nil {
-		return 0, err
+	var err error
+	if name == "" {
+		err = u.db.
+			Model(&model.User{}).
+			Count(&count).Error
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		err = u.db.
+			Model(&model.User{}).
+			Where("name ILIKE ?", "%"+name+"%").
+			Count(&count).Error
+		if err != nil {
+			return 0, err
+		}
 	}
 	return int(count), nil
 }

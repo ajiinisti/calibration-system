@@ -32,10 +32,12 @@ func (u *UserController) listHandler(c *gin.Context) {
 		u.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
 	}
 
+	nameQuery := c.Query("name")
 	users, pagination, err := u.uc.FindPagination(request.PaginationParam{
 		Page:   page,
 		Limit:  limit,
 		Offset: 0,
+		Name:   nameQuery,
 	})
 	if err != nil {
 		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
