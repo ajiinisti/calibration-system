@@ -69,7 +69,28 @@ func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
 		uniqueCalibratorIDsSlice = append(uniqueCalibratorIDsSlice, value)
 	}
 
-	err = r.notification.NotifyThisCalibrators(uniqueCalibratorIDsSlice)
+	var currentCalibrators []response.NotificationModel
+	for _, calibratorData := range uniqueCalibratorIDsSlice {
+		calibrations, err := r.repo.GetAllCalibrationByCalibratorID(calibratorData.CalibratorID)
+		if err != nil {
+			return err
+		}
+
+		flag := true
+		for _, calibrationData := range calibrations {
+			if calibrationData.Status != "Calibrate" {
+				flag = flag && false
+				break
+			}
+		}
+
+		if flag {
+			currentCalibrators = append(currentCalibrators, calibratorData)
+		}
+
+	}
+
+	err = r.notification.NotifyThisCalibrators(currentCalibrators)
 	if err != nil {
 		return err
 	}

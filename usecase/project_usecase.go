@@ -206,7 +206,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 	businessUnit := map[string]string{}
 	picIDs := map[string]string{}
 	resultSummary := map[string]*response.CalibratorBusinessUnit{}
-	users, err := r.repo.GetAllCalibrationByCalibratorID(calibratorId, phase)
+	users, err := r.repo.GetAllUserCalibrationByCalibratorID(calibratorId, phase)
 	if err != nil {
 		return nil, err
 	}

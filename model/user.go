@@ -28,7 +28,7 @@ type User struct {
 	Password               string `json:"-"`
 	Roles                  []Role `gorm:"many2many:user_roles"`
 	ResetPasswordToken     string
-	ScoringMethod          string        `gorm:"default:'Score'"`
+	ScoringMethod          string        `gorm:"default:Score"`
 	LastLogin              time.Time     `gorm:"type:timestamp without time zone"`
 	ExpiredPasswordToken   time.Time     `gorm:"type:timestamp without time zone"`
 	LastPasswordChanged    time.Time     `gorm:"type:timestamp without time zone"`

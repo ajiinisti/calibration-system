@@ -24,7 +24,7 @@ type ProjectRepo interface {
 	GetScoreDistributionByCalibratorID(businessUnitID string) (*model.Project, error)
 	GetRatingQuotaByCalibratorID(businessUnitID string) (*model.Project, error)
 	GetNumberOneUserWhoCalibrator(calibratorID string, businessUnit string, calibratorPhase int) ([]string, error)
-	GetAllCalibrationByCalibratorID(calibratorID string, calibratorPhase int) ([]model.User, error)
+	GetAllUserCalibrationByCalibratorID(calibratorID string, calibratorPhase int) ([]model.User, error)
 	GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int) (response.UserCalibration, error)
 	GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int, exceptUsers []string) (response.UserCalibration, error)
 	GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int, calibratorId string) (response.UserCalibration, error)
@@ -289,7 +289,7 @@ func (r *projectRepo) GetRatingQuotaByCalibratorID(businessUnitID string) (*mode
 	return &project, nil
 }
 
-func (r *projectRepo) GetAllCalibrationByCalibratorID(calibratorID string, calibratorPhase int) ([]model.User, error) {
+func (r *projectRepo) GetAllUserCalibrationByCalibratorID(calibratorID string, calibratorPhase int) ([]model.User, error) {
 	var calibration []model.User
 	err := r.db.
 		Table("users u").

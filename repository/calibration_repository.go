@@ -32,10 +32,24 @@ type CalibrationRepo interface {
 	GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
 	GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
 	GetCalibrateCalibration() ([]model.Calibration, error)
+	GetAllCalibrationByCalibratorID(calibratorId string) ([]model.Calibration, error)
 }
 
 type calibrationRepo struct {
 	db *gorm.DB
+}
+
+func (r *calibrationRepo) GetAllCalibrationByCalibratorID(calibratorId string) ([]model.Calibration, error) {
+	var calibrations []model.Calibration
+	err := r.db.
+		Table("calibrations c").
+		Where("c.calibrator_id = ?", calibratorId).
+		Find(&calibrations).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return calibrations, nil
 }
 
 func (r *calibrationRepo) GetCalibrateCalibration() ([]model.Calibration, error) {
@@ -71,16 +85,20 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
 	}()
 
 	fmt.Println("DATA KALIBRASI", len(payload.CalibrationDataForms))
-	for _, calibrationData := range payload.CalibrationDataForms {
+	for index, calibrationData := range payload.CalibrationDataForms {
 		fmt.Println("DATA KALIBRAASI YANG DIINPUT", calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
 		data := model.Calibration{
-			ProjectID:      calibrationData.ProjectID,
-			ProjectPhaseID: calibrationData.ProjectPhaseID,
-			EmployeeID:     calibrationData.EmployeeID,
-			CalibratorID:   calibrationData.CalibratorID,
-			SpmoID:         calibrationData.SpmoID,
-			Spmo2ID:        nil,
-			Spmo3ID:        nil,
+			ProjectID:         calibrationData.ProjectID,
+			ProjectPhaseID:    calibrationData.ProjectPhaseID,
+			EmployeeID:        calibrationData.EmployeeID,
+			CalibratorID:      calibrationData.CalibratorID,
+			SpmoID:            calibrationData.SpmoID,
+			Spmo2ID:           nil,
+			Spmo3ID:           nil,
+			Status:            "Waiting",
+			SpmoStatus:        "-",
+			SpmoComment:       "-",
+			JustificationType: "default",
 		}
 
 		if calibrationData.Spmo2ID != "" {
@@ -89,6 +107,10 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
 
 		if calibrationData.Spmo3ID != "" {
 			data.Spmo3ID = &calibrationData.Spmo3ID
+		}
+
+		if index == 0 {
+			data.Status = "Calibrate"
 		}
 
 		err := tx.Save(&data).Error
