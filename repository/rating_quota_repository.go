@@ -17,7 +17,7 @@ type RatingQuotaRepo interface {
 	Delete(projectId, businessunitId string) error
 	Bulksave(payload *[]model.RatingQuota) error
 	PaginateList(pagination model.PaginationQuery, id string) ([]model.RatingQuota, response.Paging, error)
-	GetTotalRows() (int, error)
+	GetTotalRows(name string) (int, error)
 }
 
 type ratingQuotaRepo struct {
@@ -111,12 +111,37 @@ func (r *ratingQuotaRepo) Delete(projectId, businessunitId string) error {
 
 func (r *ratingQuotaRepo) PaginateList(pagination model.PaginationQuery, id string) ([]model.RatingQuota, response.Paging, error) {
 	var ratingQuota []model.RatingQuota
-	err := r.db.Preload("Project").Preload("BusinessUnit").Limit(pagination.Take).Offset(pagination.Skip).Find(&ratingQuota, "project_id = ?", id).Error
-	if err != nil {
-		return nil, response.Paging{}, err
+	var err error
+
+	if pagination.Name == "" {
+		err = r.db.
+			Table("rating_quota rq").
+			Preload("Project").
+			Preload("BusinessUnit").
+			Limit(pagination.Take).
+			Offset(pagination.Skip).
+			Find(&ratingQuota, "project_id = ?", id).
+			Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
+	} else {
+		err = r.db.
+			Table("rating_quota rq").
+			Preload("Project").
+			Preload("BusinessUnit").
+			Joins("JOIN business_units b on rq.business_unit_id = b.id").
+			Where("b.name ILIKE ?", "%"+pagination.Name+"%").
+			Limit(pagination.Take).
+			Offset(pagination.Skip).
+			Find(&ratingQuota, "project_id = ?", id).
+			Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
 	}
 
-	totalRows, err := r.GetTotalRows()
+	totalRows, err := r.GetTotalRows(pagination.Name)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
@@ -124,11 +149,29 @@ func (r *ratingQuotaRepo) PaginateList(pagination model.PaginationQuery, id stri
 	return ratingQuota, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
 }
 
-func (r *ratingQuotaRepo) GetTotalRows() (int, error) {
+func (r *ratingQuotaRepo) GetTotalRows(name string) (int, error) {
 	var count int64
-	err := r.db.Model(&model.RatingQuota{}).Count(&count).Error
-	if err != nil {
-		return 0, err
+	var err error
+
+	if name == "" {
+		err = r.db.
+			Model(&model.RatingQuota{}).
+			Count(&count).
+			Error
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		err = r.db.
+			Table("rating_quota rq").
+			Model(&model.RatingQuota{}).
+			Joins("JOIN business_units b on rq.business_unit_id = b.id").
+			Where("b.name ILIKE ?", "%"+name+"%").
+			Count(&count).
+			Error
+		if err != nil {
+			return 0, err
+		}
 	}
 	return int(count), nil
 }

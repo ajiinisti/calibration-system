@@ -33,10 +33,12 @@ func (r *RatingQuotaController) listHandler(c *gin.Context) {
 	}
 
 	projectId := c.Query("id")
+	nameQuery := c.Query("name")
 	param := request.PaginationParam{
 		Page:   page,
 		Limit:  limit,
 		Offset: 0,
+		Name:   nameQuery,
 	}
 
 	ratingQuotas, pagination, err := r.uc.FindPagination(param, projectId)

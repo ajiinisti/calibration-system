@@ -93,10 +93,12 @@ func (u *UserController) getByProjectId(c *gin.Context) {
 	}
 
 	projectId := c.Param("projectId")
+	nameQuery := c.Query("name")
 	users, pagination, err := u.uc.FindByProjectIdPagination(request.PaginationParam{
 		Page:   page,
 		Limit:  limit,
 		Offset: 0,
+		Name:   nameQuery,
 	}, projectId)
 
 	if err != nil {

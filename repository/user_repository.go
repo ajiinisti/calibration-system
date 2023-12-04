@@ -18,7 +18,7 @@ type UserRepo interface {
 	PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error)
 	PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error)
 	GetTotalRows(name string) (int, error)
-	GetTotalRowsByProjectID(projectId string) (int, error)
+	GetTotalRowsByProjectID(projectId, name string) (int, error)
 }
 
 type userRepo struct {
@@ -167,25 +167,47 @@ func (u *userRepo) PaginateList(pagination model.PaginationQuery) ([]model.User,
 
 func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error) {
 	var users []model.User
-	err := u.db.
-		Preload("Roles").
-		Preload("ActualScores").
-		Preload("CalibrationScores").
-		Preload("CalibrationScores.Calibrator").
-		Preload("CalibrationScores.Spmo").
-		Preload("CalibrationScores.ProjectPhase").
-		Preload("CalibrationScores.ProjectPhase.Phase").
-		Joins("JOIN actual_scores ON users.id = actual_scores.employee_id AND actual_scores.deleted_at IS NULL").
-		Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
-		Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
-		Group("users.id").
-		Limit(pagination.Take).Offset(pagination.Skip).
-		Find(&users).Error
-	if err != nil {
-		return nil, response.Paging{}, err
+	var err error
+
+	if pagination.Name == "" {
+		err = u.db.
+			Preload("Roles").
+			Preload("ActualScores").
+			Preload("CalibrationScores").
+			Preload("CalibrationScores.Calibrator").
+			Preload("CalibrationScores.Spmo").
+			Preload("CalibrationScores.ProjectPhase").
+			Preload("CalibrationScores.ProjectPhase.Phase").
+			Joins("JOIN actual_scores ON users.id = actual_scores.employee_id AND actual_scores.deleted_at IS NULL").
+			Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
+			Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
+			Group("users.id").
+			Limit(pagination.Take).Offset(pagination.Skip).
+			Find(&users).Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
+	} else {
+		err = u.db.
+			Preload("Roles").
+			Preload("ActualScores").
+			Preload("CalibrationScores").
+			Preload("CalibrationScores.Calibrator").
+			Preload("CalibrationScores.Spmo").
+			Preload("CalibrationScores.ProjectPhase").
+			Preload("CalibrationScores.ProjectPhase.Phase").
+			Joins("JOIN actual_scores ON users.id = actual_scores.employee_id AND actual_scores.deleted_at IS NULL").
+			Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
+			Where("(actual_scores.project_id = ? OR calibrations.project_id = ?) AND name ILIKE ?", projectId, projectId, "%"+pagination.Name+"%").
+			Group("users.id").
+			Limit(pagination.Take).Offset(pagination.Skip).
+			Find(&users).Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
 	}
 
-	totalRows, err := u.GetTotalRowsByProjectID(projectId)
+	totalRows, err := u.GetTotalRowsByProjectID(projectId, pagination.Name)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
@@ -215,17 +237,33 @@ func (u *userRepo) GetTotalRows(name string) (int, error) {
 	return int(count), nil
 }
 
-func (u *userRepo) GetTotalRowsByProjectID(projectId string) (int, error) {
+func (u *userRepo) GetTotalRowsByProjectID(projectId, name string) (int, error) {
 	var count int64
-	err := u.db.
-		Model(&model.User{}).
-		Joins("JOIN actual_scores ON users.id = actual_scores.employee_id").
-		Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
-		Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
-		Group("users.id").
-		Count(&count).Error
-	if err != nil {
-		return 0, err
+	var err error
+
+	if name == "" {
+		err = u.db.
+			Model(&model.User{}).
+			Joins("JOIN actual_scores ON users.id = actual_scores.employee_id").
+			Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
+			Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
+			Group("users.id").
+			Count(&count).Error
+		if err != nil {
+			return 0, err
+		}
+
+	} else {
+		err = u.db.
+			Model(&model.User{}).
+			Joins("JOIN actual_scores ON users.id = actual_scores.employee_id").
+			Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
+			Where("(actual_scores.project_id = ? OR calibrations.project_id = ?) AND name ILIKE ?", projectId, projectId, "%"+name+"%").
+			Group("users.id").
+			Count(&count).Error
+		if err != nil {
+			return 0, err
+		}
 	}
 	return int(count), nil
 }
