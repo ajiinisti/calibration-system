@@ -13,7 +13,7 @@ import (
 type ProjectRepo interface {
 	BaseRepository[model.Project]
 	PaginateList(pagination model.PaginationQuery) ([]model.Project, response.Paging, error)
-	GetTotalRows() (int, error)
+	GetTotalRows(name string) (int, error)
 	ActivateByID(id string) error
 	DeactivateAllExceptID(id string) error
 	GetProjectPhaseOrder(calibratorID string) (int, error)
@@ -139,19 +139,36 @@ func (r *projectRepo) Delete(id string) error {
 
 func (r *projectRepo) PaginateList(pagination model.PaginationQuery) ([]model.Project, response.Paging, error) {
 	var projects []model.Project
-	err := r.db.
-		Preload("ActualScores").
-		Preload("ProjectPhases").
-		Preload("ProjectPhases.Phase").
-		Preload("ScoreDistributions").
-		Preload("ScoreDistributions.GroupBusinessUnit").
-		Preload("RemarkSettings").
-		Limit(pagination.Take).Offset(pagination.Skip).Find(&projects).Error
-	if err != nil {
-		return nil, response.Paging{}, err
+	var err error
+
+	if pagination.Name == "" {
+		err = r.db.
+			Preload("ActualScores").
+			Preload("ProjectPhases").
+			Preload("ProjectPhases.Phase").
+			Preload("ScoreDistributions").
+			Preload("ScoreDistributions.GroupBusinessUnit").
+			Preload("RemarkSettings").
+			Limit(pagination.Take).Offset(pagination.Skip).Find(&projects).Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
+	} else {
+		err = r.db.
+			Preload("ActualScores").
+			Preload("ProjectPhases").
+			Preload("ProjectPhases.Phase").
+			Preload("ScoreDistributions").
+			Preload("ScoreDistributions.GroupBusinessUnit").
+			Preload("RemarkSettings").
+			Where("name ILIKE ?", "%"+pagination.Name+"%").
+			Limit(pagination.Take).Offset(pagination.Skip).Find(&projects).Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
 	}
 
-	totalRows, err := r.GetTotalRows()
+	totalRows, err := r.GetTotalRows(pagination.Name)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
@@ -159,11 +176,22 @@ func (r *projectRepo) PaginateList(pagination model.PaginationQuery) ([]model.Pr
 	return projects, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
 }
 
-func (r *projectRepo) GetTotalRows() (int, error) {
+func (r *projectRepo) GetTotalRows(name string) (int, error) {
 	var count int64
-	err := r.db.Model(&model.Project{}).Count(&count).Error
-	if err != nil {
-		return 0, err
+	var err error
+	if name == "" {
+		err = r.db.Model(&model.Project{}).
+			Count(&count).Error
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		err = r.db.Model(&model.Project{}).
+			Where("name ILIKE ?", "%"+name+"%").
+			Count(&count).Error
+		if err != nil {
+			return 0, err
+		}
 	}
 	return int(count), nil
 }
