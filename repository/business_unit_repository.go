@@ -13,7 +13,7 @@ type BusinessUnitRepo interface {
 	BaseRepository[model.BusinessUnit]
 	Bulksave(payload *[]model.BusinessUnit) error
 	PaginateList(pagination model.PaginationQuery) ([]model.BusinessUnit, response.Paging, error)
-	GetTotalRows() (int, error)
+	GetTotalRows(name string) (int, error)
 }
 
 type businessUnitRepo struct {
@@ -84,12 +84,28 @@ func (r *businessUnitRepo) List() ([]model.BusinessUnit, error) {
 
 func (r *businessUnitRepo) PaginateList(pagination model.PaginationQuery) ([]model.BusinessUnit, response.Paging, error) {
 	var businessUnits []model.BusinessUnit
-	err := r.db.Preload("GroupBusinessUnit").Limit(pagination.Take).Offset(pagination.Skip).Find(&businessUnits).Error
-	if err != nil {
-		return nil, response.Paging{}, err
+	var err error
+
+	if pagination.Name == "" {
+		err = r.db.
+			Preload("GroupBusinessUnit").
+			Limit(pagination.Take).Offset(pagination.Skip).
+			Find(&businessUnits).Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
+	} else {
+		err = r.db.
+			Preload("GroupBusinessUnit").
+			Where("name ILIKE ?", "%"+pagination.Name+"%").
+			Limit(pagination.Take).Offset(pagination.Skip).
+			Find(&businessUnits).Error
+		if err != nil {
+			return nil, response.Paging{}, err
+		}
 	}
 
-	totalRows, err := r.GetTotalRows()
+	totalRows, err := r.GetTotalRows(pagination.Name)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
@@ -97,11 +113,24 @@ func (r *businessUnitRepo) PaginateList(pagination model.PaginationQuery) ([]mod
 	return businessUnits, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
 }
 
-func (r *businessUnitRepo) GetTotalRows() (int, error) {
+func (r *businessUnitRepo) GetTotalRows(name string) (int, error) {
 	var count int64
-	err := r.db.Model(&model.BusinessUnit{}).Count(&count).Error
-	if err != nil {
-		return 0, err
+	var err error
+	if name == "" {
+		err = r.db.
+			Model(&model.BusinessUnit{}).
+			Count(&count).Error
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		err = r.db.
+			Model(&model.BusinessUnit{}).
+			Where("name ILIKE ?", "%"+name+"%").
+			Count(&count).Error
+		if err != nil {
+			return 0, err
+		}
 	}
 	return int(count), nil
 }
