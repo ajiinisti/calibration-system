@@ -368,6 +368,25 @@ func (r *CalibrationController) sendNotificationFirstCalibratorHandler(c *gin.Co
 	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
+func (r *CalibrationController) getRatingQuotaSPMOHandlerByID(c *gin.Context) {
+	spmoID := c.Param("spmoID")
+	calibratorID := c.Param("calibratorID")
+	businessUnitID := c.Param("businessUnitID")
+	order := c.Param("order")
+
+	intOrder, err := strconv.Atoi(order)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	projects, err := r.uc.FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID, intOrder)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
 func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
 		router:       r,
@@ -381,9 +400,10 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.GET("/summary-calibrations/spmo/:spmoID", controller.getSummaryCalibrationsBySPMOIDHandler)
 	auth.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
 	// auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:department", controller.getAllDetailActiveCalibrationsBySPMOIDHandler)
-	auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
 	// auth.GET("/calibrations/spmo-accepted/:spmoID", controller.getAllAcceptedCalibrationsBySPMOIDHandler)
 	// auth.GET("/calibrations/spmo-rejected/:spmoID", controller.getAllRejectdCalibrationsBySPMOIDHandler)
+	auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
+	auth.GET("/calibrations/spmo/rating-quota/:spmoID/:calibratorID/:businessUnitID/:order", controller.getRatingQuotaSPMOHandlerByID)
 	auth.PUT("/calibrations", controller.updateHandler)
 	auth.POST("/calibrations", controller.createHandler)
 	auth.POST("/calibrations-user", controller.createByUserHandler)

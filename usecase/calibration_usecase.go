@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"math"
 	"mime/multipart"
 	"sort"
 
@@ -36,6 +37,7 @@ type CalibrationUsecase interface {
 	FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
 	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
 	SendNotificationToCurrentCalibrator() error
+	FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID string, order int) (*response.RatingQuota, error)
 }
 
 type calibrationUsecase struct {
@@ -90,7 +92,7 @@ func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
 
 	}
 
-	err = r.notification.NotifyThisCalibrators(currentCalibrators)
+	err = r.notification.NotifyThisCurrentCalibrators(currentCalibrators)
 	if err != nil {
 		return err
 	}
@@ -688,6 +690,70 @@ func (r *calibrationUsecase) FindAllDetailCalibrationbySPMOID(spmoID, calibrator
 
 func (r *calibrationUsecase) FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error) {
 	return r.repo.GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID, order)
+}
+
+func (r *calibrationUsecase) FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID string, order int) (*response.RatingQuota, error) {
+	users, err := r.FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, order)
+	if err != nil {
+		return nil, err
+	}
+
+	projects, err := r.project.FindProjectRatingQuotaByBusinessUnit(businessUnitID)
+	if err != nil {
+		return nil, err
+	}
+
+	ratingQuota := projects.RatingQuotas[0]
+	totalCalibrations := len(users)
+	responses := response.RatingQuota{
+		APlus: int(math.Floor(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
+		A:     int(math.Floor(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
+		BPlus: int(math.Floor(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
+		B:     int(math.Floor(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
+		C:     int(math.Floor(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
+		D:     int(math.Floor(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
+	}
+
+	var total = responses.APlus + responses.A +
+		responses.BPlus + responses.B +
+		responses.C + responses.D
+
+	if total < totalCalibrations {
+		if ratingQuota.Remaining == "A+" {
+			responses.APlus += (totalCalibrations - total)
+		} else if ratingQuota.Remaining == "A" {
+			responses.A += (totalCalibrations - total)
+		} else if ratingQuota.Remaining == "B+" {
+			responses.BPlus += (totalCalibrations - total)
+		} else if ratingQuota.Remaining == "B" {
+			responses.B += (totalCalibrations - total)
+		} else if ratingQuota.Remaining == "C" {
+			responses.C += (totalCalibrations - total)
+		} else {
+			responses.D += (totalCalibrations - total)
+		}
+		total += (totalCalibrations - total)
+	}
+
+	if total > totalCalibrations {
+		if ratingQuota.Excess == "A+" {
+			responses.APlus -= (total - totalCalibrations)
+		} else if ratingQuota.Excess == "A" {
+			responses.A -= (total - totalCalibrations)
+		} else if ratingQuota.Excess == "B+" {
+			responses.BPlus -= (total - totalCalibrations)
+		} else if ratingQuota.Excess == "B" {
+			responses.B -= (total - totalCalibrations)
+		} else if ratingQuota.Excess == "C" {
+			responses.C -= (total - totalCalibrations)
+		} else {
+			responses.D -= (total - totalCalibrations)
+		}
+		total -= (total - totalCalibrations)
+	}
+	responses.Total = total
+
+	return &responses, nil
 }
 
 func NewCalibrationUsecase(repo repository.CalibrationRepo, user UserUsecase, project ProjectUsecase, projectPhase ProjectPhaseUsecase, notification NotificationUsecase, actualScore ActualScoreUsecase) CalibrationUsecase {

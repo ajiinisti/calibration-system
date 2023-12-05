@@ -649,22 +649,10 @@ func (r *calibrationRepo) GetSummaryBySPMOID(spmoID string) ([]response.SPMOSumm
 		Joins("JOIN users u on c.employee_id = u.id").
 		Joins("JOIN business_units b on u.business_unit_id = b.id").
 		Joins("JOIN users u2 on c.calibrator_id = u2.id").
-		Where("spmo_id = ? AND p.order NOT IN (SELECT MAX(\"order\") FROM phases)", spmoID).
+		Where("(spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND p.order NOT IN (SELECT MAX(\"order\") FROM phases)", spmoID, spmoID, spmoID).
 		Group("u.business_unit_id, b.name, u2.name, c.calibrator_id, c.project_phase_id, p.order").
 		Order("p.order ASC").
 		Scan(&results).Error
-
-	// err := tx.Table("calibrations c").
-	// 	Select("COUNT(c.*) as count, u.business_unit_id, b.name as business_unit_name ,u.department, u2.name as calibrator_name, c.calibrator_id, c.project_phase_id, p.order").
-	// 	Joins("JOIN project_phases pp on pp.id = c.project_phase_id").
-	// 	Joins("JOIN phases p on pp.phase_id = p.id").
-	// 	Joins("JOIN users u on c.employee_id = u.id").
-	// 	Joins("JOIN business_units b on u.business_unit_id = b.id").
-	// 	Joins("JOIN users u2 on c.calibrator_id = u2.id").
-	// 	Where("spmo_id = ? AND p.order NOT IN (SELECT MAX(\"order\") FROM phases)", "23105b4e-e33c-4841-8e49-e23b8a745257").
-	// 	Group("u.business_unit_id, b.name, u.department, u2.name, c.calibrator_id, c.project_phase_id, p.order").
-	// 	Order("p.order ASC").
-	// 	Scan(&results).Error
 
 	if err != nil {
 		return nil, err
@@ -697,7 +685,7 @@ func (r *calibrationRepo) GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, 
 		Preload("CalibrationScores.BottomRemark").
 		Select("u.*, u2.name as supervisor_names").
 		Joins("JOIN business_units b ON u.business_unit_id = b.id AND b.id = ?", businessUnitID).
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.spmo_id = ? AND c1.calibrator_id = ?", spmoID, calibratorID).
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.calibrator_id = ?", spmoID, spmoID, spmoID, calibratorID).
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
 		Where("u.department = ?", department).
@@ -732,7 +720,7 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 		Preload("CalibrationScores.BottomRemark").
 		Select("u.*, u2.name as supervisor_names").
 		Joins("JOIN business_units b ON u.business_unit_id = b.id AND b.id = ?", businessUnitID).
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.spmo_id = ? AND c1.calibrator_id = ? AND c1.deleted_at IS NULL", spmoID, calibratorID).
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.calibrator_id = ? AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID, calibratorID).
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
 		Find(&calibration).Error
