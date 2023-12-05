@@ -14,6 +14,7 @@ import (
 type NotificationUsecase interface {
 	NotifyCalibrator() error
 	NotifyCalibrators(ids []string, deadline time.Time) error
+	NotifyThisCurrentCalibrators(data []response.NotificationModel) error
 	NotifyThisCalibrators(data []response.NotificationModel) error
 	NotifyApprovedCalibrationToCalibrator(ids []string) error
 	NotifyApprovedCalibrationToCalibrators(data []response.NotificationModel) error
@@ -171,6 +172,37 @@ func (n *notificationUsecase) NotifyThisCalibrators(data []response.Notification
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
 			Deadline:   calibratorData.Deadline.Format("02-January-2006"),
+			Calibrator: calibratorData.PreviousCalibrator,
+		}
+
+		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "calibratorEmailFromPrevious.html", n.cfg.SMTPConfig)
+		if err != nil {
+			return err
+		}
+
+		data2 := fmt.Sprintf("As a calibrator for Calibration System, you are requested to complete the phase %d of the calibration process from previous Calibrator %s. Please log in to Calibration System and complete before %s.", emailData.PhaseOrder, calibratorData.PreviousCalibrator, emailData.Deadline)
+		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (n *notificationUsecase) NotifyThisCurrentCalibrators(data []response.NotificationModel) error {
+	for _, calibratorData := range data {
+		employee, err := n.employee.FindById(calibratorData.CalibratorID)
+		if err != nil {
+			return err
+		}
+
+		emailData := utils.EmailData{
+			URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			FirstName:  employee.Name,
+			Subject:    "Calibration Assignment",
+			PhaseOrder: calibratorData.ProjectPhase,
+			Deadline:   calibratorData.Deadline.Format("02-January-2006"),
 		}
 
 		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
@@ -178,7 +210,7 @@ func (n *notificationUsecase) NotifyThisCalibrators(data []response.Notification
 			return err
 		}
 
-		data2 := fmt.Sprintf("As a calibrator for Calibration System, you are requested to complete the phase %d of the calibration process from previous Calibrator <b>%s</b>. Please log in to Calibration System and complete before %s.", emailData.PhaseOrder, calibratorData.PreviousCalibrator, emailData.Deadline)
+		data2 := fmt.Sprintf("As a calibrator for Calibration System, you are requested to complete the phase %d of the calibration process. Please log in to Calibration System and complete before %s.", emailData.PhaseOrder, emailData.Deadline)
 		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
 		if err != nil {
 			return err

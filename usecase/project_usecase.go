@@ -3,6 +3,7 @@ package usecase
 import (
 	"fmt"
 	"math"
+	"sort"
 
 	"calibration-system.com/delivery/api/request"
 	"calibration-system.com/delivery/api/response"
@@ -28,6 +29,7 @@ type ProjectUsecase interface {
 	FindActiveProjectPhase() ([]model.ProjectPhase, error)
 	FindActiveManagerPhase() (model.ProjectPhase, error)
 	FindActiveProject() (*model.Project, error)
+	FindProjectRatingQuotaByBusinessUnit(businessUnitID string) (*model.Project, error)
 }
 
 type projectUsecase struct {
@@ -344,6 +346,13 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		fmt.Println("ISI BU UNIT", key)
 	}
 
+	sort.Slice(result.Summary, func(i, j int) bool {
+		if result.Summary[i].CalibratorBusinessUnit != result.Summary[j].CalibratorBusinessUnit {
+			return result.Summary[i].CalibratorBusinessUnit < result.Summary[j].CalibratorBusinessUnit
+		}
+		return result.Summary[i].CalibratorName < result.Summary[j].CalibratorName
+	})
+
 	return result, nil
 }
 
@@ -417,6 +426,15 @@ func (r *projectUsecase) FindActiveManagerPhase() (model.ProjectPhase, error) {
 	}
 
 	return projectPhase, nil
+}
+
+func (r *projectUsecase) FindProjectRatingQuotaByBusinessUnit(businessUnitID string) (*model.Project, error) {
+	projects, err := r.repo.GetRatingQuotaByCalibratorID(businessUnitID)
+	if err != nil {
+		return nil, err
+	}
+
+	return projects, nil
 }
 
 func NewProjectUsecase(repo repository.ProjectRepo) ProjectUsecase {
