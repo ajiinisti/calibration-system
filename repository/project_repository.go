@@ -42,15 +42,15 @@ func (r *projectRepo) Save(payload *model.Project) error {
 
 	if payload.ID == "" {
 		var project model.Project
-		err := r.db.
+		_ = r.db.
 			Preload("ScoreDistributions").
 			Preload("ScoreDistributions.GroupBusinessUnit").
 			Preload("RemarkSettings").
 			Order("created_at DESC").
 			First(&project).Error
-		if err != nil {
-			return err
-		}
+		// if err != nil {
+		// 	return err
+		// }
 
 		for _, scoreD := range project.ScoreDistributions {
 			payload.ScoreDistributions = append(payload.ScoreDistributions, model.ScoreDistribution{
