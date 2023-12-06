@@ -84,9 +84,9 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
 		}
 	}()
 
-	fmt.Println("DATA KALIBRASI", len(payload.CalibrationDataForms))
+	// fmt.Println("DATA KALIBRASI", len(payload.CalibrationDataForms))
 	for index, calibrationData := range payload.CalibrationDataForms {
-		fmt.Println("DATA KALIBRAASI YANG DIINPUT", calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
+		// fmt.Println("DATA KALIBRAASI YANG DIINPUT", calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
 		data := model.Calibration{
 			ProjectID:         calibrationData.ProjectID,
 			ProjectPhaseID:    calibrationData.ProjectPhaseID,
@@ -99,6 +99,19 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
 			SpmoStatus:        "-",
 			SpmoComment:       "-",
 			JustificationType: "default",
+		}
+
+		getCalibration, _ := r.Get(calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
+		if getCalibration != nil {
+			data.BottomRemark = getCalibration.BottomRemark
+			data.TopRemarks = getCalibration.TopRemarks
+			data.CalibrationScore = getCalibration.CalibrationScore
+			data.CalibrationRating = getCalibration.CalibrationRating
+			data.Status = getCalibration.Status
+			data.SpmoStatus = getCalibration.SpmoStatus
+			data.SpmoComment = getCalibration.SpmoComment
+			data.JustificationType = getCalibration.JustificationType
+			data.JustificationReviewStatus = getCalibration.JustificationReviewStatus
 		}
 
 		if calibrationData.Spmo2ID != "" {
