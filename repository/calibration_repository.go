@@ -22,7 +22,7 @@ type CalibrationRepo interface {
 	Delete(projectId, employeeId string) error
 	DeleteCalibrationPhase(projectId, projectPhaseId, employeeId string) error
 	Bulksave(payload *[]model.Calibration) error
-	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, error)
+	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, []*response.NotificationModel, error)
 	UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, string, error)
 	SaveChanges(payload *request.CalibrationRequest) error
 	AcceptCalibration(payload *request.AcceptJustification, phaseOrder int) error
@@ -348,7 +348,7 @@ func (r *calibrationRepo) DeleteCalibrationPhase(projectId, projectPhaseId, empl
 	return nil
 }
 
-func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, error) {
+func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, []*response.NotificationModel, error) {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -360,6 +360,7 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 	var spmoID []*string
 
 	var employeeCalibrationScore []*model.Calibration
+	var nextCalibrator []*response.NotificationModel
 	for _, calibrations := range payload.RequestData {
 		spmoID = append(spmoID, &calibrations.SpmoID)
 		spmoID = append(spmoID, calibrations.Spmo2ID)
@@ -375,16 +376,19 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 		result := tx.Updates(calibrations)
 		if result.Error != nil {
 			tx.Rollback()
-			return nil, result.Error
+			return nil, nil, result.Error
 		} else if result.RowsAffected == 0 {
 			tx.Rollback()
-			return nil, fmt.Errorf("Calibrations not found!")
+			return nil, nil, fmt.Errorf("Calibrations not found!")
 		}
 	}
+
 	for _, employeeCalibration := range employeeCalibrationScore {
-		var calibrations []model.Calibration
+		var calibrations []*model.Calibration
 		err := tx.Table("calibrations").
 			Select("calibrations.*").
+			Preload("ProjectPhase").
+			Preload("ProjectPhase.Phase").
 			Joins("JOIN projects ON projects.id = calibrations.project_id").
 			Joins("JOIN project_phases ON project_phases.id = calibrations.project_phase_id").
 			Joins("JOIN phases ON phases.id = project_phases.phase_id").
@@ -394,7 +398,7 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return nil, nil, err
 		}
 
 		for _, c := range calibrations {
@@ -404,21 +408,26 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 			err := tx.Updates(c).Error
 			if err != nil {
 				tx.Rollback()
-				return nil, err
+				return nil, nil, err
 			}
 		}
 
 		if !reviewSPMO && len(calibrations) > 0 {
+			nextCalibrator = append(nextCalibrator, &response.NotificationModel{
+				CalibratorID: calibrations[0].CalibratorID,
+				ProjectPhase: calibrations[0].ProjectPhase.Phase.Order,
+				Deadline:     calibrations[0].ProjectPhase.EndDate,
+			})
 			calibrations[0].Status = "Calibrate"
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 
 	tx.Commit()
-	return spmoID, nil
+	return spmoID, nextCalibrator, nil
 }
 
 func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, string, error) {

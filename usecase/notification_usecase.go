@@ -18,6 +18,7 @@ type NotificationUsecase interface {
 	NotifyThisCalibrators(data []response.NotificationModel) error
 	NotifyApprovedCalibrationToCalibrator(ids []string) error
 	NotifyApprovedCalibrationToCalibrators(data []response.NotificationModel) error
+	NotifySubmittedCalibrationToCalibratorsWithoutReview(data response.NotificationModel) error
 	NotifyRejectedCalibrationToCalibrator(id, employee, comment string) error
 	NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User) error
 }
@@ -113,7 +114,7 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrator(ids []string
 		}
 
 		emailData := utils.EmailData{
-			URL:       "http://localhost:3000/",
+			URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -140,7 +141,7 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 		}
 
 		emailData := utils.EmailData{
-			URL:       "http://localhost:3000/",
+			URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -155,6 +156,31 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (n *notificationUsecase) NotifySubmittedCalibrationToCalibratorsWithoutReview(data response.NotificationModel) error {
+	user, err := n.employee.FindById(data.CalibratorID)
+	if err != nil {
+		return err
+	}
+
+	emailData := utils.EmailData{
+		URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+		FirstName: user.Name,
+		Subject:   "Submitted Calibration",
+	}
+
+	err = utils.SendMail([]string{user.Email}, &emailData, "./utils/templates", "submitCalibrationWithoutSpmoEmail.html", n.cfg.SMTPConfig)
+	if err != nil {
+		return err
+	}
+
+	data2 := fmt.Sprintf("Your calibration has been submitted, and it will now be forwarded to the next phase's calibrator. We would greatly appreciate it if you do not disclose these interim results to anyone. Thank you for your attention and cooperation.")
+	err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, user.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -227,7 +253,7 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 	}
 
 	emailData := utils.EmailData{
-		URL:          "http://localhost:3000/",
+		URL:          fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 		FirstName:    user.Name,
 		Subject:      "Rejected Calibration",
 		Comment:      comment,
@@ -251,7 +277,7 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 func (n *notificationUsecase) NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User) error {
 	for _, spmo := range listOfSpmo {
 		emailData := utils.EmailData{
-			URL:        "http://localhost:3000/",
+			URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName:  spmo.Name,
 			Subject:    "Submitted Worksheet",
 			Calibrator: calibrator.Name,

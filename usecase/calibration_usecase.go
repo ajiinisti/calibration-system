@@ -428,7 +428,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 		return err
 	}
 
-	spmoIDs, err := r.repo.BulkUpdate(payload, *projectPhase)
+	spmoIDs, nextCalibrator, err := r.repo.BulkUpdate(payload, *projectPhase)
 	if err != nil {
 		return err
 	}
@@ -438,26 +438,58 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 		return err
 	}
 
-	mapSpmo := make(map[string]*model.User)
-	for _, spmoID := range spmoIDs {
-		if spmoID != nil {
-			spmo, err := r.user.FindById(*spmoID)
-			if err != nil {
-				return err
-			}
+	if projectPhase.ReviewSpmo {
+		mapSpmo := make(map[string]*model.User)
+		for _, spmoID := range spmoIDs {
+			if spmoID != nil {
+				spmo, err := r.user.FindById(*spmoID)
+				if err != nil {
+					return err
+				}
 
-			if _, ok := mapSpmo[*spmoID]; !ok {
-				mapSpmo[*spmoID] = spmo
+				if _, ok := mapSpmo[*spmoID]; !ok {
+					mapSpmo[*spmoID] = spmo
+				}
+			}
+		}
+
+		var listSpmo []*model.User
+		for _, data := range mapSpmo {
+			listSpmo = append(listSpmo, data)
+		}
+
+		err = r.notification.NotifyCalibrationToSpmo(calibrator, listSpmo)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	nCalibrator := make(map[string]response.NotificationModel)
+	for _, requestData := range nextCalibrator {
+		if _, ok := nCalibrator[requestData.CalibratorID]; !ok {
+			nCalibrator[requestData.CalibratorID] = response.NotificationModel{
+				CalibratorID:       requestData.CalibratorID,
+				ProjectPhase:       requestData.ProjectPhase,
+				Deadline:           requestData.Deadline,
+				PreviousCalibrator: calibrator.Name,
 			}
 		}
 	}
 
-	var listSpmo []*model.User
-	for _, data := range mapSpmo {
-		listSpmo = append(listSpmo, data)
+	var uniqueNextCalibrator []response.NotificationModel
+	for _, data := range nCalibrator {
+		uniqueNextCalibrator = append(uniqueNextCalibrator, data)
 	}
 
-	err = r.notification.NotifyCalibrationToSpmo(calibrator, listSpmo)
+	err = r.notification.NotifySubmittedCalibrationToCalibratorsWithoutReview(response.NotificationModel{
+		CalibratorID: calibratorID,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = r.notification.NotifyThisCalibrators(uniqueNextCalibrator)
 	if err != nil {
 		return err
 	}
