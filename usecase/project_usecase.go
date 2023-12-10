@@ -282,8 +282,12 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 			}
 
 			if user.CalibrationScores[calibrationLength-1].Status != "Complete" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
-				resp.Status = "Pending"
+				resp.Status = "Calibrate"
 			}
+			if user.CalibrationScores[calibrationLength-1].Status == "Waiting" {
+				resp.Status = "Waiting"
+			}
+
 			resultSummary[picName+user.BusinessUnit.Name] = resp
 			// result.Summary = append(result.Summary, resp)
 			// fmt.Println("SUMMARY 2A", result.Summary)
@@ -303,8 +307,18 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 					summary.D += 1
 				}
 
-				if user.CalibrationScores[calibrationLength-1].Status != "Complete" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
-					summary.Status = "Pending"
+				if user.CalibrationScores[calibrationLength-1].Status == "Complete" {
+					summary.Status = "Complete"
+				}
+
+				if user.CalibrationScores[calibrationLength-1].Status == "Calibrate" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
+					if summary.Status != "Waiting" {
+						summary.Status = "Calibrate"
+					}
+				}
+
+				if user.CalibrationScores[calibrationLength-1].Status == "Waiting" {
+					summary.Status = "Waiting"
 				}
 			}
 		}
@@ -321,7 +335,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 	for _, summary := range resultSummary {
 		types := "default"
 		if _, isExist := buCheck[summary.CalibratorBusinessUnit]; !isExist {
-			types = "numberOne"
+			// types = "numberOne"
 			buCheck[summary.CalibratorBusinessUnit] = summary.CalibratorBusinessUnit
 		}
 
