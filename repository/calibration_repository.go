@@ -11,7 +11,7 @@ import (
 
 type CalibrationRepo interface {
 	Save(payload *model.Calibration) error
-	SaveByUser(payload *request.CalibrationForm) error
+	SaveByUser(payload *request.CalibrationForm, project *model.Project) error
 	Get(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
 	GetAllPreviousEmployeeCalibrationByActiveProject(employeeID string, phaseOrder int) ([]model.Calibration, error)
 	GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error)
@@ -20,6 +20,7 @@ type CalibrationRepo interface {
 	GetAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
 	GetRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	Delete(projectId, employeeId string) error
+	DeleteCalibrationPhase(projectId, projectPhaseId, employeeId string) error
 	Bulksave(payload *[]model.Calibration) error
 	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, error)
 	UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, string, error)
@@ -76,7 +77,7 @@ func (r *calibrationRepo) Save(payload *model.Calibration) error {
 	return nil
 }
 
-func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
+func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *model.Project) error {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -84,9 +85,31 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm) error {
 		}
 	}()
 
-	// fmt.Println("DATA KALIBRASI", len(payload.CalibrationDataForms))
+	excludeProjectPhase := map[string]string{}
+	for _, projectPhase := range project.ProjectPhases {
+		for _, calibrationData := range payload.CalibrationDataForms {
+			if projectPhase.ID != calibrationData.ProjectPhaseID {
+				if _, ok := excludeProjectPhase[projectPhase.ID]; !ok {
+					excludeProjectPhase[projectPhase.ID] = projectPhase.ID
+				}
+			} else {
+				break
+			}
+		}
+	}
+
+	for _, projectPhaseID := range excludeProjectPhase {
+		cal, _ := r.Get(payload.CalibrationDataForms[0].ProjectID, projectPhaseID, payload.CalibrationDataForms[0].EmployeeID)
+		if cal != nil {
+			err := r.DeleteCalibrationPhase(payload.CalibrationDataForms[0].ProjectID, projectPhaseID, payload.CalibrationDataForms[0].EmployeeID)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+
 	for index, calibrationData := range payload.CalibrationDataForms {
-		// fmt.Println("DATA KALIBRAASI YANG DIINPUT", calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
 		data := model.Calibration{
 			ProjectID:         calibrationData.ProjectID,
 			ProjectPhaseID:    calibrationData.ProjectPhaseID,
@@ -307,6 +330,16 @@ func (r *calibrationRepo) List() ([]model.Calibration, error) {
 
 func (r *calibrationRepo) Delete(projectId, employeeId string) error {
 	result := r.db.Unscoped().Where("project_id = ? AND employee_id = ?", projectId, employeeId).Delete(&model.Calibration{})
+	if result.Error != nil {
+		return result.Error
+	} else if result.RowsAffected == 0 {
+		return fmt.Errorf("Calibration not found!")
+	}
+	return nil
+}
+
+func (r *calibrationRepo) DeleteCalibrationPhase(projectId, projectPhaseId, employeeId string) error {
+	result := r.db.Unscoped().Where("project_id = ? AND employee_id = ? AND project_phase_id = ?", projectId, employeeId, projectPhaseId).Delete(&model.Calibration{})
 	if result.Error != nil {
 		return result.Error
 	} else if result.RowsAffected == 0 {

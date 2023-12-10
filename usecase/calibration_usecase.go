@@ -162,7 +162,12 @@ func (r *calibrationUsecase) SaveData(payload *model.Calibration) error {
 }
 
 func (r *calibrationUsecase) SaveDataByUser(payload *request.CalibrationForm) error {
-	err := r.repo.SaveByUser(payload)
+	project, err := r.project.FindById(payload.CalibrationDataForms[0].ProjectID)
+	if err != nil {
+		return err
+	}
+
+	err = r.repo.SaveByUser(payload, project)
 	if err != nil {
 		return err
 	}
@@ -395,6 +400,14 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 					// HrbpID:         hrbp.ID,
 				}
 				calibrations = append(calibrations, cali)
+			} else {
+				cal, _ := r.repo.Get(projectId, phases[j-1], employee.ID)
+				if cal != nil {
+					err := r.repo.DeleteCalibrationPhase(projectId, phases[j-1], employee.ID)
+					if err != nil {
+						return err
+					}
+				}
 			}
 			supervisorNIK = calibratorNik
 		}
