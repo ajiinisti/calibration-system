@@ -769,6 +769,7 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 				Where("projects.active = true AND p.order <= ?", order).
 				Order("p.order ASC")
 		}).
+		Preload("CalibrationScores.Calibrator").
 		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("CalibrationScores.TopRemarks").

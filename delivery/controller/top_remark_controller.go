@@ -76,6 +76,7 @@ func (r *TopRemarkController) createHandler(c *gin.Context) {
 
 func (r *TopRemarkController) createHandlerByProject(c *gin.Context) {
 	payloadsJSON := c.Request.FormValue("payloads")
+	projectPhaseBefore := c.Param("projectPhaseBefore")
 	var payloads []*model.TopRemark
 	if err := json.Unmarshal([]byte(payloadsJSON), &payloads); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -101,7 +102,18 @@ func (r *TopRemarkController) createHandlerByProject(c *gin.Context) {
 			payloadData.EvidenceName = header.Filename
 			payloadData.Evidence = fileBytes
 		} else {
-			payloadData.EvidenceName = ""
+			if projectPhaseBefore != "" {
+				topRemark, err := r.uc.FindById(payloadData.ID)
+				if err != nil {
+					r.NewFailedResponse(c, http.StatusInternalServerError, fmt.Sprintf("get remark: %s", err.Error()))
+					return
+				}
+				payloadData.EvidenceName = topRemark.EvidenceName
+				payloadData.Evidence = topRemark.Evidence
+				payloadData.ID = ""
+			} else {
+				payloadData.EvidenceName = ""
+			}
 		}
 
 	}
@@ -181,7 +193,7 @@ func NewTopRemarkController(r *gin.Engine, tokenService authenticator.AccessToke
 	r.GET("/view-initiative/:id", controller.viewFileHandler)
 	auth.PUT("/top-remark", controller.updateHandler)
 	auth.POST("/top-remark", controller.createHandler)
-	auth.POST("/top-remark/project", controller.createHandlerByProject)
+	auth.POST("/top-remark/project/:projectPhaseBefore", controller.createHandlerByProject)
 	auth.POST("/top-remark/delete", controller.deleteHandlerByProject)
 	auth.DELETE("/top-remark/:id", controller.deleteHandler)
 	return &controller

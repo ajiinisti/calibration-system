@@ -456,6 +456,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 				Where("proj2.active = ? AND p.order <= ?", true, phase).
 				Order("p.order")
 		}).
+		Preload("CalibrationScores.Calibrator").
 		Preload("CalibrationScores.TopRemarks").
 		Preload("CalibrationScores.BottomRemark").
 		Preload("CalibrationScores.ProjectPhase").
@@ -583,6 +584,7 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 				Where("proj2.active = ? AND p.order <= ?", true, phase).
 				Order("p.order")
 		}).
+		Preload("CalibrationScores.Calibrator").
 		Preload("CalibrationScores.TopRemarks").
 		Preload("CalibrationScores.BottomRemark").
 		Preload("CalibrationScores.ProjectPhase").
@@ -713,6 +715,7 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 				Where("proj2.active = ? AND p.order <= ?", true, phase).
 				Order("p.order")
 		}).
+		Preload("CalibrationScores.Calibrator").
 		Preload("CalibrationScores.TopRemarks").
 		Preload("CalibrationScores.BottomRemark").
 		Preload("CalibrationScores.ProjectPhase").
