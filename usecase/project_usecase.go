@@ -223,10 +223,11 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 				if _, isExist := prevCalibrator[user.Name]; calibrationLength == 1 && isExist {
 					picName = user.Name
 					picId = user.ID
-				} else if name, isExist := businessUnit[user.BusinessUnit.Name]; calibrationLength == 1 && isExist {
-					picName = name
-					picId = picIDs[user.BusinessUnit.Name]
 				}
+				// else if name, isExist := businessUnit[user.BusinessUnit.Name]; calibrationLength == 1 && isExist {
+				// 	picName = name
+				// 	picId = picIDs[user.BusinessUnit.Name]
+				// }
 
 				pic = true
 				break
@@ -319,6 +320,51 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 
 				if user.CalibrationScores[calibrationLength-1].Status == "Waiting" {
 					summary.Status = "Waiting"
+				}
+			} else {
+				if picName == "N-1" {
+					resp := &response.CalibratorBusinessUnit{
+						CalibratorName:           picName,
+						CalibratorID:             picId,
+						CalibratorBusinessUnit:   user.BusinessUnit.Name,
+						CalibratorBusinessUnitID: *user.BusinessUnitId,
+						APlus:                    0,
+						A:                        0,
+						BPlus:                    0,
+						B:                        0,
+						C:                        0,
+						D:                        0,
+						APlusGuidance:            0,
+						AGuidance:                0,
+						BPlusGuidance:            0,
+						BGuidance:                0,
+						CGuidance:                0,
+						DGuidance:                0,
+						Status:                   "Complete",
+					}
+
+					if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
+						resp.APlus += 1
+					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A" {
+						resp.A += 1
+					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "B+" {
+						resp.BPlus += 1
+					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "B" {
+						resp.B += 1
+					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "C" {
+						resp.C += 1
+					} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "D" {
+						resp.D += 1
+					}
+
+					if user.CalibrationScores[calibrationLength-1].Status != "Complete" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
+						resp.Status = "Calibrate"
+					}
+					if user.CalibrationScores[calibrationLength-1].Status == "Waiting" {
+						resp.Status = "Waiting"
+					}
+
+					resultSummary[picName+user.BusinessUnit.Name] = resp
 				}
 			}
 		}

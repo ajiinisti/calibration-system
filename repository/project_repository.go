@@ -678,6 +678,26 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 	var users []model.User
 	var resultUsers []response.UserResponse
 
+	// prev calibrator
+	queryPrevCalibrator := r.db.
+		Table("users u2").
+		Select("u2.id").
+		Joins("JOIN calibrations c2 ON c2.calibrator_id = u2.id AND c2.deleted_at IS NULL").
+		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.active = true").
+		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
+		Where("u2.business_unit_id = ?", businessUnit)
+
+	// Subquery
+	subquery := r.db.
+		Table("users u2").
+		Select("u2.id").
+		Joins("JOIN calibrations c2 ON c2.employee_id = u2.id AND c2.deleted_at IS NULL").
+		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.active = true").
+		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
+		Where("u2.business_unit_id = ?", businessUnit)
+
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
@@ -699,13 +719,11 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
 		Select("u.*").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.calibrator_id = ?", calibratorId).
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
-		Joins("JOIN phases p ON p.id = pp.phase_id").
-		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN users u2 ON c1.calibrator_id = u2.id AND c1.calibrator_id = ?", calibratorId).
-		Where("p.order = ? AND b.id = ? ", phase, businessUnit).
+		Joins("JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
+		Where("u.business_unit_id = ? AND u.id NOT IN (?)  AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
 		Find(&users).Error
 
 	NPlusOneManagerFlag := false
@@ -718,15 +736,6 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 			return response.UserCalibration{}, err
 		}
 
-		if len(user.CalibrationScores) > 1 {
-			if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.Phase.Order == 1 {
-				NPlusOneManagerFlag = NPlusOneManagerFlag || true
-
-				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
-					SendToManagerFlag = SendToManagerFlag || true
-				}
-			}
-		}
 		resultUsers = append(resultUsers, response.UserResponse{
 			BaseModel: model.BaseModel{
 				ID:        user.ID,
