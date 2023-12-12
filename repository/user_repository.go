@@ -172,8 +172,19 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 	if pagination.Name == "" {
 		err = u.db.
 			Preload("Roles").
-			Preload("ActualScores").
-			Preload("CalibrationScores").
+			Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+				return db.
+					Joins("JOIN projects proj2 ON actual_scores.project_id = proj2.id").
+					Where("proj2.id = ?", projectId)
+			}).
+			Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+				return db.
+					Joins("JOIN projects proj2 ON calibrations.project_id = proj2.id").
+					Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+					Joins("JOIN phases p ON p.id = pp.phase_id ").
+					Where("proj2.id = ?", projectId).
+					Order("p.order ASC")
+			}).
 			Preload("CalibrationScores.Calibrator").
 			Preload("CalibrationScores.Spmo").
 			Preload("CalibrationScores.ProjectPhase").
@@ -190,8 +201,19 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 	} else {
 		err = u.db.
 			Preload("Roles").
-			Preload("ActualScores").
-			Preload("CalibrationScores").
+			Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+				return db.
+					Joins("JOIN projects proj2 ON actual_scores.project_id = proj2.id").
+					Where("proj2.active = ?", true)
+			}).
+			Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+				return db.
+					Joins("JOIN projects proj2 ON calibrations.project_id = proj2.id").
+					Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+					Joins("JOIN phases p ON p.id = pp.phase_id ").
+					Where("proj2.active = ?", true).
+					Order("p.order ASC")
+			}).
 			Preload("CalibrationScores.Calibrator").
 			Preload("CalibrationScores.Spmo").
 			Preload("CalibrationScores.ProjectPhase").
