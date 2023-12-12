@@ -17,7 +17,7 @@ type RatingQuotaRepo interface {
 	Delete(projectId, businessunitId string) error
 	Bulksave(payload *[]model.RatingQuota) error
 	PaginateList(pagination model.PaginationQuery, id string) ([]model.RatingQuota, response.Paging, error)
-	GetTotalRows(name string) (int, error)
+	GetTotalRows(projectId string, name string) (int, error)
 }
 
 type ratingQuotaRepo struct {
@@ -141,7 +141,7 @@ func (r *ratingQuotaRepo) PaginateList(pagination model.PaginationQuery, id stri
 		}
 	}
 
-	totalRows, err := r.GetTotalRows(pagination.Name)
+	totalRows, err := r.GetTotalRows(id, pagination.Name)
 	if err != nil {
 		return nil, response.Paging{}, err
 	}
@@ -149,13 +149,15 @@ func (r *ratingQuotaRepo) PaginateList(pagination model.PaginationQuery, id stri
 	return ratingQuota, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
 }
 
-func (r *ratingQuotaRepo) GetTotalRows(name string) (int, error) {
+func (r *ratingQuotaRepo) GetTotalRows(projectId string, name string) (int, error) {
 	var count int64
 	var err error
 
 	if name == "" {
 		err = r.db.
+			Table("rating_quota rq").
 			Model(&model.RatingQuota{}).
+			Where("rq.project_id = ?", projectId).
 			Count(&count).
 			Error
 		if err != nil {
@@ -166,7 +168,7 @@ func (r *ratingQuotaRepo) GetTotalRows(name string) (int, error) {
 			Table("rating_quota rq").
 			Model(&model.RatingQuota{}).
 			Joins("JOIN business_units b on rq.business_unit_id = b.id").
-			Where("b.name ILIKE ?", "%"+name+"%").
+			Where("b.name ILIKE ? AND rq.project_id = ?", "%"+name+"%", projectId).
 			Count(&count).
 			Error
 		if err != nil {
