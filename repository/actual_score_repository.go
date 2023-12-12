@@ -65,7 +65,7 @@ func (r *actualScoreRepo) Bulksave(payload *[]model.ActualScore) error {
 
 func (r *actualScoreRepo) Get(projectId, employeeId string) (*model.ActualScore, error) {
 	var actualScore model.ActualScore
-	err := r.db.Preload("Project").Preload("Employee").First(&actualScore, "project_id = ? AND employee_id = ?", projectId, employeeId).Error
+	err := r.db.Preload("Project").Preload("Employee").Preload("Employee.BusinessUnit").First(&actualScore, "project_id = ? AND employee_id = ?", projectId, employeeId).Error
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (r *actualScoreRepo) Get(projectId, employeeId string) (*model.ActualScore,
 
 func (r *actualScoreRepo) List() ([]model.ActualScore, error) {
 	var actualScores []model.ActualScore
-	err := r.db.Preload("Project").Preload("Employee").Find(&actualScores).Error
+	err := r.db.Preload("Project").Preload("Employee").Preload("Employee.BusinessUnit").Find(&actualScores).Error
 	if err != nil {
 		return nil, err
 	}
