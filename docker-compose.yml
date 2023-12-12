@@ -23,6 +23,10 @@ services:
       - SMTP_SENDER=${SMTP_SENDER}
       - SMTP_EMAIL=${SMTP_EMAIL}
       - SMTP_PASS=${SMTP_PASS}
+      - WA_API_URL=${WA_API_URL}
+      - WA_TEMPLATE_ID=${WA_TEMPLATE_ID}
+      - WA_API_KEY=${WA_API_KEY}
+      - WA_SHORTEN_URL=${WA_SHORTEN_URL}
     ports:
       - ${API_PORT}:5000
     depends_on:

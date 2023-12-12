@@ -2,12 +2,10 @@ package config
 
 import (
 	"errors"
-	"log"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/joho/godotenv"
 )
 
 type DbConfig struct {
@@ -69,12 +67,11 @@ type Config struct {
 }
 
 func (c *Config) ReadConfigFile() error {
-	// if os.Getenv("ENV") == "local" {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println(err)
-		return errors.New("Failed to load .env file")
-	}
+	// Nyalakan untuk local saja, kalau sudah di docker matikan
+	// err := godotenv.Load(".env")
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return errors.New("Failed to load .env file")
 	// }
 
 	c.DbConfig = DbConfig{
