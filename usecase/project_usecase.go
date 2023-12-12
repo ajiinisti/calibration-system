@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"math"
 	"sort"
 
@@ -129,9 +128,17 @@ func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibra
 
 	if total > totalCalibrations {
 		if ratingQuota.Excess == "A+" {
-			responses.APlus -= (total - totalCalibrations)
+			if responses.APlus-(total-totalCalibrations) > 0 {
+				responses.APlus -= (total - totalCalibrations)
+			} else {
+				responses.BPlus -= (total - totalCalibrations)
+			}
 		} else if ratingQuota.Excess == "A" {
-			responses.A -= (total - totalCalibrations)
+			if responses.A-(total-totalCalibrations) > 0 {
+				responses.A -= (total - totalCalibrations)
+			} else {
+				responses.BPlus -= (total - totalCalibrations)
+			}
 		} else if ratingQuota.Excess == "B+" {
 			responses.BPlus -= (total - totalCalibrations)
 		} else if ratingQuota.Excess == "B" {
@@ -196,7 +203,20 @@ func (r *projectUsecase) FindTotalActualScoreByCalibratorID(calibratorId, prevCa
 
 func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (*response.SummaryProject, error) {
 	result := &response.SummaryProject{
-		Summary: []*response.CalibratorBusinessUnit{},
+		Summary:           []*response.CalibratorBusinessUnit{},
+		APlusTotalScore:   0,
+		ATotalScore:       0,
+		BPlusTotalScore:   0,
+		BTotalScore:       0,
+		CTotalScore:       0,
+		DTotalScore:       0,
+		APlusGuidance:     0,
+		AGuidance:         0,
+		BPlusGuidance:     0,
+		BGuidance:         0,
+		CGuidance:         0,
+		DGuidance:         0,
+		AverageTotalScore: 0,
 	}
 
 	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
@@ -213,7 +233,15 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		return nil, err
 	}
 
+	totalUsers := 0
+	countCalibratedScoresUsers := 0.0
+
 	for _, user := range users {
+		if user.ScoringMethod == "Score" {
+			totalUsers += 1
+			countCalibratedScoresUsers += user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationScore
+		}
+
 		pic := false
 		picName := "N-1"
 		picId := "N-1"
@@ -266,6 +294,14 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 				CGuidance:                0,
 				DGuidance:                0,
 				Status:                   "Complete",
+				TotalCalibratedScore:     0,
+				UserCount:                0.0,
+				AverageScore:             0,
+			}
+
+			if user.ScoringMethod == "Score" {
+				resp.UserCount += 1
+				resp.TotalCalibratedScore += user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationScore
 			}
 
 			if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
@@ -294,6 +330,11 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 			// fmt.Println("SUMMARY 2A", result.Summary)
 		} else {
 			if summary, ok := resultSummary[picName+user.BusinessUnit.Name]; ok {
+				if user.ScoringMethod == "Score" {
+					summary.UserCount += 1
+					summary.TotalCalibratedScore += user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationScore
+				}
+
 				if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
 					summary.APlus += 1
 				} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A" {
@@ -306,10 +347,6 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 					summary.C += 1
 				} else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "D" {
 					summary.D += 1
-				}
-
-				if user.CalibrationScores[calibrationLength-1].Status == "Complete" {
-					summary.Status = "Complete"
 				}
 
 				if user.CalibrationScores[calibrationLength-1].Status == "Calibrate" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
@@ -341,6 +378,14 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 						CGuidance:                0,
 						DGuidance:                0,
 						Status:                   "Complete",
+						TotalCalibratedScore:     0,
+						UserCount:                0.0,
+						AverageScore:             0,
+					}
+
+					if user.ScoringMethod == "Score" {
+						resp.UserCount += 1
+						resp.TotalCalibratedScore += user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationScore
 					}
 
 					if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
@@ -399,11 +444,33 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		summary.BGuidance = guidance.B
 		summary.CGuidance = guidance.C
 		summary.DGuidance = guidance.D
+
+		if summary.UserCount > 0 {
+			summary.AverageScore = summary.TotalCalibratedScore / float64(summary.UserCount)
+		}
+
+		result.APlusTotalScore += summary.APlus
+		result.ATotalScore += summary.A
+		result.BPlusTotalScore += summary.BPlus
+		result.BTotalScore += summary.B
+		result.CTotalScore += summary.C
+		result.DTotalScore += summary.D
+
+		result.APlusGuidance += guidance.APlus
+		result.AGuidance += guidance.A
+		result.BPlusGuidance += guidance.BPlus
+		result.BGuidance += guidance.B
+		result.CGuidance += guidance.C
+		result.DGuidance += guidance.D
 	}
 
-	for key, rSummary := range resultSummary {
+	if totalUsers > 0 {
+		result.AverageTotalScore = countCalibratedScoresUsers / float64(totalUsers)
+	}
+
+	for _, rSummary := range resultSummary {
 		result.Summary = append(result.Summary, rSummary)
-		fmt.Println("ISI BU UNIT", key)
+		// fmt.Println("ISI BU UNIT", key)
 	}
 
 	sort.Slice(result.Summary, func(i, j int) bool {
