@@ -704,6 +704,7 @@ func (r *calibrationRepo) GetSummaryBySPMOID(spmoID string) ([]response.SPMOSumm
 		Joins("JOIN users u on c.employee_id = u.id").
 		Joins("JOIN business_units b on u.business_unit_id = b.id").
 		Joins("JOIN users u2 on c.calibrator_id = u2.id").
+		Joins("JOIN projects pr on pr.id = c.project_id AND pr.active = true").
 		Where("(spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND p.order NOT IN (SELECT MAX(\"order\") FROM phases)", spmoID, spmoID, spmoID).
 		Group("u.business_unit_id, b.name, u2.name, c.calibrator_id, c.project_phase_id, p.order").
 		Order("p.order ASC").

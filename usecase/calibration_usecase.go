@@ -399,6 +399,28 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 					SpmoID:         spmo.ID,
 					// HrbpID:         hrbp.ID,
 				}
+
+				if row[lenProjectPhase+2] != "None" {
+					spmo2, err := r.user.FindByNik(row[lenProjectPhase+2])
+					if err != nil {
+						return fmt.Errorf("SPMO ID not available in database %s", row[lenProjectPhase+1])
+					}
+					if spmo2 != nil {
+						cali.Spmo2ID = &spmo2.ID
+					}
+				}
+
+				if row[lenProjectPhase+3] != "None" {
+					spmo3, err := r.user.FindByNik(row[lenProjectPhase+3])
+					if err != nil {
+						return fmt.Errorf("SPMO ID not available in database %s", row[lenProjectPhase+1])
+					}
+
+					if spmo3 != nil {
+						cali.Spmo3ID = &spmo3.ID
+					}
+				}
+
 				calibrations = append(calibrations, cali)
 			} else {
 				cal, _ := r.repo.Get(projectId, phases[j-1], employee.ID)
