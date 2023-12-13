@@ -56,7 +56,10 @@ func (n *notificationUsecase) NotifyCalibrator() error {
 	}
 
 	emailData := utils.EmailData{
-		URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+		// Deploy
+		URL: "https://calibration.techconnect.co.id/",
+		// Local
+		// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 		FirstName:  "Aji",
 		Subject:    "Calibration Assignment",
 		PhaseOrder: 1,
@@ -84,7 +87,10 @@ func (n *notificationUsecase) NotifyCalibrators(ids []string, deadline time.Time
 		}
 
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			// Deploy
+			URL: "https://calibration.techconnect.co.id/",
+			// Local
+			// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: 1,
@@ -114,7 +120,10 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrator(ids []string
 		}
 
 		emailData := utils.EmailData{
-			URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			// Deploy
+			URL: "https://calibration.techconnect.co.id/",
+			// Local
+			// URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -141,7 +150,10 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 		}
 
 		emailData := utils.EmailData{
-			URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			// Deploy
+			URL: "https://calibration.techconnect.co.id/",
+			// Local
+			// URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -167,7 +179,10 @@ func (n *notificationUsecase) NotifySubmittedCalibrationToCalibratorsWithoutRevi
 	}
 
 	emailData := utils.EmailData{
-		URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+		// Deploy
+		URL: "https://calibration.techconnect.co.id/",
+		// Local
+		// URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 		FirstName: user.Name,
 		Subject:   "Submitted Calibration",
 	}
@@ -193,7 +208,10 @@ func (n *notificationUsecase) NotifyThisCalibrators(data []response.Notification
 		}
 
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			// Deploy
+			URL: "https://calibration.techconnect.co.id/",
+			// Local
+			// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
@@ -224,7 +242,10 @@ func (n *notificationUsecase) NotifyThisCurrentCalibrators(data []response.Notif
 		}
 
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			// Deploy
+			URL: "https://calibration.techconnect.co.id/",
+			// Local
+			// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
@@ -253,7 +274,10 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 	}
 
 	emailData := utils.EmailData{
-		URL:          fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+		// Deploy
+		URL: "https://calibration.techconnect.co.id/",
+		// Local
+		// URL:          fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 		FirstName:    user.Name,
 		Subject:      "Rejected Calibration",
 		Comment:      comment,
@@ -277,7 +301,10 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 func (n *notificationUsecase) NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User) error {
 	for _, spmo := range listOfSpmo {
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			// Deploy
+			URL: "https://calibration.techconnect.co.id/",
+			// Local
+			// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
 			FirstName:  spmo.Name,
 			Subject:    "Submitted Worksheet",
 			Calibrator: calibrator.Name,
