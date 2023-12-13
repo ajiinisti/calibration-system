@@ -185,7 +185,7 @@ func (a *AuthController) forgetPassword(ctx *gin.Context) {
 	}
 
 	emailData := utils.EmailData{
-		URL:       "http://localhost:3000/#/reset-password/" + fmt.Sprintf("%s/%s", user.Email, resetToken),
+		URL:       "https://calibration.techconnect.co.id/#/reset-password/" + fmt.Sprintf("%s/%s", user.Email, resetToken),
 		FirstName: user.Email,
 		Subject:   "Your password reset token (valid for 10min)",
 	}
