@@ -2,10 +2,12 @@ package config
 
 import (
 	"errors"
+	"log"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/joho/godotenv"
 )
 
 type DbConfig struct {
@@ -17,8 +19,9 @@ type DbConfig struct {
 }
 
 type ApiConfig struct {
-	ApiHost string
-	ApiPort string
+	ApiHost     string
+	ApiPort     string
+	FrontEndApi string
 }
 
 type SMTPConfig struct {
@@ -68,11 +71,11 @@ type Config struct {
 
 func (c *Config) ReadConfigFile() error {
 	// Nyalakan untuk local saja, kalau sudah di docker matikan
-	// err := godotenv.Load(".env")
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return errors.New("Failed to load .env file")
-	// }
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println(err)
+		return errors.New("Failed to load .env file")
+	}
 
 	c.DbConfig = DbConfig{
 		Host:     os.Getenv("DB_HOST"),
@@ -83,8 +86,9 @@ func (c *Config) ReadConfigFile() error {
 	}
 
 	c.ApiConfig = ApiConfig{
-		ApiHost: os.Getenv("API_HOST"),
-		ApiPort: os.Getenv("API_PORT"),
+		ApiHost:     os.Getenv("API_HOST"),
+		ApiPort:     os.Getenv("API_PORT"),
+		FrontEndApi: os.Getenv("FRONT_END_API"),
 	}
 
 	if os.Getenv("PORT") != "" {
