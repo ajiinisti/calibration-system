@@ -200,6 +200,22 @@ func (r *CalibrationController) sendCalibrationToManagerHandler(c *gin.Context) 
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
+func (r *CalibrationController) sendBackCalibrationsToOnePhaseBeforeHandler(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	var payload request.CalibrationRequest
+	if err := r.ParseRequestBody(c, &payload); err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := r.uc.SendBackCalibrationsToOnePhaseBefore(&payload, calibratorID); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
 func (r *CalibrationController) getSummaryCalibrationsBySPMOIDHandler(c *gin.Context) {
 	spmoID := c.Param("spmoID")
 	payload, err := r.uc.FindSummaryCalibrationBySPMOID(spmoID)
@@ -413,6 +429,7 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
 	auth.POST("/calibrations/submit-calibrations/:calibratorID", controller.submitCalibrationsHandler)
 	auth.POST("/calibrations/send-calibration-to-manager/:calibratorID", controller.sendCalibrationToManagerHandler)
+	auth.POST("/calibrations/send-calibrations-back/:calibratorID", controller.sendBackCalibrationsToOnePhaseBeforeHandler)
 	auth.POST("/calibrations/accept-approval", controller.spmoAcceptApprovalHandler)
 	auth.POST("/calibrations/accept-multiple-approval", controller.spmoAcceptMultipleApprovalHandler)
 	auth.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)

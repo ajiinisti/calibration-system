@@ -27,8 +27,9 @@ type CalibrationUsecase interface {
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
 	BulkInsert(file *multipart.FileHeader, projectId string) error
 	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error
-	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error
 	SaveCalibrations(payload *request.CalibrationRequest) error
+	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error
+	SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID string) error
 	SpmoAcceptApproval(payload *request.AcceptJustification) error
 	SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error
 	SpmoRejectApproval(payload *request.RejectJustification) error
@@ -535,8 +536,26 @@ func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.Calibrat
 	}
 
 	uniqueCalibrator := removeDuplicates(managerCalibratorIDs)
-
 	err = r.notification.NotifyCalibrators(uniqueCalibrator, projectPhaseNew.EndDate)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *calibrationUsecase) SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID string) error {
+	projectPhase, err := r.project.FindCalibratorPhase(calibratorID)
+	if err != nil {
+		return err
+	}
+
+	managerCalibratorIDs, err := r.repo.UpdateCalibrationsOnePhaseBefore(payload, *projectPhase)
+	if err != nil {
+		return err
+	}
+
+	uniqueCalibrator := removeDuplicates(managerCalibratorIDs)
+	err = r.notification.NotifyCalibrators(uniqueCalibrator, projectPhase.EndDate)
 	if err != nil {
 		return err
 	}
