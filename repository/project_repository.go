@@ -475,6 +475,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 
 	NPlusOneManagerFlag := false
 	SendToManagerFlag := false
+	SendBackFlag := false
 
 	for _, user := range users {
 		var supervisorName string
@@ -490,6 +491,10 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
 					SendToManagerFlag = SendToManagerFlag || true
 				}
+			}
+
+			if user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Calibrate" {
+				SendBackFlag = SendBackFlag || true
 			}
 		}
 
@@ -535,9 +540,10 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 	}
 
 	return response.UserCalibration{
-		NPlusOneManager: NPlusOneManagerFlag,
-		SendToManager:   SendToManagerFlag,
-		UserData:        resultUsers,
+		NPlusOneManager:     NPlusOneManagerFlag,
+		SendToManager:       SendToManagerFlag,
+		SendBackCalibration: SendBackFlag,
+		UserData:            resultUsers,
 	}, nil
 }
 
@@ -610,6 +616,7 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 
 	NPlusOneManagerFlag := false
 	SendToManagerFlag := false
+	SendBackFlag := false
 
 	for _, user := range users {
 		var supervisorName string
@@ -625,6 +632,10 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
 					SendToManagerFlag = SendToManagerFlag || true
 				}
+			}
+
+			if user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Calibrate" {
+				SendBackFlag = SendBackFlag || true
 			}
 		}
 
@@ -670,9 +681,10 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 	}
 
 	return response.UserCalibration{
-		NPlusOneManager: NPlusOneManagerFlag,
-		SendToManager:   SendToManagerFlag,
-		UserData:        resultUsers,
+		NPlusOneManager:     NPlusOneManagerFlag,
+		SendToManager:       SendToManagerFlag,
+		SendBackCalibration: SendBackFlag,
+		UserData:            resultUsers,
 	}, nil
 }
 
@@ -781,9 +793,10 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 	}
 
 	return response.UserCalibration{
-		NPlusOneManager: NPlusOneManagerFlag,
-		SendToManager:   SendToManagerFlag,
-		UserData:        resultUsers,
+		NPlusOneManager:     NPlusOneManagerFlag,
+		SendToManager:       SendToManagerFlag,
+		SendBackCalibration: false,
+		UserData:            resultUsers,
 	}, nil
 }
 
