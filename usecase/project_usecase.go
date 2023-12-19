@@ -27,6 +27,7 @@ type ProjectUsecase interface {
 	FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit string) (response.UserCalibration, error)
 	FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorId, prevCalibrator, businessUnit, rating string) (response.UserCalibration, error)
 	FindCalibrationsByBusinessUnitAndRating(calibratorId, prevCalibrator, rating string) (response.UserCalibration, error)
+	FindCalibrationsByRating(calibratorId, rating string) (response.UserCalibration, error)
 	FindCalibratorPhase(calibratorId string) (*model.ProjectPhase, error)
 	FindActiveProjectPhase() ([]model.ProjectPhase, error)
 	FindActiveManagerPhase() (model.ProjectPhase, error)
@@ -643,6 +644,19 @@ func (r *projectUsecase) FindCalibrationsByBusinessUnitAndRating(calibratorId, b
 	}
 
 	calibration, err := r.repo.GetCalibrationsByBusinessUnitAndRating(calibratorId, businessUnit, rating, phase)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindCalibrationsByRating(calibratorId, rating string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetCalibrationsByRating(calibratorId, rating, phase)
 	if err != nil {
 		return response.UserCalibration{}, err
 	}
