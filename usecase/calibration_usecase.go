@@ -792,12 +792,12 @@ func (r *calibrationUsecase) FindRatingQuotaSPMOByCalibratorID(spmoID, calibrato
 	ratingQuota := projects.RatingQuotas[0]
 	totalCalibrations := len(users)
 	responses := response.RatingQuota{
-		APlus: int(math.Floor(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
-		A:     int(math.Floor(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
-		BPlus: int(math.Floor(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
-		B:     int(math.Floor(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
-		C:     int(math.Floor(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
-		D:     int(math.Floor(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
+		APlus: int(math.Round(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
+		A:     int(math.Round(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
+		BPlus: int(math.Round(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
+		B:     int(math.Round(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
+		C:     int(math.Round(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
+		D:     int(math.Round(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
 	}
 
 	var total = responses.APlus + responses.A +
@@ -823,9 +823,17 @@ func (r *calibrationUsecase) FindRatingQuotaSPMOByCalibratorID(spmoID, calibrato
 
 	if total > totalCalibrations {
 		if ratingQuota.Excess == "A+" {
-			responses.APlus -= (total - totalCalibrations)
+			if responses.APlus-(total-totalCalibrations) > 0 {
+				responses.APlus -= (total - totalCalibrations)
+			} else {
+				responses.BPlus -= (total - totalCalibrations)
+			}
 		} else if ratingQuota.Excess == "A" {
-			responses.A -= (total - totalCalibrations)
+			if responses.A-(total-totalCalibrations) > 0 {
+				responses.A -= (total - totalCalibrations)
+			} else {
+				responses.BPlus -= (total - totalCalibrations)
+			}
 		} else if ratingQuota.Excess == "B+" {
 			responses.BPlus -= (total - totalCalibrations)
 		} else if ratingQuota.Excess == "B" {
