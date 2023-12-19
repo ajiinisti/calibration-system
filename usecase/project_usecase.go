@@ -25,6 +25,8 @@ type ProjectUsecase interface {
 	FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) (response.UserCalibration, error)
 	FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) (response.UserCalibration, error)
 	FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit string) (response.UserCalibration, error)
+	FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorId, prevCalibrator, businessUnit, rating string) (response.UserCalibration, error)
+	FindCalibrationsByBusinessUnitAndRating(calibratorId, prevCalibrator, rating string) (response.UserCalibration, error)
 	FindCalibratorPhase(calibratorId string) (*model.ProjectPhase, error)
 	FindActiveProjectPhase() ([]model.ProjectPhase, error)
 	FindActiveManagerPhase() (model.ProjectPhase, error)
@@ -615,6 +617,32 @@ func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(c
 	}
 
 	calibration, err := r.repo.GetNMinusOneCalibrationsByBusinessUnit(businessUnit, phase, calibratorId)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorId, prevCalibrator, businessUnit, rating string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorId, prevCalibrator, businessUnit, rating, phase)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindCalibrationsByBusinessUnitAndRating(calibratorId, businessUnit, rating string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetCalibrationsByBusinessUnitAndRating(calibratorId, businessUnit, rating, phase)
 	if err != nil {
 		return response.UserCalibration{}, err
 	}
