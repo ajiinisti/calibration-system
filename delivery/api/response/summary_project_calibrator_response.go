@@ -1,7 +1,7 @@
 package response
 
 type SummaryProject struct {
-	Summary           []*CalibratorBusinessUnit
+	Summary           []*BusinessUnitTotal
 	APlusTotalScore   int
 	ATotalScore       int
 	BPlusTotalScore   int
@@ -38,6 +38,29 @@ type CalibratorBusinessUnit struct {
 	TotalCalibratedScore     float64
 	UserCount                int
 	AverageScore             float64
+}
+
+type BusinessUnitTotal struct {
+	CalibratorBusinessUnit     []*CalibratorBusinessUnit
+	CalibratorBusinessUnitName string
+	CalibratorBusinessUnitID   string
+	APlusCalibrated            int
+	ACalibrated                int
+	BPlusCalibrated            int
+	BCalibrated                int
+	CCalibrated                int
+	DCalibrated                int
+	APlusGuidance              int
+	AGuidance                  int
+	BPlusGuidance              int
+	BGuidance                  int
+	CGuidance                  int
+	DGuidance                  int
+	TotalCalibratedScore       float64
+	UserCount                  int
+	AverageScore               float64
+	Status                     string
+	Completed                  bool
 }
 
 // DB Result Query

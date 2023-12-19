@@ -25,6 +25,7 @@ type ProjectRepo interface {
 	GetRatingQuotaByCalibratorID(businessUnitID string) (*model.Project, error)
 	GetNumberOneUserWhoCalibrator(calibratorID string, businessUnit string, calibratorPhase int) ([]string, error)
 	GetAllUserCalibrationByCalibratorID(calibratorID string, calibratorPhase int) ([]model.User, error)
+	GetCalibrationsByBusinessUnit(calibratorId, businessUnit string, phase int) (response.UserCalibration, error)
 	GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int) (response.UserCalibration, error)
 	GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int, exceptUsers []string) (response.UserCalibration, error)
 	GetNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int, calibratorId string) (response.UserCalibration, error)
@@ -426,7 +427,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
 		Joins("JOIN users u2 ON c1.calibrator_id = u2.id").
-		Joins("JOIN calibrations c2 ON c2.employee_id = u.id").
+		Joins("LEFT JOIN calibrations c2 ON c2.employee_id = u.id").
 		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.active = true").
 		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
 		Joins("JOIN phases p2 ON p2.id = pp2.phase_id").
@@ -547,6 +548,106 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 	}, nil
 }
 
+func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorId, businessUnit string, phase int) (response.UserCalibration, error) {
+	var users []model.User
+	var resultUsers []response.UserResponse
+
+	err := r.db.
+		Table("users u").
+		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id").
+				Where("proj1.active = ?", true)
+		}).
+		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN projects proj2 ON calibrations.project_id = proj2.id").
+				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+				Joins("JOIN phases p ON p.id = pp.phase_id ").
+				Where("proj2.active = ? AND p.order <= ?", true, phase).
+				Order("p.order")
+		}).
+		Preload("CalibrationScores.Calibrator").
+		Preload("CalibrationScores.TopRemarks").
+		Preload("CalibrationScores.BottomRemark").
+		Preload("CalibrationScores.ProjectPhase").
+		Preload("CalibrationScores.ProjectPhase.Phase").
+		Preload("BusinessUnit").
+		Select("u.*, COUNT(u.id) AS calibration_count").
+		Joins("JOIN business_units b ON u.business_unit_id = b.id").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
+		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
+		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
+		Joins("JOIN phases p ON p.id = pp.phase_id").
+		Joins("JOIN calibrations c2 ON c2.employee_id = u.id AND c2.deleted_at is NULL").
+		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.active = true").
+		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order <= ?", phase).
+		Where("p.order = ? AND c1.calibrator_id = ? AND b.id = ?", phase, calibratorId, businessUnit).
+		Group("u.id").
+		Order("calibration_count ASC").
+		Find(&users).Error
+
+	NPlusOneManagerFlag := false
+	SendToManagerFlag := false
+	SendBackFlag := false
+
+	for _, user := range users {
+		var supervisorName string
+		err = r.db.Raw("SELECT name FROM users WHERE nik = ?", user.SupervisorNik).Scan(&supervisorName).Error
+		if err != nil {
+			return response.UserCalibration{}, err
+		}
+
+		resultUsers = append(resultUsers, response.UserResponse{
+			BaseModel: model.BaseModel{
+				ID:        user.ID,
+				CreatedAt: user.CreatedAt,
+				UpdatedAt: user.UpdatedAt,
+				DeletedAt: user.DeletedAt,
+			},
+			CreatedBy:              user.CreatedBy,
+			UpdatedBy:              user.UpdatedBy,
+			Email:                  user.Email,
+			Name:                   user.Name,
+			Nik:                    user.Nik,
+			DateOfBirth:            user.DateOfBirth,
+			SupervisorNames:        supervisorName,
+			BusinessUnit:           user.BusinessUnit,
+			BusinessUnitId:         user.BusinessUnitId,
+			OrganizationUnit:       user.OrganizationUnit,
+			Division:               user.Division,
+			Department:             user.Department,
+			JoinDate:               user.JoinDate,
+			Grade:                  user.Grade,
+			HRBP:                   user.HRBP,
+			Position:               user.Position,
+			Roles:                  user.Roles,
+			ResetPasswordToken:     user.ResetPasswordToken,
+			LastLogin:              user.LastLogin,
+			ExpiredPasswordToken:   user.ExpiredPasswordToken,
+			LastPasswordChanged:    user.LastPasswordChanged,
+			ActualScores:           user.ActualScores,
+			CalibrationScores:      user.CalibrationScores,
+			SpmoCalibrations:       user.SpmoCalibrations,
+			CalibratorCalibrations: user.CalibratorCalibrations,
+			ScoringMethod:          user.ScoringMethod,
+			Directorate:            user.Directorate,
+			PhoneNumber:            user.PhoneNumber,
+		})
+	}
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	return response.UserCalibration{
+		NPlusOneManager:     NPlusOneManagerFlag,
+		SendToManager:       SendToManagerFlag,
+		SendBackCalibration: SendBackFlag,
+		UserData:            resultUsers,
+	}, nil
+}
+
 func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string, phase int, exceptUsers []string) (response.UserCalibration, error) {
 	var users []model.User
 	var resultUsers []response.UserResponse
@@ -554,6 +655,7 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 	subquery := r.db.
 		Table("users u").
 		Select("u.id").
+		Distinct().
 		Joins("JOIN business_units b ON u.business_unit_id = b.id").
 		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
