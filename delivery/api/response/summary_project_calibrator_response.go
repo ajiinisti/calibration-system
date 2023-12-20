@@ -105,3 +105,17 @@ type CalibratorSummary struct {
 // 	DepartmentName   string
 // 	ProjectPhaseData []*ProjectPhaseSummarySPMO
 // }
+
+// Summary Chart Total
+type RatingDataSummary struct {
+	Rating           string
+	Percentage       float64
+	Guidance         int
+	ActualRating     int
+	CalibratedRating int
+	Variance         int
+}
+
+type SummaryTotal struct {
+	Data []*RatingDataSummary
+}

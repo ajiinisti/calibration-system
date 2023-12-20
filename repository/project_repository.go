@@ -32,6 +32,7 @@ type ProjectRepo interface {
 	GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorId, prevCalibrator, businessUnit, rating string, phase int) (response.UserCalibration, error)
 	GetCalibrationsByBusinessUnitAndRating(calibratorId, businessUnit, rating string, phase int) (response.UserCalibration, error)
 	GetCalibrationsByRating(calibratorId, rating string, phase int) (response.UserCalibration, error)
+	GetAllBusinessUnitSummary(calibratorId string, phase int) ([]model.BusinessUnit, error)
 }
 
 type projectRepo struct {
@@ -590,7 +591,9 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorId, businessUnit s
 		Group("u.id").
 		Order("calibration_count ASC").
 		Find(&users).Error
-
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
 	NPlusOneManagerFlag := false
 	SendToManagerFlag := false
 	SendBackFlag := false
@@ -718,6 +721,9 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 		Group("u.id").
 		Order("calibration_count ASC").
 		Find(&users).Error
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
 
 	NPlusOneManagerFlag := false
 	SendToManagerFlag := false
@@ -845,6 +851,9 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Joins("JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
 		Where("u.business_unit_id = ? AND u.id NOT IN (?)  AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
 		Find(&users).Error
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
 
 	NPlusOneManagerFlag := false
 	SendToManagerFlag := false
@@ -964,6 +973,9 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calib
 		Group("u.id").
 		Order("calibration_count ASC").
 		Find(&users).Error
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
 
 	NPlusOneManagerFlag := false
 	SendToManagerFlag := false
@@ -1078,6 +1090,9 @@ func (r *projectRepo) GetCalibrationsByBusinessUnitAndRating(calibratorId, busin
 		Group("u.id").
 		Order("calibration_count ASC").
 		Find(&users).Error
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
 
 	for _, user := range users {
 		var supervisorName string
@@ -1174,6 +1189,9 @@ func (r *projectRepo) GetCalibrationsByRating(calibratorId, rating string, phase
 		Group("u.id").
 		Order("calibration_count ASC").
 		Find(&users).Error
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
 
 	for _, user := range users {
 		var supervisorName string
@@ -1229,6 +1247,26 @@ func (r *projectRepo) GetCalibrationsByRating(calibratorId, rating string, phase
 		SendBackCalibration: false,
 		UserData:            resultUsers,
 	}, nil
+}
+
+func (r *projectRepo) GetAllBusinessUnitSummary(calibratorId string, phase int) ([]model.BusinessUnit, error) {
+	var results []model.BusinessUnit
+	err := r.db.
+		Table("users u").
+		Select("b.*").
+		Distinct().
+		Joins("JOIN business_units b ON u.business_unit_id = b.id").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
+		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
+		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
+		Joins("JOIN phases p ON p.id = pp.phase_id").
+		Where("c1.calibrator_id = ? AND p.order = ?", calibratorId, phase).
+		Find(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 func NewProjectRepo(db *gorm.DB) ProjectRepo {

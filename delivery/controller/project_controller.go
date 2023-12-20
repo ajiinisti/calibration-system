@@ -269,6 +269,16 @@ func (r *ProjectController) getCalibrationsByRating(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
+func (r *ProjectController) getSummaryTotalProjectByCalibrator(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	projects, err := r.uc.FindSummaryProjectTotalByCalibratorID(calibratorID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
 func (r *ProjectController) getProjectPhaseByCalibratorId(c *gin.Context) {
 	calibratorID := c.Param("calibratorID")
 	projects, err := r.uc.FindCalibratorPhase(calibratorID)
@@ -318,6 +328,7 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth.GET("/projects/calibrations-score/:calibratorID/:prevCalibrator/:businessUnit/:rating", controller.getCalibrationsByPrevCalibratorBusinessUnitAndRating)
 	auth.GET("/projects/calibrations-score-all-bu/:calibratorID/:businessUnit/:rating", controller.getCalibrationsByBusinessUnitAndRating)
 	auth.GET("/projects/calibrations-score-all/:calibratorID/:rating", controller.getCalibrationsByRating)
+	auth.GET("/projects/summary-calibration-total/:calibratorID", controller.getSummaryTotalProjectByCalibrator)
 	auth.GET("/projects/project-phase/:calibratorID", controller.getProjectPhaseByCalibratorId)
 	auth.GET("/projects/project-phase/manager", controller.getActiveManagerPhaseHandler)
 	auth.GET("/projects/project-phase/active", controller.getActiveProjectPhaseHandler)
