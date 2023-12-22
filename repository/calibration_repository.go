@@ -514,6 +514,7 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 
 		if len(employeeCalibrations) > 1 {
 			calibrations.Status = "Waiting"
+			calibrations.JustificationReviewStatus = false
 			employeeCalibrationScore = append(employeeCalibrationScore, calibrations)
 		}
 
@@ -546,10 +547,10 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 		}
 
 		if len(calibrations) > 0 {
-			calibrations[0].Status = "Calibrate"
-			calibrations[0].SendBackDeadline = projectPhase.EndDate
-			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[0].CalibratorID)
-			if err := tx.Updates(calibrations[0]).Error; err != nil {
+			calibrations[len(calibrations)-1].Status = "Calibrate"
+			calibrations[len(calibrations)-1].SendBackDeadline = projectPhase.EndDate
+			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[len(calibrations)-1].CalibratorID)
+			if err := tx.Updates(calibrations[len(calibrations)-1]).Error; err != nil {
 				tx.Rollback()
 				return nil, err
 			}

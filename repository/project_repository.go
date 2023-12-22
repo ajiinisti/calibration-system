@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
@@ -493,7 +494,9 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, 
 			if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.Phase.Order == 1 {
 				NPlusOneManagerFlag = NPlusOneManagerFlag || true
 
-				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
+				if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.EndDate.After(time.Now()) && user.CalibrationScores[len(user.CalibrationScores)-2].Status == "Waiting" && user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Calibrate" {
+					SendToManagerFlag = SendToManagerFlag || false
+				} else {
 					SendToManagerFlag = SendToManagerFlag || true
 				}
 			}
@@ -740,7 +743,9 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 			if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.Phase.Order == 1 {
 				NPlusOneManagerFlag = NPlusOneManagerFlag || true
 
-				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
+				if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.EndDate.After(time.Now()) && user.CalibrationScores[len(user.CalibrationScores)-2].Status == "Waiting" && user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Calibrate" {
+					SendToManagerFlag = SendToManagerFlag || false
+				} else {
 					SendToManagerFlag = SendToManagerFlag || true
 				}
 			}
@@ -988,19 +993,19 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calib
 			return response.UserCalibration{}, err
 		}
 
-		if len(user.CalibrationScores) > 1 {
-			if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.Phase.Order == 1 {
-				NPlusOneManagerFlag = NPlusOneManagerFlag || true
+		// if len(user.CalibrationScores) > 1 {
+		// 	if user.CalibrationScores[len(user.CalibrationScores)-2].ProjectPhase.Phase.Order == 1 {
+		// 		NPlusOneManagerFlag = NPlusOneManagerFlag || true
 
-				if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
-					SendToManagerFlag = SendToManagerFlag || true
-				}
-			}
+		// 		if user.CalibrationScores[len(user.CalibrationScores)-2].Status != "Waiting" || user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Complete" {
+		// 			SendToManagerFlag = SendToManagerFlag || true
+		// 		}
+		// 	}
 
-			if user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Calibrate" {
-				SendBackFlag = SendBackFlag || true
-			}
-		}
+		// 	if user.CalibrationScores[len(user.CalibrationScores)-1].Status == "Calibrate" {
+		// 		SendBackFlag = SendBackFlag || true
+		// 	}
+		// }
 
 		resultUsers = append(resultUsers, response.UserResponse{
 			BaseModel: model.BaseModel{

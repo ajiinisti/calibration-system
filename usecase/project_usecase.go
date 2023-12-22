@@ -489,7 +489,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 				TotalCalibratedScore:       0,
 				UserCount:                  0,
 				AverageScore:               0,
-				Status:                     "Waiting",
+				Status:                     "Calibrate",
 				Completed:                  true,
 			}
 
@@ -533,8 +533,8 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		result.CTotalScore += summary.C
 		result.DTotalScore += summary.D
 
-		if summary.Status == "Calibrate" {
-			finalData[summary.CalibratorBusinessUnit].Status = "Calibrate"
+		if summary.Status == "Waiting" {
+			finalData[summary.CalibratorBusinessUnit].Status = "Waiting"
 		}
 
 		if summary.Status == "Complete" {
