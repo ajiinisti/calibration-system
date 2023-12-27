@@ -547,10 +547,19 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 		}
 
 		if len(calibrations) > 0 {
-			calibrations[len(calibrations)-1].Status = "Calibrate"
-			calibrations[len(calibrations)-1].SendBackDeadline = projectPhase.EndDate
 			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[len(calibrations)-1].CalibratorID)
-			if err := tx.Updates(calibrations[len(calibrations)-1]).Error; err != nil {
+			err := tx.Model(&model.Calibration{}).
+				Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
+					calibrations[len(calibrations)-1].ProjectID,
+					calibrations[len(calibrations)-1].ProjectPhaseID,
+					calibrations[len(calibrations)-1].EmployeeID,
+					calibrations[len(calibrations)-1].CalibratorID,
+				).Updates(map[string]interface{}{
+				"status":                      "Calibrate",
+				"send_back_deadline":          projectPhase.EndDate,
+				"justification_review_status": false,
+			}).Error
+			if err != nil {
 				tx.Rollback()
 				return nil, err
 			}

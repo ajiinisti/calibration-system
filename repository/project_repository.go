@@ -101,7 +101,11 @@ func (r *projectRepo) Get(id string) (*model.Project, error) {
 	var project model.Project
 	err := r.db.
 		Preload("ActualScores").
-		Preload("ProjectPhases").
+		Preload("ProjectPhases", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN phases p ON project_phases.phase_id = p.id").
+				Order("p.order ASC")
+		}).
 		Preload("ProjectPhases.Phase").
 		Preload("ScoreDistributions").
 		Preload("ScoreDistributions.GroupBusinessUnit").
@@ -235,7 +239,11 @@ func (r *projectRepo) GetActiveProject() (*model.Project, error) {
 func (r *projectRepo) GetActiveProjectPhase() ([]model.ProjectPhase, error) {
 	var project model.Project
 	err := r.db.
-		Preload("ProjectPhases").
+		Preload("ProjectPhases", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN phases p ON project_phases.phase_id = p.id").
+				Order("p.order ASC")
+		}).
 		Preload("ProjectPhases.Phase").
 		First(&project, "active = ?", true).
 		Error
