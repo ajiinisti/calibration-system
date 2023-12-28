@@ -59,6 +59,10 @@ type WhatsAppConfig struct {
 	ShortenUrl string
 }
 
+type EncryptionConfig struct {
+	SecretKeyEncryption string
+}
+
 type Config struct {
 	DbConfig
 	ApiConfig
@@ -67,6 +71,7 @@ type Config struct {
 	RedisConfig
 	GoogleOAuthConfig
 	WhatsAppConfig
+	EncryptionConfig
 }
 
 func (c *Config) ReadConfigFile() error {
@@ -126,6 +131,10 @@ func (c *Config) ReadConfigFile() error {
 		TemplateID: os.Getenv("WA_TEMPLATE_ID"),
 		ApiKey:     os.Getenv("WA_API_KEY"),
 		ShortenUrl: os.Getenv("WA_SHORTEN_URL"),
+	}
+
+	c.EncryptionConfig = EncryptionConfig{
+		SecretKeyEncryption: os.Getenv("SECRET_KEY_ENCRYPTION"),
 	}
 
 	if c.SMTPEmail == "" || c.SMTPHost == "" || c.SMTPPassword == "" || c.SMTPPort == "" || c.SMTPSenderName == "" ||
