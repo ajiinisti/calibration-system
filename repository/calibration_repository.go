@@ -743,10 +743,12 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 					return nil, err
 				}
 				mapResult[calibrations[0].CalibratorID] = response.NotificationModel{
-					CalibratorID:       calibrations[0].CalibratorID,
-					ProjectPhase:       projectPhaseNextCalibrator.Phase.Order,
-					Deadline:           projectPhaseNextCalibrator.EndDate,
-					PreviousCalibrator: prevCal.Name,
+					CalibratorID:           calibrations[0].CalibratorID,
+					ProjectPhase:           projectPhaseNextCalibrator.Phase.Order,
+					Deadline:               projectPhaseNextCalibrator.EndDate,
+					PreviousCalibrator:     prevCal.Name,
+					PreviousCalibratorID:   prevCal.ID,
+					PreviousBusinessUnitID: *prevCal.BusinessUnitId,
 				}
 			}
 		}

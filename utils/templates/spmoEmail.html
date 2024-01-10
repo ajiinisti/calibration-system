@@ -1,6 +1,8 @@
 <div>
     <p>Dear {{ .FirstName}}</p>
-    <p>{{ .Calibrator}} on Calibration System has submitted the calibration worksheet. Please review and approve as soon as possible to proceed to the next phase.</p>
+    <p>{{ .Calibrator}} on Calibration System has submitted the calibration worksheet. Please review and approve as soon as possible to proceed to the next phase. 
+        To see the details and respond, please click this <a href="{{ .URL}}">link</a>.
+    </p>
     
     <p>Regards,</p>
     <p>SPMO Team</p>

@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"log"
 )
 
 func EncryptUUID(uuid string, secretKey string) (string, error) {
@@ -48,14 +47,20 @@ func DecryptUUID(token string, secretKey string) (string, error) {
 		return "", fmt.Errorf("cipher GCM err: %v", err.Error())
 	}
 
+	// Ensure that the ciphertext is not empty
+	if len(token) <= gcm.NonceSize() {
+		return "", fmt.Errorf("invalid ciphertext")
+	}
+
 	// Deattached nonce and decrypt
 	cipherText := []byte(token)
 	nonce := cipherText[:gcm.NonceSize()]
 	cipherText = cipherText[gcm.NonceSize():]
+
+	// Decrypt and authenticate the message
 	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
 	if err != nil {
-		log.Fatalf("decrypt file err: %v", err.Error())
+		return "", fmt.Errorf("decrypt file err: %v", err.Error())
 	}
-
 	return string(plainText), nil
 }

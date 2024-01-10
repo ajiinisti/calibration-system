@@ -481,7 +481,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 			listSpmo = append(listSpmo, data)
 		}
 
-		err = r.notification.NotifyCalibrationToSpmo(calibrator, listSpmo)
+		err = r.notification.NotifyCalibrationToSpmo(calibrator, listSpmo, projectPhase.Phase.Order)
 		if err != nil {
 			return err
 		}
@@ -492,10 +492,12 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 	for _, requestData := range nextCalibrator {
 		if _, ok := nCalibrator[requestData.CalibratorID]; !ok {
 			nCalibrator[requestData.CalibratorID] = response.NotificationModel{
-				CalibratorID:       requestData.CalibratorID,
-				ProjectPhase:       requestData.ProjectPhase,
-				Deadline:           requestData.Deadline,
-				PreviousCalibrator: calibrator.Name,
+				CalibratorID:           requestData.CalibratorID,
+				ProjectPhase:           requestData.ProjectPhase,
+				Deadline:               requestData.Deadline,
+				PreviousCalibrator:     calibrator.Name,
+				PreviousCalibratorID:   calibratorID,
+				PreviousBusinessUnitID: *calibrator.BusinessUnitId,
 			}
 		}
 	}
