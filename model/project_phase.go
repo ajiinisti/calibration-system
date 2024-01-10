@@ -11,4 +11,6 @@ type ProjectPhase struct {
 	ReviewSpmo bool
 	StartDate  time.Time
 	EndDate    time.Time
+	Guideline  bool
+	ShowChart  bool
 }

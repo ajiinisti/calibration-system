@@ -185,7 +185,7 @@ func (a *AuthController) forgetPassword(ctx *gin.Context) {
 	}
 
 	emailData := utils.EmailData{
-		URL:       "https://calibration.techconnect.co.id/#/reset-password/" + fmt.Sprintf("%s/%s", user.Email, resetToken),
+		URL:       fmt.Sprintf("%s/#/reset-password/%s/%s", a.cfg.FrontEndApi, user.Email, resetToken),
 		FirstName: user.Email,
 		Subject:   "Your password reset token (valid for 10min)",
 	}
@@ -230,6 +230,45 @@ func (a *AuthController) changePassword(c *gin.Context) {
 	panic("unimplemented")
 }
 
+func (a *AuthController) autoLogin(c *gin.Context) {
+	resetToken := c.Params.ByName("token")
+	user, err := a.uc.CheckToken(resetToken, a.cfg.SecretKeyEncryption)
+	if err != nil {
+		a.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	var roles []string
+	for _, v := range user.Roles {
+		roles = append(roles, v.Name)
+	}
+
+	cred := model.TokenModel{
+		Username: "",
+		Email:    user.Email,
+		Role:     roles,
+		ID:       user.ID,
+		Name:     user.Name,
+	}
+
+	tokenDetail, err := a.tokenService.CreateAccessToken(&cred)
+	if err != nil {
+		a.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if err := a.tokenService.StoreAccessToken(user.Email, tokenDetail); err != nil {
+		a.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// redis add token
+	response := response.LoginResponse{
+		AccessToken: tokenDetail.AccessToken,
+		TokenModel:  cred,
+	}
+	a.NewSuccessSingleResponse(c, response, "OK")
+}
+
 func NewAuthController(r *gin.Engine, uc usecase.AuthUsecase, tokenService authenticator.AccessToken, cfg config.Config) *AuthController {
 	controller := AuthController{
 		router:       r,
@@ -244,6 +283,7 @@ func NewAuthController(r *gin.Engine, uc usecase.AuthUsecase, tokenService authe
 	r.GET("/sessions/oauth/google", controller.redirectGoogle)
 	r.GET("/sessions/oauth", controller.loginGoogle)
 	r.PATCH("/reset-password/:email/:resetToken", controller.resetPassword)
+	r.POST("/autologin/:token", controller.autoLogin)
 	auth.POST("/change-password", controller.changePassword)
 	auth.POST("/logout", controller.logout)
 	return &controller

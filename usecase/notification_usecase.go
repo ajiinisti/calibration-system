@@ -20,7 +20,7 @@ type NotificationUsecase interface {
 	NotifyApprovedCalibrationToCalibrators(data []response.NotificationModel) error
 	NotifySubmittedCalibrationToCalibratorsWithoutReview(data response.NotificationModel) error
 	NotifyRejectedCalibrationToCalibrator(id, employee, comment string) error
-	NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User) error
+	NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error
 }
 
 type notificationUsecase struct {
@@ -56,10 +56,7 @@ func (n *notificationUsecase) NotifyCalibrator() error {
 	}
 
 	emailData := utils.EmailData{
-		// Deploy
-		URL: "https://calibration.techconnect.co.id/",
-		// Local
-		// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+		URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, "token"),
 		FirstName:  "Aji",
 		Subject:    "Calibration Assignment",
 		PhaseOrder: 1,
@@ -86,11 +83,12 @@ func (n *notificationUsecase) NotifyCalibrators(ids []string, deadline time.Time
 			return err
 		}
 
+		key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
+		if err != nil {
+			return err
+		}
 		emailData := utils.EmailData{
-			// Deploy
-			URL: "https://calibration.techconnect.co.id/",
-			// Local
-			// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			URL:        fmt.Sprintf("%s/#/autologin/%s/%s", n.cfg.FrontEndApi, key, *employee.BusinessUnitId),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: 1,
@@ -119,11 +117,12 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrator(ids []string
 			return err
 		}
 
+		key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
+		if err != nil {
+			return err
+		}
 		emailData := utils.EmailData{
-			// Deploy
-			URL: "https://calibration.techconnect.co.id/",
-			// Local
-			// URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -149,11 +148,12 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 			return err
 		}
 
+		key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
+		if err != nil {
+			return err
+		}
 		emailData := utils.EmailData{
-			// Deploy
-			URL: "https://calibration.techconnect.co.id/",
-			// Local
-			// URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -178,11 +178,12 @@ func (n *notificationUsecase) NotifySubmittedCalibrationToCalibratorsWithoutRevi
 		return err
 	}
 
+	key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
+	if err != nil {
+		return err
+	}
 	emailData := utils.EmailData{
-		// Deploy
-		URL: "https://calibration.techconnect.co.id/",
-		// Local
-		// URL:       fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+		URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 		FirstName: user.Name,
 		Subject:   "Submitted Calibration",
 	}
@@ -207,11 +208,12 @@ func (n *notificationUsecase) NotifyThisCalibrators(data []response.Notification
 			return err
 		}
 
+		key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
+		if err != nil {
+			return err
+		}
 		emailData := utils.EmailData{
-			// Deploy
-			URL: "https://calibration.techconnect.co.id/",
-			// Local
-			// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			URL:        fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator, key),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
@@ -241,11 +243,12 @@ func (n *notificationUsecase) NotifyThisCurrentCalibrators(data []response.Notif
 			return err
 		}
 
+		key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
+		if err != nil {
+			return err
+		}
 		emailData := utils.EmailData{
-			// Deploy
-			URL: "https://calibration.techconnect.co.id/",
-			// Local
-			// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
@@ -273,11 +276,12 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 		return err
 	}
 
+	key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
+	if err != nil {
+		return err
+	}
 	emailData := utils.EmailData{
-		// Deploy
-		URL: "https://calibration.techconnect.co.id/",
-		// Local
-		// URL:          fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+		URL:          fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 		FirstName:    user.Name,
 		Subject:      "Rejected Calibration",
 		Comment:      comment,
@@ -298,19 +302,20 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 	return nil
 }
 
-func (n *notificationUsecase) NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User) error {
+func (n *notificationUsecase) NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error {
 	for _, spmo := range listOfSpmo {
+		key, err := utils.EncryptUUID(spmo.ID, n.cfg.SecretKeyEncryption)
+		if err != nil {
+			return err
+		}
 		emailData := utils.EmailData{
-			// Deploy
-			URL: "https://calibration.techconnect.co.id/",
-			// Local
-			// URL:        fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"),
+			URL:        fmt.Sprintf("%s/#/autologin-spmo/%s/%s/%d/%s", n.cfg.FrontEndApi, calibrator.ID, *calibrator.BusinessUnitId, phase, key),
 			FirstName:  spmo.Name,
 			Subject:    "Submitted Worksheet",
 			Calibrator: calibrator.Name,
 		}
 
-		err := utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "spmoEmail.html", n.cfg.SMTPConfig)
+		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "spmoEmail.html", n.cfg.SMTPConfig)
 		if err != nil {
 			return err
 		}

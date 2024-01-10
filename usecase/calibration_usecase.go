@@ -27,8 +27,9 @@ type CalibrationUsecase interface {
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
 	BulkInsert(file *multipart.FileHeader, projectId string) error
 	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error
-	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error
 	SaveCalibrations(payload *request.CalibrationRequest) error
+	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error
+	SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID string) error
 	SpmoAcceptApproval(payload *request.AcceptJustification) error
 	SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error
 	SpmoRejectApproval(payload *request.RejectJustification) error
@@ -480,7 +481,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 			listSpmo = append(listSpmo, data)
 		}
 
-		err = r.notification.NotifyCalibrationToSpmo(calibrator, listSpmo)
+		err = r.notification.NotifyCalibrationToSpmo(calibrator, listSpmo, projectPhase.Phase.Order)
 		if err != nil {
 			return err
 		}
@@ -491,10 +492,12 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 	for _, requestData := range nextCalibrator {
 		if _, ok := nCalibrator[requestData.CalibratorID]; !ok {
 			nCalibrator[requestData.CalibratorID] = response.NotificationModel{
-				CalibratorID:       requestData.CalibratorID,
-				ProjectPhase:       requestData.ProjectPhase,
-				Deadline:           requestData.Deadline,
-				PreviousCalibrator: calibrator.Name,
+				CalibratorID:           requestData.CalibratorID,
+				ProjectPhase:           requestData.ProjectPhase,
+				Deadline:               requestData.Deadline,
+				PreviousCalibrator:     calibrator.Name,
+				PreviousCalibratorID:   calibratorID,
+				PreviousBusinessUnitID: *calibrator.BusinessUnitId,
 			}
 		}
 	}
@@ -535,8 +538,26 @@ func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.Calibrat
 	}
 
 	uniqueCalibrator := removeDuplicates(managerCalibratorIDs)
-
 	err = r.notification.NotifyCalibrators(uniqueCalibrator, projectPhaseNew.EndDate)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *calibrationUsecase) SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID string) error {
+	projectPhase, err := r.project.FindCalibratorPhase(calibratorID)
+	if err != nil {
+		return err
+	}
+
+	managerCalibratorIDs, err := r.repo.UpdateCalibrationsOnePhaseBefore(payload, *projectPhase)
+	if err != nil {
+		return err
+	}
+
+	uniqueCalibrator := removeDuplicates(managerCalibratorIDs)
+	err = r.notification.NotifyCalibrators(uniqueCalibrator, projectPhase.EndDate)
 	if err != nil {
 		return err
 	}
@@ -773,12 +794,12 @@ func (r *calibrationUsecase) FindRatingQuotaSPMOByCalibratorID(spmoID, calibrato
 	ratingQuota := projects.RatingQuotas[0]
 	totalCalibrations := len(users)
 	responses := response.RatingQuota{
-		APlus: int(math.Floor(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
-		A:     int(math.Floor(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
-		BPlus: int(math.Floor(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
-		B:     int(math.Floor(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
-		C:     int(math.Floor(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
-		D:     int(math.Floor(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
+		APlus: int(math.Round(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
+		A:     int(math.Round(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
+		BPlus: int(math.Round(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
+		B:     int(math.Round(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
+		C:     int(math.Round(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
+		D:     int(math.Round(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
 	}
 
 	var total = responses.APlus + responses.A +
@@ -804,9 +825,17 @@ func (r *calibrationUsecase) FindRatingQuotaSPMOByCalibratorID(spmoID, calibrato
 
 	if total > totalCalibrations {
 		if ratingQuota.Excess == "A+" {
-			responses.APlus -= (total - totalCalibrations)
+			if responses.APlus-(total-totalCalibrations) > 0 {
+				responses.APlus -= (total - totalCalibrations)
+			} else {
+				responses.BPlus -= (total - totalCalibrations)
+			}
 		} else if ratingQuota.Excess == "A" {
-			responses.A -= (total - totalCalibrations)
+			if responses.A-(total-totalCalibrations) > 0 {
+				responses.A -= (total - totalCalibrations)
+			} else {
+				responses.BPlus -= (total - totalCalibrations)
+			}
 		} else if ratingQuota.Excess == "B+" {
 			responses.BPlus -= (total - totalCalibrations)
 		} else if ratingQuota.Excess == "B" {

@@ -45,9 +45,12 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark) error {
 				return err
 			}
 
-			if topRemarks.EvidenceName != "" && remarks.EvidenceName == "" {
-				remarks.EvidenceName = topRemarks.EvidenceName
-				remarks.Evidence = topRemarks.Evidence
+			if topRemarks != nil {
+				if topRemarks.EvidenceName != "" && remarks.EvidenceName == "" {
+					remarks.EvidenceName = topRemarks.EvidenceName
+					remarks.Evidence = topRemarks.Evidence
+				}
+
 			}
 		}
 		err := r.db.Save(&remarks)

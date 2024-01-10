@@ -2,10 +2,12 @@ package config
 
 import (
 	"errors"
+	"log"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/joho/godotenv"
 )
 
 type DbConfig struct {
@@ -17,8 +19,9 @@ type DbConfig struct {
 }
 
 type ApiConfig struct {
-	ApiHost string
-	ApiPort string
+	ApiHost     string
+	ApiPort     string
+	FrontEndApi string
 }
 
 type SMTPConfig struct {
@@ -56,6 +59,10 @@ type WhatsAppConfig struct {
 	ShortenUrl string
 }
 
+type EncryptionConfig struct {
+	SecretKeyEncryption string
+}
+
 type Config struct {
 	DbConfig
 	ApiConfig
@@ -64,15 +71,16 @@ type Config struct {
 	RedisConfig
 	GoogleOAuthConfig
 	WhatsAppConfig
+	EncryptionConfig
 }
 
 func (c *Config) ReadConfigFile() error {
 	// Nyalakan untuk local saja, kalau sudah di docker matikan
-	// err := godotenv.Load(".env")
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return errors.New("Failed to load .env file")
-	// }
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Println(err)
+		return errors.New("Failed to load .env file")
+	}
 
 	c.DbConfig = DbConfig{
 		Host:     os.Getenv("DB_HOST"),
@@ -83,8 +91,9 @@ func (c *Config) ReadConfigFile() error {
 	}
 
 	c.ApiConfig = ApiConfig{
-		ApiHost: os.Getenv("API_HOST"),
-		ApiPort: os.Getenv("API_PORT"),
+		ApiHost:     os.Getenv("API_HOST"),
+		ApiPort:     os.Getenv("API_PORT"),
+		FrontEndApi: os.Getenv("FRONT_END_API"),
 	}
 
 	if os.Getenv("PORT") != "" {
@@ -122,6 +131,10 @@ func (c *Config) ReadConfigFile() error {
 		TemplateID: os.Getenv("WA_TEMPLATE_ID"),
 		ApiKey:     os.Getenv("WA_API_KEY"),
 		ShortenUrl: os.Getenv("WA_SHORTEN_URL"),
+	}
+
+	c.EncryptionConfig = EncryptionConfig{
+		SecretKeyEncryption: os.Getenv("SECRET_KEY_ENCRYPTION"),
 	}
 
 	if c.SMTPEmail == "" || c.SMTPHost == "" || c.SMTPPassword == "" || c.SMTPPort == "" || c.SMTPSenderName == "" ||

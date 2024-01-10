@@ -199,6 +199,17 @@ func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnit(c *gin.C
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
+func (r *ProjectController) getCalibrationsByBusinessUnit(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	businessUnit := c.Param("businessUnit")
+	projects, err := r.uc.FindCalibrationsByBusinessUnit(calibratorID, businessUnit)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
 func (r *ProjectController) getNumberOneCalibrationsByPrevCalibratorBusinessUnit(c *gin.Context) {
 	calibratorID := c.Param("calibratorID")
 	prevCalibrator := c.Param("prevCalibrator")
@@ -215,6 +226,52 @@ func (r *ProjectController) getNMinusOneCalibrationsByPrevCalibratorBusinessUnit
 	calibratorID := c.Param("calibratorID")
 	businessUnit := c.Param("businessUnit")
 	projects, err := r.uc.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnitAndRating(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	prevCalibrator := c.Param("prevCalibrator")
+	businessUnit := c.Param("businessUnit")
+	rating := c.Param("rating")
+	projects, err := r.uc.FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getCalibrationsByBusinessUnitAndRating(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	businessUnit := c.Param("businessUnit")
+	rating := c.Param("rating")
+	projects, err := r.uc.FindCalibrationsByBusinessUnitAndRating(calibratorID, businessUnit, rating)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getCalibrationsByRating(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	rating := c.Param("rating")
+	projects, err := r.uc.FindCalibrationsByRating(calibratorID, rating)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getSummaryTotalProjectByCalibrator(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	projects, err := r.uc.FindSummaryProjectTotalByCalibratorID(calibratorID)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -265,8 +322,13 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth.GET("/projects/active/total-actual-score", controller.getTotalActualScoreHandlerByID)
 	auth.GET("/projects/summary-calibration/:calibratorID", controller.getSummaryProjectByCalibratorID)
 	auth.GET("/projects/calibrations/:calibratorID/:prevCalibrator/:businessUnit", controller.getCalibrationsByPrevCalibratorBusinessUnit)
+	auth.GET("/projects/calibrations-all-bu/:calibratorID/:businessUnit", controller.getCalibrationsByBusinessUnit)
 	auth.GET("/projects/calibrations-one/:calibratorID/:prevCalibrator/:businessUnit", controller.getNumberOneCalibrationsByPrevCalibratorBusinessUnit)
 	auth.GET("/projects/calibrations-n-minus-one/:calibratorID/:businessUnit", controller.getNMinusOneCalibrationsByPrevCalibratorBusinessUnit)
+	auth.GET("/projects/calibrations-score/:calibratorID/:prevCalibrator/:businessUnit/:rating", controller.getCalibrationsByPrevCalibratorBusinessUnitAndRating)
+	auth.GET("/projects/calibrations-score-all-bu/:calibratorID/:businessUnit/:rating", controller.getCalibrationsByBusinessUnitAndRating)
+	auth.GET("/projects/calibrations-score-all/:calibratorID/:rating", controller.getCalibrationsByRating)
+	auth.GET("/projects/summary-calibration-total/:calibratorID", controller.getSummaryTotalProjectByCalibrator)
 	auth.GET("/projects/project-phase/:calibratorID", controller.getProjectPhaseByCalibratorId)
 	auth.GET("/projects/project-phase/manager", controller.getActiveManagerPhaseHandler)
 	auth.GET("/projects/project-phase/active", controller.getActiveProjectPhaseHandler)

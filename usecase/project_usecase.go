@@ -18,17 +18,22 @@ type ProjectUsecase interface {
 	// FindActiveProject() (*model.Project, error)
 	// FindActiveProjectByCalibratorID(calibratorId string) (*response.ProjectCalibrationResponse, error)
 	FindScoreDistributionByCalibratorID(businessUnitName string) (*model.Project, error)
-	FindRatingQuotaByCalibratorID(calibratorId, prevCalibrator, businessUnitName, types string) (*response.RatingQuota, error)
+	FindRatingQuotaByCalibratorID(calibratorId, prevCalibrator, businessUnitID, types string) (*response.RatingQuota, error)
 	FindTotalActualScoreByCalibratorID(calibratorId, prevCalibrator, businessUnitName, types string) (*response.TotalActualScore, error)
 	FindSummaryProjectByCalibratorID(calibratorId string) (*response.SummaryProject, error)
+	FindCalibrationsByBusinessUnit(calibratorId, businessUnit string) (response.UserCalibration, error)
 	FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) (response.UserCalibration, error)
 	FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit string) (response.UserCalibration, error)
 	FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit string) (response.UserCalibration, error)
+	FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorId, prevCalibrator, businessUnit, rating string) (response.UserCalibration, error)
+	FindCalibrationsByBusinessUnitAndRating(calibratorId, prevCalibrator, rating string) (response.UserCalibration, error)
+	FindCalibrationsByRating(calibratorId, rating string) (response.UserCalibration, error)
 	FindCalibratorPhase(calibratorId string) (*model.ProjectPhase, error)
 	FindActiveProjectPhase() ([]model.ProjectPhase, error)
 	FindActiveManagerPhase() (model.ProjectPhase, error)
 	FindActiveProject() (*model.Project, error)
 	FindProjectRatingQuotaByBusinessUnit(businessUnitID string) (*model.Project, error)
+	FindSummaryProjectTotalByCalibratorID(calibratorId string) (*response.SummaryTotal, error)
 }
 
 type projectUsecase struct {
@@ -73,22 +78,24 @@ func (r *projectUsecase) FindScoreDistributionByCalibratorID(businessUnitName st
 	return r.repo.GetScoreDistributionByCalibratorID(businessUnitName)
 }
 
-func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibrator, businessUnitName, types string) (*response.RatingQuota, error) {
+func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibrator, businessUnitID, types string) (*response.RatingQuota, error) {
 	var calibrations response.UserCalibration
 	var err error
 	if types == "numberOne" {
-		calibrations, err = r.FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnitName)
+		calibrations, err = r.FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnitID)
 	} else if types == "n-1" {
-		calibrations, err = r.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnitName)
+		calibrations, err = r.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnitID)
+	} else if types == "default" {
+		calibrations, err = r.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnitID)
 	} else {
-		calibrations, err = r.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnitName)
+		calibrations, err = r.FindCalibrationsByBusinessUnit(calibratorId, businessUnitID)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	projects, err := r.repo.GetRatingQuotaByCalibratorID(businessUnitName)
+	projects, err := r.repo.GetRatingQuotaByCalibratorID(businessUnitID)
 	if err != nil {
 		return nil, err
 	}
@@ -96,13 +103,14 @@ func (r *projectUsecase) FindRatingQuotaByCalibratorID(calibratorId, prevCalibra
 	ratingQuota := projects.RatingQuotas[0]
 	totalCalibrations := len(calibrations.UserData)
 	// fmt.Println("TOTAL CALIBRATIONS = ", totalCalibrations)
+	// Jangan di round down
 	responses := response.RatingQuota{
-		APlus: int(math.Floor(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
-		A:     int(math.Floor(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
-		BPlus: int(math.Floor(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
-		B:     int(math.Floor(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
-		C:     int(math.Floor(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
-		D:     int(math.Floor(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
+		APlus: int(math.Round(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),
+		A:     int(math.Round(((ratingQuota.AQuota) / float64(100)) * float64(totalCalibrations))),
+		BPlus: int(math.Round(((ratingQuota.BPlusQuota) / float64(100)) * float64(totalCalibrations))),
+		B:     int(math.Round(((ratingQuota.BQuota) / float64(100)) * float64(totalCalibrations))),
+		C:     int(math.Round(((ratingQuota.CQuota) / float64(100)) * float64(totalCalibrations))),
+		D:     int(math.Round(((ratingQuota.DQuota) / float64(100)) * float64(totalCalibrations))),
 	}
 
 	var total = responses.APlus + responses.A +
@@ -162,8 +170,10 @@ func (r *projectUsecase) FindTotalActualScoreByCalibratorID(calibratorId, prevCa
 		calibrations, err = r.FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnitName)
 	} else if types == "n-1" {
 		calibrations, err = r.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnitName)
-	} else {
+	} else if types == "default" {
 		calibrations, err = r.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnitName)
+	} else {
+		calibrations, err = r.FindCalibrationsByBusinessUnit(calibratorId, businessUnitName)
 	}
 
 	if err != nil {
@@ -203,7 +213,7 @@ func (r *projectUsecase) FindTotalActualScoreByCalibratorID(calibratorId, prevCa
 
 func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (*response.SummaryProject, error) {
 	result := &response.SummaryProject{
-		Summary:           []*response.CalibratorBusinessUnit{},
+		Summary:           []*response.BusinessUnitTotal{},
 		APlusTotalScore:   0,
 		ATotalScore:       0,
 		BPlusTotalScore:   0,
@@ -242,6 +252,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 			countCalibratedScoresUsers += user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationScore
 		}
 
+		// Grouping By Previous Calibrator and Business Unit
 		pic := false
 		picName := "N-1"
 		picId := "N-1"
@@ -414,25 +425,36 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 			}
 		}
 
-		if _, isExist := businessUnit[user.BusinessUnit.Name]; !isExist && picName != "N-1" {
-			businessUnit[user.BusinessUnit.Name] = picName
+		if _, isExist := businessUnit[user.BusinessUnit.Name]; !isExist {
+			businessUnit[user.BusinessUnit.Name] = user.BusinessUnit.Name
 			picIDs[user.BusinessUnit.Name] = picId
 		}
+
+		// if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A+" {
+		// 	businessUnit[user.BusinessUnit.Name].APlusCalibrated += 1
+		// } else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "A" {
+		// 	businessUnit[user.BusinessUnit.Name].ACalibrated += 1
+		// } else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "B+" {
+		// 	businessUnit[user.BusinessUnit.Name].BPlusCalibrated += 1
+		// } else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "B" {
+		// 	businessUnit[user.BusinessUnit.Name].BCalibrated += 1
+		// } else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "C" {
+		// 	businessUnit[user.BusinessUnit.Name].CCalibrated += 1
+		// } else if user.CalibrationScores[calibrationLength-1].CalibrationRating == "D" {
+		// 	businessUnit[user.BusinessUnit.Name].DCalibrated += 1
+		// }
 		// fmt.Println("Business Unit:= ", businessUnit)
 
 	}
 
 	buCheck := map[string]string{}
+	finalData := map[string]*response.BusinessUnitTotal{}
 	for _, summary := range resultSummary {
-		types := "default"
-		if _, isExist := buCheck[summary.CalibratorBusinessUnit]; !isExist {
-			// types = "numberOne"
-			buCheck[summary.CalibratorBusinessUnit] = summary.CalibratorBusinessUnit
-		}
-
+		types := "all"
 		if summary.CalibratorName == "N-1" {
 			types = "n-1"
 		}
+
 		guidance, err := r.FindRatingQuotaByCalibratorID(calibratorId, summary.CalibratorID, summary.CalibratorBusinessUnitID, types)
 		if err != nil {
 			return nil, err
@@ -445,8 +467,63 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		summary.CGuidance = guidance.C
 		summary.DGuidance = guidance.D
 
+		if _, isExist := buCheck[summary.CalibratorBusinessUnit]; !isExist {
+			// types = "numberOne"
+			buCheck[summary.CalibratorBusinessUnit] = summary.CalibratorBusinessUnit
+			finalData[summary.CalibratorBusinessUnit] = &response.BusinessUnitTotal{
+				CalibratorBusinessUnit:     []*response.CalibratorBusinessUnit{},
+				CalibratorBusinessUnitName: summary.CalibratorBusinessUnit,
+				CalibratorBusinessUnitID:   summary.CalibratorBusinessUnitID,
+				APlusCalibrated:            0,
+				ACalibrated:                0,
+				BPlusCalibrated:            0,
+				BCalibrated:                0,
+				CCalibrated:                0,
+				DCalibrated:                0,
+				APlusGuidance:              0,
+				AGuidance:                  0,
+				BPlusGuidance:              0,
+				BGuidance:                  0,
+				CGuidance:                  0,
+				DGuidance:                  0,
+				TotalCalibratedScore:       0,
+				UserCount:                  0,
+				AverageScore:               0,
+				Status:                     "Calibrate",
+				Completed:                  true,
+			}
+
+			finalData[summary.CalibratorBusinessUnit].APlusGuidance = guidance.APlus
+			finalData[summary.CalibratorBusinessUnit].AGuidance = guidance.A
+			finalData[summary.CalibratorBusinessUnit].BPlusGuidance = guidance.BPlus
+			finalData[summary.CalibratorBusinessUnit].BGuidance = guidance.B
+			finalData[summary.CalibratorBusinessUnit].CGuidance = guidance.C
+			finalData[summary.CalibratorBusinessUnit].DGuidance = guidance.D
+
+			result.APlusGuidance += guidance.APlus
+			result.AGuidance += guidance.A
+			result.BPlusGuidance += guidance.BPlus
+			result.BGuidance += guidance.B
+			result.CGuidance += guidance.C
+			result.DGuidance += guidance.D
+		}
+
 		if summary.UserCount > 0 {
 			summary.AverageScore = summary.TotalCalibratedScore / float64(summary.UserCount)
+		}
+
+		finalData[summary.CalibratorBusinessUnit].APlusCalibrated += summary.APlus
+		finalData[summary.CalibratorBusinessUnit].ACalibrated += summary.A
+		finalData[summary.CalibratorBusinessUnit].BPlusCalibrated += summary.BPlus
+		finalData[summary.CalibratorBusinessUnit].BCalibrated += summary.B
+		finalData[summary.CalibratorBusinessUnit].CCalibrated += summary.C
+		finalData[summary.CalibratorBusinessUnit].DCalibrated += summary.D
+		finalData[summary.CalibratorBusinessUnit].TotalCalibratedScore += summary.TotalCalibratedScore
+		finalData[summary.CalibratorBusinessUnit].UserCount += summary.UserCount
+		finalData[summary.CalibratorBusinessUnit].CalibratorBusinessUnit = append(finalData[summary.CalibratorBusinessUnit].CalibratorBusinessUnit, summary)
+
+		if finalData[summary.CalibratorBusinessUnit].UserCount > 0 {
+			finalData[summary.CalibratorBusinessUnit].AverageScore = finalData[summary.CalibratorBusinessUnit].TotalCalibratedScore / float64(finalData[summary.CalibratorBusinessUnit].UserCount)
 		}
 
 		result.APlusTotalScore += summary.APlus
@@ -456,29 +533,42 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorId string) (
 		result.CTotalScore += summary.C
 		result.DTotalScore += summary.D
 
-		result.APlusGuidance += guidance.APlus
-		result.AGuidance += guidance.A
-		result.BPlusGuidance += guidance.BPlus
-		result.BGuidance += guidance.B
-		result.CGuidance += guidance.C
-		result.DGuidance += guidance.D
+		if summary.Status == "Waiting" {
+			finalData[summary.CalibratorBusinessUnit].Status = "Waiting"
+		}
+
+		if summary.Status == "Complete" {
+			finalData[summary.CalibratorBusinessUnit].Completed = finalData[summary.CalibratorBusinessUnit].Completed && true
+		} else {
+			finalData[summary.CalibratorBusinessUnit].Completed = finalData[summary.CalibratorBusinessUnit].Completed && false
+		}
 	}
 
 	if totalUsers > 0 {
 		result.AverageTotalScore = countCalibratedScoresUsers / float64(totalUsers)
 	}
 
-	for _, rSummary := range resultSummary {
+	for _, rSummary := range finalData {
+		if rSummary.Completed == true {
+			rSummary.Status = "Complete"
+		}
+
 		result.Summary = append(result.Summary, rSummary)
 		// fmt.Println("ISI BU UNIT", key)
 	}
 
 	sort.Slice(result.Summary, func(i, j int) bool {
-		if result.Summary[i].CalibratorBusinessUnit != result.Summary[j].CalibratorBusinessUnit {
-			return result.Summary[i].CalibratorBusinessUnit < result.Summary[j].CalibratorBusinessUnit
+		if result.Summary[i].CalibratorBusinessUnitName != result.Summary[j].CalibratorBusinessUnitName {
+			return result.Summary[i].CalibratorBusinessUnitName < result.Summary[j].CalibratorBusinessUnitName
 		}
-		return result.Summary[i].CalibratorName < result.Summary[j].CalibratorName
+		return result.Summary[i].CalibratorBusinessUnitName < result.Summary[j].CalibratorBusinessUnitName
 	})
+
+	for _, businessUnit := range result.Summary {
+		sort.Slice(businessUnit.CalibratorBusinessUnit, func(i, j int) bool {
+			return businessUnit.CalibratorBusinessUnit[i].CalibratorName < businessUnit.CalibratorBusinessUnit[j].CalibratorName
+		})
+	}
 
 	return result, nil
 }
@@ -490,6 +580,19 @@ func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnit(calibrator
 	}
 
 	calibration, err := r.repo.GetCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit, phase)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindCalibrationsByBusinessUnit(calibratorId, businessUnit string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetCalibrationsByBusinessUnit(calibratorId, businessUnit, phase)
 	if err != nil {
 		return response.UserCalibration{}, err
 	}
@@ -526,6 +629,134 @@ func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(c
 		return response.UserCalibration{}, err
 	}
 	return calibration, nil
+}
+
+func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorId, prevCalibrator, businessUnit, rating string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorId, prevCalibrator, businessUnit, rating, phase)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindCalibrationsByBusinessUnitAndRating(calibratorId, businessUnit, rating string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetCalibrationsByBusinessUnitAndRating(calibratorId, businessUnit, rating, phase)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindCalibrationsByRating(calibratorId, rating string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetCalibrationsByRating(calibratorId, rating, phase)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindSummaryProjectTotalByCalibratorID(calibratorId string) (*response.SummaryTotal, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorId)
+	if err != nil {
+		return nil, err
+	}
+
+	allBusinessUnit, err := r.repo.GetAllBusinessUnitSummary(calibratorId, phase)
+	if err != nil {
+		return nil, err
+	}
+
+	results := &response.SummaryTotal{
+		Data: []*response.RatingDataSummary{},
+	}
+
+	mapRating := map[string]*response.RatingDataSummary{}
+	mapRating["A+"] = &response.RatingDataSummary{
+		Rating: "A+",
+	}
+	mapRating["A"] = &response.RatingDataSummary{
+		Rating: "A",
+	}
+	mapRating["B+"] = &response.RatingDataSummary{
+		Rating: "B+",
+	}
+	mapRating["B"] = &response.RatingDataSummary{
+		Rating: "B",
+	}
+	mapRating["C"] = &response.RatingDataSummary{
+		Rating: "C",
+	}
+	mapRating["D"] = &response.RatingDataSummary{
+		Rating: "D",
+	}
+
+	for _, businessUnit := range allBusinessUnit {
+		ratingQuota, err := r.FindRatingQuotaByCalibratorID(calibratorId, "", businessUnit.ID, "all")
+		if err != nil {
+			return nil, err
+		}
+
+		mapRating["A+"].Guidance += ratingQuota.APlus
+		mapRating["A"].Guidance += ratingQuota.A
+		mapRating["B+"].Guidance += ratingQuota.BPlus
+		mapRating["B"].Guidance += ratingQuota.B
+		mapRating["C"].Guidance += ratingQuota.C
+		mapRating["D"].Guidance += ratingQuota.D
+
+		users, err := r.FindCalibrationsByBusinessUnit(calibratorId, businessUnit.ID)
+		for _, user := range users.UserData {
+			if user.ActualScores[0].ActualRating == "A+" {
+				mapRating["A+"].ActualRating += 1
+			} else if user.ActualScores[0].ActualRating == "A" {
+				mapRating["A"].ActualRating += 1
+			} else if user.ActualScores[0].ActualRating == "B+" {
+				mapRating["B+"].ActualRating += 1
+			} else if user.ActualScores[0].ActualRating == "B" {
+				mapRating["B"].ActualRating += 1
+			} else if user.ActualScores[0].ActualRating == "C" {
+				mapRating["C"].ActualRating += 1
+			} else {
+				mapRating["D"].ActualRating += 1
+			}
+
+			if user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationRating == "A+" {
+				mapRating["A+"].CalibratedRating += 1
+			} else if user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationRating == "A" {
+				mapRating["A"].CalibratedRating += 1
+			} else if user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationRating == "B+" {
+				mapRating["B+"].CalibratedRating += 1
+			} else if user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationRating == "B" {
+				mapRating["B"].CalibratedRating += 1
+			} else if user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationRating == "C" {
+				mapRating["C"].CalibratedRating += 1
+			} else {
+				mapRating["D"].CalibratedRating += 1
+			}
+		}
+
+	}
+
+	for _, mRating := range mapRating {
+		mRating.Variance = mRating.CalibratedRating - mRating.Guidance
+		results.Data = append(results.Data, mRating)
+	}
+
+	return results, nil
 }
 
 func (r *projectUsecase) FindCalibratorPhase(calibratorId string) (*model.ProjectPhase, error) {

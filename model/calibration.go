@@ -31,9 +31,10 @@ type Calibration struct {
 	Status                    string `gorm:"default:Waiting"`
 	SpmoStatus                string `gorm:"default:'-'"`
 	Comment                   string
-	SpmoComment               string       `gorm:"default:-"`
-	JustificationType         string       `gorm:"default:default"`
-	JustificationReviewStatus bool         `gorm:"default:false"`
+	SpmoComment               string `gorm:"default:-"`
+	JustificationType         string `gorm:"default:default"`
+	JustificationReviewStatus bool   `gorm:"default:false"`
+	SendBackDeadline          time.Time
 	BottomRemark              BottomRemark `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID;constraint:OnDelete:CASCADE"`
 	TopRemarks                []TopRemark  `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID;constraint:OnDelete:CASCADE"`
 }

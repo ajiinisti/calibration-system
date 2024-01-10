@@ -41,7 +41,8 @@ type UserResponse struct {
 }
 
 type UserCalibration struct {
-	NPlusOneManager bool
-	SendToManager   bool
-	UserData        []UserResponse
+	NPlusOneManager     bool
+	SendToManager       bool
+	SendBackCalibration bool
+	UserData            []UserResponse
 }

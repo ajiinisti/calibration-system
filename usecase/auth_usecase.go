@@ -16,6 +16,7 @@ type AuthUsecase interface {
 	ForgetPassword(email string, resetToken string) error
 	GetUserByEmail(email string) (*model.User, error)
 	ResetPassword(email string, resetToken string, newPassword string, confirmPassword string) error
+	CheckToken(token string, secretKey string) (*model.User, error)
 }
 
 type authUsecase struct {
@@ -98,6 +99,24 @@ func (a *authUsecase) Login(payload request.Login) (*model.User, error) {
 
 func (a *authUsecase) GetUserByEmail(email string) (*model.User, error) {
 	return a.user.SearchEmail(email)
+}
+
+func (a *authUsecase) CheckToken(token string, secretKey string) (*model.User, error) {
+	uuid, err := utils.DecryptUUID(token, secretKey)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := a.user.FindById(uuid)
+	if err == gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("Token invalid")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func NewAuthUsecase(user UserUsecase) AuthUsecase {
