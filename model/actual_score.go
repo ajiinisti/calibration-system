@@ -18,4 +18,7 @@ type ActualScore struct {
 	ActualRating string
 	Y1Rating     string
 	Y2Rating     string
+	PTTScore     float64
+	PATScore     float64
+	Score360     float64
 }

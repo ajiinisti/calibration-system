@@ -86,7 +86,7 @@ func (r *actualScoreUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		nik := row[0]
 		y1rating := row[1]
 		y2rating := row[2]
-		actualRating := row[4]
+		actualRating := row[7]
 
 		employee, err := r.employee.FindByNik(nik)
 		if err != nil {
@@ -96,7 +96,31 @@ func (r *actualScoreUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 			passed = false
 		}
 
-		as, err := strconv.ParseFloat(row[3], 64)
+		ptt, err := strconv.ParseFloat(row[3], 64)
+		if err != nil {
+			if _, ok := logs[nik]; !ok {
+				logs[nik] = nik
+			}
+			passed = false
+		}
+
+		pat, err := strconv.ParseFloat(row[4], 64)
+		if err != nil {
+			if _, ok := logs[nik]; !ok {
+				logs[nik] = nik
+			}
+			passed = false
+		}
+
+		score360, err := strconv.ParseFloat(row[5], 64)
+		if err != nil {
+			if _, ok := logs[nik]; !ok {
+				logs[nik] = nik
+			}
+			passed = false
+		}
+
+		actualScore, err := strconv.ParseFloat(row[6], 64)
 		if err != nil {
 			if _, ok := logs[nik]; !ok {
 				logs[nik] = nik
@@ -108,10 +132,13 @@ func (r *actualScoreUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 			actualScore := model.ActualScore{
 				ProjectID:    projectId,
 				EmployeeID:   employee.ID,
-				ActualScore:  as,
+				ActualScore:  actualScore,
 				ActualRating: actualRating,
 				Y1Rating:     y1rating,
 				Y2Rating:     y2rating,
+				PTTScore:     ptt,
+				PATScore:     pat,
+				Score360:     score360,
 			}
 			actualScores = append(actualScores, actualScore)
 		}
