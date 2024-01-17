@@ -76,10 +76,14 @@ type Config struct {
 
 func (c *Config) ReadConfigFile() error {
 	// Nyalakan untuk local saja, kalau sudah di docker matikan
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println(err)
-		return errors.New("Failed to load .env file")
+
+	env := os.Getenv("ENV")
+	if env != "production" {
+		err := godotenv.Load(".env")
+		if err != nil {
+			log.Println(err)
+			return errors.New("Failed to load .env file")
+		}
 	}
 
 	c.DbConfig = DbConfig{

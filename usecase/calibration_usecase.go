@@ -180,6 +180,9 @@ func (r *calibrationUsecase) SaveDataByUser(payload *request.CalibrationForm) er
 		ActualRating: payload.ActualRating,
 		Y1Rating:     payload.Y1Rating,
 		Y2Rating:     payload.Y2Rating,
+		PTTScore:     payload.PTTScore,
+		PATScore:     payload.PATScore,
+		Score360:     payload.Score360,
 	})
 	if err != nil {
 		return err

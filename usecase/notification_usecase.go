@@ -56,7 +56,8 @@ func (n *notificationUsecase) NotifyCalibrator() error {
 	}
 
 	emailData := utils.EmailData{
-		URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, "token"),
+		URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+		// URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, "token"),
 		FirstName:  "Aji",
 		Subject:    "Calibration Assignment",
 		PhaseOrder: 1,
@@ -83,12 +84,13 @@ func (n *notificationUsecase) NotifyCalibrators(ids []string, deadline time.Time
 			return err
 		}
 
-		key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
-		if err != nil {
-			return err
-		}
+		// key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
+		// if err != nil {
+		// 	return err
+		// }
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("%s/#/autologin/%s/%s", n.cfg.FrontEndApi, key, *employee.BusinessUnitId),
+			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			// URL:        fmt.Sprintf("%s/#/autologin/%s/%s", n.cfg.FrontEndApi, key, *employee.BusinessUnitId),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: 1,
@@ -117,12 +119,13 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrator(ids []string
 			return err
 		}
 
-		key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
-		if err != nil {
-			return err
-		}
+		// key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
+		// if err != nil {
+		// 	return err
+		// }
 		emailData := utils.EmailData{
-			URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
+			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			// URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -148,12 +151,13 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 			return err
 		}
 
-		key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
-		if err != nil {
-			return err
-		}
+		// key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
+		// if err != nil {
+		// 	return err
+		// }
 		emailData := utils.EmailData{
-			URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
+			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			// URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -178,12 +182,13 @@ func (n *notificationUsecase) NotifySubmittedCalibrationToCalibratorsWithoutRevi
 		return err
 	}
 
-	key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
-	if err != nil {
-		return err
-	}
+	// key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
+	// if err != nil {
+	// 	return err
+	// }
 	emailData := utils.EmailData{
-		URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
+		URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+		// URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 		FirstName: user.Name,
 		Subject:   "Submitted Calibration",
 	}
@@ -208,12 +213,13 @@ func (n *notificationUsecase) NotifyThisCalibrators(data []response.Notification
 			return err
 		}
 
-		key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
-		if err != nil {
-			return err
-		}
+		// key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
+		// if err != nil {
+		// 	return err
+		// }
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator, key),
+			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			// URL:        fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator, key),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
@@ -243,12 +249,13 @@ func (n *notificationUsecase) NotifyThisCurrentCalibrators(data []response.Notif
 			return err
 		}
 
-		key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
-		if err != nil {
-			return err
-		}
+		// key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
+		// if err != nil {
+		// 	return err
+		// }
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
+			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			// URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
@@ -276,12 +283,13 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 		return err
 	}
 
-	key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
-	if err != nil {
-		return err
-	}
+	// key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
+	// if err != nil {
+	// 	return err
+	// }
 	emailData := utils.EmailData{
-		URL:          fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
+		URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+		// URL:          fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 		FirstName:    user.Name,
 		Subject:      "Rejected Calibration",
 		Comment:      comment,
@@ -304,18 +312,19 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 
 func (n *notificationUsecase) NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error {
 	for _, spmo := range listOfSpmo {
-		key, err := utils.EncryptUUID(spmo.ID, n.cfg.SecretKeyEncryption)
-		if err != nil {
-			return err
-		}
+		// key, err := utils.EncryptUUID(spmo.ID, n.cfg.SecretKeyEncryption)
+		// if err != nil {
+		// 	return err
+		// }
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("%s/#/autologin-spmo/%s/%s/%d/%s", n.cfg.FrontEndApi, calibrator.ID, *calibrator.BusinessUnitId, phase, key),
+			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			// URL:        fmt.Sprintf("%s/#/autologin-spmo/%s/%s/%d/%s", n.cfg.FrontEndApi, calibrator.ID, *calibrator.BusinessUnitId, phase, key),
 			FirstName:  spmo.Name,
 			Subject:    "Submitted Worksheet",
 			Calibrator: calibrator.Name,
 		}
 
-		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "spmoEmail.html", n.cfg.SMTPConfig)
+		err := utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "spmoEmail.html", n.cfg.SMTPConfig)
 		if err != nil {
 			return err
 		}

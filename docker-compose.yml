@@ -27,6 +27,7 @@ services:
       - WA_TEMPLATE_ID=${WA_TEMPLATE_ID}
       - WA_API_KEY=${WA_API_KEY}
       - WA_SHORTEN_URL=${WA_SHORTEN_URL}
+      - SECRET_KEY_ENCRYPTION=${SECRET_KEY_ENCRYPTION}
     ports:
       - ${API_PORT}:5000
     depends_on:
