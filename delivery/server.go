@@ -43,6 +43,8 @@ func (s *Server) initController() {
 	controller.NewRemarkSettingController(s.engine, s.tokenService, s.ucManager.RemarkSettingUc())
 	controller.NewTopRemarkController(s.engine, s.tokenService, s.ucManager.TopRemarkUc())
 	controller.NewBottomRemarkController(s.engine, s.tokenService, s.ucManager.BottomRemarkUc())
+	controller.NewAnnouncementController(s.engine, s.tokenService, s.ucManager.AnnouncementUc())
+	controller.NewFaqController(s.engine, s.tokenService, s.ucManager.FaqUc())
 }
 
 func (s *Server) Run() {
@@ -105,6 +107,8 @@ func NewServer() *Server {
 			&model.BottomRemark{},
 			&model.RatingQuota{},
 			&model.ScoreDistribution{},
+			&model.Announcement{},
+			&model.Faq{},
 		)
 	})
 

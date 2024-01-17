@@ -22,6 +22,8 @@ type UsecaseManager interface {
 	TopRemarkUc() usecase.TopRemarkUsecase
 	BottomRemarkUc() usecase.BottomRemarkUsecase
 	NotificationUc() usecase.NotificationUsecase
+	AnnouncementUc() usecase.AnnouncementUsecase
+	FaqUc() usecase.FaqUsecase
 }
 
 type usecaseManager struct {
@@ -91,6 +93,14 @@ func (u *usecaseManager) BottomRemarkUc() usecase.BottomRemarkUsecase {
 
 func (u *usecaseManager) NotificationUc() usecase.NotificationUsecase {
 	return usecase.NewNotificationUsecase(u.repo.NotificationRepo(), u.UserUc(), u.ProjectUc(), *u.cfg)
+}
+
+func (u *usecaseManager) AnnouncementUc() usecase.AnnouncementUsecase {
+	return usecase.NewAnnouncementUsecase(u.repo.AnnouncementRepo())
+}
+
+func (u *usecaseManager) FaqUc() usecase.FaqUsecase {
+	return usecase.NewFaqUsecase(u.repo.FaqRepo())
 }
 
 func NewUsecaseManager(repo RepoManager, cfg *config.Config) UsecaseManager {
