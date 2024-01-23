@@ -9,6 +9,8 @@ import (
 
 type ProjectPhaseUsecase interface {
 	BaseUsecase[model.ProjectPhase]
+	FindAllActive() ([]model.ProjectPhase, error)
+	FindAllActiveHigherThanID(id string) ([]model.ProjectPhase, error)
 }
 
 type projectPhaseUsecase struct {
@@ -19,6 +21,14 @@ type projectPhaseUsecase struct {
 
 func (r *projectPhaseUsecase) FindAll() ([]model.ProjectPhase, error) {
 	return r.repo.List()
+}
+
+func (r *projectPhaseUsecase) FindAllActive() ([]model.ProjectPhase, error) {
+	return r.repo.ListActive()
+}
+
+func (r *projectPhaseUsecase) FindAllActiveHigherThanID(id string) ([]model.ProjectPhase, error) {
+	return r.repo.ListActiveProjectPhaseHigherThanID(id)
 }
 
 func (r *projectPhaseUsecase) FindById(id string) (*model.ProjectPhase, error) {
