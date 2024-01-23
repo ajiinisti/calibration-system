@@ -8,7 +8,7 @@ import (
 )
 
 type BottomRemarkRepo interface {
-	Save(payload *model.BottomRemark) error
+	Save(payload *model.BottomRemark, projectPhases []model.ProjectPhase) error
 	Get(projectID, employeeID, projectPhaseID string) (*model.BottomRemark, error)
 	List() ([]model.BottomRemark, error)
 	Delete(projectID, employeeID, projectPhaseID string) error
@@ -18,11 +18,43 @@ type bottomRemarkRepo struct {
 	db *gorm.DB
 }
 
-func (r *bottomRemarkRepo) Save(payload *model.BottomRemark) error {
-	err := r.db.Save(&payload)
+func (r *bottomRemarkRepo) Save(payload *model.BottomRemark, projectPhases []model.ProjectPhase) error {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	err := tx.Save(&payload)
 	if err.Error != nil {
 		return err.Error
 	}
+
+	for _, projectPhase := range projectPhases {
+		var calibrations []model.Calibration
+		err := r.db.
+			Table("calibrations c").
+			Where("c.employee_id = ? AND c.project_id = ? AND c.project_phase_id = ?", payload.EmployeeID, payload.ProjectID, projectPhase.ID).
+			Find(&calibrations).
+			Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if len(calibrations) > 0 {
+			payload.ProjectPhaseID = projectPhase.ID
+			err := r.db.Save(&payload)
+			if err.Error != nil {
+				tx.Rollback()
+				return err.Error
+			}
+		}
+
+	}
+
+	tx.Commit()
 	return nil
 }
 

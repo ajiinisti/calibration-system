@@ -9,6 +9,8 @@ import (
 
 type ProjectPhaseRepo interface {
 	BaseRepository[model.ProjectPhase]
+	ListActive() ([]model.ProjectPhase, error)
+	ListActiveProjectPhaseHigherThanID(id string) ([]model.ProjectPhase, error)
 }
 
 type projectProjectPhaseRepo struct {
@@ -35,6 +37,47 @@ func (r *projectProjectPhaseRepo) Get(id string) (*model.ProjectPhase, error) {
 func (r *projectProjectPhaseRepo) List() ([]model.ProjectPhase, error) {
 	var projectProjectPhases []model.ProjectPhase
 	err := r.db.Preload("Phase").Preload("Project").Find(&projectProjectPhases).Error
+	if err != nil {
+		return nil, err
+	}
+	return projectProjectPhases, nil
+}
+
+func (r *projectProjectPhaseRepo) ListActive() ([]model.ProjectPhase, error) {
+	var projectProjectPhases []model.ProjectPhase
+	err := r.db.
+		Table("project_phases pp").
+		Preload("Phase").
+		Preload("Project").
+		Joins("JOIN projects pr ON pr.id = pp.project_id AND pr.active = true").
+		Joins("JOIN phases p ON p.id = pp.phase_id").
+		Order("p.order ASC").
+		Find(&projectProjectPhases).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return projectProjectPhases, nil
+}
+
+func (r *projectProjectPhaseRepo) ListActiveProjectPhaseHigherThanID(id string) ([]model.ProjectPhase, error) {
+	projectPhase, err := r.Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	var projectProjectPhases []model.ProjectPhase
+	err = r.db.
+		Table("project_phases pp").
+		Preload("Phase").
+		Preload("Project").
+		Joins("JOIN projects pr ON pr.id = pp.project_id AND pr.active = true").
+		Joins("JOIN phases p ON p.id = pp.phase_id").
+		Where("p.order > ?", projectPhase.Phase.Order).
+		Order("p.order ASC").
+		Find(&projectProjectPhases).
+		Error
+
 	if err != nil {
 		return nil, err
 	}
