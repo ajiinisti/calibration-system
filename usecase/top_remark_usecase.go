@@ -92,7 +92,11 @@ func (r *topRemarkUsecase) SaveData(payload *model.TopRemark) error {
 }
 
 func (r *topRemarkUsecase) SaveDataByProject(payload []*model.TopRemark) error {
-	return r.repo.BulkSave(payload)
+	projectPhases, err := r.projectPhase.FindAllActiveHigherThanID(payload[0].ProjectPhaseID)
+	if err != nil {
+		return err
+	}
+	return r.repo.BulkSave(payload, projectPhases)
 }
 
 func (r *topRemarkUsecase) DeleteData(projectID, employeeID, projectPhaseID string) error {

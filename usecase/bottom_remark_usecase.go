@@ -50,7 +50,13 @@ func (r *bottomRemarkUsecase) SaveData(payload *model.BottomRemark) error {
 			return fmt.Errorf("Project Phase Not Found")
 		}
 	}
-	return r.repo.Save(payload)
+
+	projectPhases, err := r.projectPhase.FindAllActiveHigherThanID(payload.ProjectPhaseID)
+	if err != nil {
+		return err
+	}
+
+	return r.repo.Save(payload, projectPhases)
 }
 
 func (r *bottomRemarkUsecase) DeleteData(projectID, employeeID, projectPhaseID string) error {

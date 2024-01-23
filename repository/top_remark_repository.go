@@ -10,7 +10,7 @@ import (
 
 type TopRemarkRepo interface {
 	Save(payload *model.TopRemark) error
-	BulkSave(payload []*model.TopRemark) error
+	BulkSave(payload []*model.TopRemark, projectPhases []model.ProjectPhase) error
 	Get(projectID, employeeID, projectPhaseID string) ([]*model.TopRemark, error)
 	GetByID(id string) (*model.TopRemark, error)
 	List() ([]model.TopRemark, error)
@@ -30,7 +30,7 @@ func (r *topRemarkRepo) Save(payload *model.TopRemark) error {
 	return nil
 }
 
-func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark) error {
+func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []model.ProjectPhase) error {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -42,6 +42,7 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark) error {
 		if remarks.ID != "" {
 			topRemarks, err := r.GetByID(remarks.ID)
 			if err != nil {
+				tx.Rollback()
 				return err
 			}
 
@@ -53,10 +54,57 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark) error {
 
 			}
 		}
-		err := r.db.Save(&remarks)
+		err := tx.Save(&remarks)
 		if err.Error != nil {
 			tx.Rollback()
 			return err.Error
+		}
+
+	}
+
+	for _, projectPhase := range projectPhases {
+		topRemarks, err := r.Get(payload[0].ProjectID, payload[0].EmployeeID, projectPhase.ID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if len(topRemarks) > 0 {
+			err := r.Delete(payload[0].ProjectID, payload[0].EmployeeID, projectPhase.ID)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		allJustification, err := r.Get(payload[0].ProjectID, payload[0].EmployeeID, payload[0].ProjectPhaseID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		var calibrations []model.Calibration
+		err = tx.
+			Table("calibrations c").
+			Where("c.employee_id = ? AND c.project_id = ? AND c.project_phase_id = ?", payload[0].EmployeeID, payload[0].ProjectID, projectPhase.ID).
+			Find(&calibrations).
+			Error
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if len(calibrations) > 0 {
+			for _, justification := range allJustification {
+				justification.ID = ""
+				justification.ProjectPhaseID = projectPhase.ID
+
+				err := tx.Save(&justification)
+				if err.Error != nil {
+					tx.Rollback()
+					return err.Error
+				}
+			}
 		}
 
 	}
@@ -94,11 +142,15 @@ func (r *topRemarkRepo) List() ([]model.TopRemark, error) {
 }
 
 func (r *topRemarkRepo) Delete(projectID, employeeID, projectPhaseID string) error {
-	result := r.db.Delete(&model.TopRemark{
+	// Build the conditions for the WHERE clause
+	conditions := model.TopRemark{
 		ProjectID:      projectID,
 		EmployeeID:     employeeID,
 		ProjectPhaseID: projectPhaseID,
-	})
+	}
+
+	// Delete the record based on the specified conditions
+	result := r.db.Unscoped().Where(&conditions).Delete(&model.TopRemark{})
 	if result.Error != nil {
 		return result.Error
 	} else if result.RowsAffected == 0 {
@@ -117,10 +169,7 @@ func (r *topRemarkRepo) BulkDelete(payload request.DeleteTopRemarks) error {
 	}()
 
 	for _, deleted := range payload.IDs {
-		result := tx.Where("project_id = ? AND employee_id = ? AND project_phase_id = ?",
-			deleted.ProjectID,
-			deleted.EmployeeID,
-			deleted.ProjectPhaseID).
+		result := tx.Where("id = ? ", deleted).
 			Delete(&model.TopRemark{})
 		if result.Error != nil {
 			tx.Rollback()
