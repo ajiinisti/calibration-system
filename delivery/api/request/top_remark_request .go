@@ -1,7 +1,7 @@
 package request
 
 type DeleteTopRemarks struct {
-	IDs []DeleteTopRemark
+	IDs []string
 }
 
 type DeleteTopRemark struct {
