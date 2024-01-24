@@ -8,11 +8,8 @@ import (
 
 type TopRemarkResponse struct {
 	model.BaseModel
-	Project        model.Project
 	ProjectID      string
-	Employee       model.User
 	EmployeeID     string
-	ProjectPhase   model.ProjectPhase
 	ProjectPhaseID string
 	Initiative     string
 	Description    string

@@ -19,5 +19,5 @@ type TopRemark struct {
 	EndDate        time.Time
 	Comment        string
 	EvidenceName   string
-	Evidence       []byte
+	Evidence       []byte `json:"-"`
 }
