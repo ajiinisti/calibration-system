@@ -25,7 +25,8 @@ type AnnouncementController struct {
 func (r *AnnouncementController) listHandler(c *gin.Context) {
 	announcements, err := r.uc.FindAll()
 	for _, data := range announcements {
-		data.FileLink = fmt.Sprintf("http://%s/announcement/images/%s", c.Request.Host, data.ID)
+		// data.FileLink = fmt.Sprintf("http://%s/announcement/images/%s", c.Request.Host, data.ID)
+		data.FileLink = fmt.Sprintf("http://%sannouncement/images/%s", c.Request.Host, data.ID)
 	}
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -37,7 +38,8 @@ func (r *AnnouncementController) listHandler(c *gin.Context) {
 func (r *AnnouncementController) listActiveHandler(c *gin.Context) {
 	announcements, err := r.uc.FindAllActive()
 	for _, data := range announcements {
-		data.FileLink = fmt.Sprintf("http://%s/announcement/images/%s", c.Request.Host, data.ID)
+		// data.FileLink = fmt.Sprintf("http://%s/announcement/images/%s", c.Request.Host, data.ID)
+		data.FileLink = fmt.Sprintf("http://%sannouncement/images/%s", c.Request.Host, data.ID)
 	}
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -59,7 +61,8 @@ func (r *AnnouncementController) getByHandler(c *gin.Context) {
 func (r *AnnouncementController) getByIdHandler(c *gin.Context) {
 	id := c.Param("id")
 	announcements, err := r.uc.FindById(id)
-	announcements.FileLink = fmt.Sprintf("http://%s/announcement/images/%s", c.Request.Host, announcements.ID)
+	// announcements.FileLink = fmt.Sprintf("http://%s/announcement/images/%s", c.Request.Host, announcements.ID)
+	announcements.FileLink = fmt.Sprintf("http://%sannouncement/images/%s", c.Request.Host, announcements.ID)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
