@@ -48,11 +48,8 @@ func (r *topRemarkUsecase) FindByForeignKeyID(projectID, employeeID, projectPhas
 	for _, data := range topRemarks {
 		topRemarksResponse = append(topRemarksResponse, &response.TopRemarkResponse{
 			BaseModel:      data.BaseModel,
-			Project:        data.Project,
 			ProjectID:      data.ProjectID,
-			Employee:       data.Employee,
 			EmployeeID:     data.EmployeeID,
-			ProjectPhase:   data.ProjectPhase,
 			ProjectPhaseID: data.ProjectPhaseID,
 			Initiative:     data.Initiative,
 			Description:    data.Description,
