@@ -831,7 +831,7 @@ func (r *calibrationRepo) GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, 
 }
 
 func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error) {
-	var calibration []response.UserResponse
+	var calibration []model.User
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
@@ -862,7 +862,114 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 		return nil, err
 	}
 
-	return calibration, nil
+	var calibrations []response.UserResponse
+	for _, user := range calibration {
+		var supervisorName string
+		err = r.db.Raw("SELECT name FROM users WHERE nik = ?", user.SupervisorNik).Scan(&supervisorName).Error
+		if err != nil {
+			return nil, err
+		}
+
+		dataOneResponse := &response.UserResponse{
+			BaseModel: model.BaseModel{
+				ID:        user.ID,
+				CreatedAt: user.CreatedAt,
+				UpdatedAt: user.UpdatedAt,
+				DeletedAt: user.DeletedAt,
+			},
+			CreatedBy:       user.CreatedBy,
+			UpdatedBy:       user.UpdatedBy,
+			Email:           user.Email,
+			Name:            user.Name,
+			Nik:             user.Nik,
+			SupervisorNames: supervisorName,
+			BusinessUnit: response.BusinessUnitResponse{
+				ID:                  user.BusinessUnit.ID,
+				Status:              user.BusinessUnit.Status,
+				Name:                user.BusinessUnit.Name,
+				GroupBusinessUnitId: user.BusinessUnit.GroupBusinessUnitId,
+			},
+			BusinessUnitId:   user.BusinessUnitId,
+			OrganizationUnit: user.OrganizationUnit,
+			Division:         user.Division,
+			Department:       user.Department,
+			Grade:            user.Grade,
+			Position:         user.Position,
+			Roles:            user.Roles,
+			ActualScores: []response.ActualScoreResponse{{
+				ProjectID:    user.ActualScores[0].ProjectID,
+				EmployeeID:   user.ActualScores[0].EmployeeID,
+				ActualScore:  user.ActualScores[0].ActualScore,
+				ActualRating: user.ActualScores[0].ActualRating,
+				Y1Rating:     user.ActualScores[0].Y1Rating,
+				Y2Rating:     user.ActualScores[0].Y2Rating,
+				PTTScore:     user.ActualScores[0].PTTScore,
+				PATScore:     user.ActualScores[0].PATScore,
+				Score360:     user.ActualScores[0].Score360,
+			}},
+			CalibrationScores: []response.CalibrationResponse{},
+			ScoringMethod:     user.ScoringMethod,
+			Directorate:       user.Directorate,
+		}
+
+		for _, data := range user.CalibrationScores {
+			topRemarks := []response.TopRemarkResponse{}
+			for _, topRemark := range data.TopRemarks {
+				topRemarks = append(topRemarks, response.TopRemarkResponse{
+					BaseModel:      topRemark.BaseModel,
+					ProjectID:      topRemark.ProjectID,
+					EmployeeID:     topRemark.EmployeeID,
+					ProjectPhaseID: topRemark.ProjectPhaseID,
+					Initiative:     topRemark.Initiative,
+					Description:    topRemark.Description,
+					Result:         topRemark.Result,
+					StartDate:      topRemark.StartDate,
+					EndDate:        topRemark.EndDate,
+					Comment:        topRemark.Comment,
+					EvidenceName:   topRemark.EvidenceName,
+				})
+			}
+			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{
+				ProjectID: data.ProjectID,
+				ProjectPhase: response.ProjectPhaseResponse{
+					Phase: response.PhaseResponse{
+						Order: data.ProjectPhase.Phase.Order,
+					},
+					StartDate: data.ProjectPhase.StartDate,
+					EndDate:   data.ProjectPhase.EndDate,
+				},
+				ProjectPhaseID: data.ProjectPhaseID,
+				EmployeeID:     data.EmployeeID,
+				Calibrator: response.CalibratorResponse{
+					Name: data.Calibrator.Name,
+				},
+				CalibratorID:              data.CalibratorID,
+				CalibrationScore:          data.CalibrationScore,
+				CalibrationRating:         data.CalibrationRating,
+				Status:                    data.Status,
+				SpmoStatus:                data.SpmoStatus,
+				Comment:                   data.Comment,
+				SpmoComment:               data.SpmoComment,
+				JustificationType:         data.JustificationType,
+				JustificationReviewStatus: data.JustificationReviewStatus,
+				SendBackDeadline:          data.SendBackDeadline,
+				BottomRemark: response.BottomRemarkResponse{
+					ProjectID:      data.BottomRemark.ProjectID,
+					EmployeeID:     data.BottomRemark.EmployeeID,
+					ProjectPhaseID: data.BottomRemark.ProjectPhaseID,
+					LowPerformance: data.BottomRemark.LowPerformance,
+					Indisipliner:   data.BottomRemark.Indisipliner,
+					Attitude:       data.BottomRemark.Attitude,
+					WarningLetter:  data.BottomRemark.WarningLetter,
+				},
+				TopRemarks: topRemarks,
+			})
+		}
+
+		calibrations = append(calibrations, *dataOneResponse)
+	}
+
+	return calibrations, nil
 }
 
 func NewCalibrationRepo(db *gorm.DB) CalibrationRepo {

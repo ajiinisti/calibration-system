@@ -14,8 +14,8 @@ type TopRemarkResponse struct {
 	Initiative     string
 	Description    string
 	Result         string
-	StartDate      time.Time
-	EndDate        time.Time
+	StartDate      *time.Time
+	EndDate        *time.Time
 	Comment        string
 	EvidenceLink   string
 	EvidenceName   string

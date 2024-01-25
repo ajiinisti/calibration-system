@@ -89,14 +89,16 @@ func (u *userRepo) Bulksave(payload *[]model.User) error {
 
 func (u *userRepo) Get(id string) (*model.User, error) {
 	var user model.User
-	err := u.db.
-		Preload("Roles").
-		Preload("ActualScores").
-		Preload("CalibrationScores").
-		Preload("BusinessUnit").
-		First(&user, "id = ?", id).Error
-	if err != nil {
-		return nil, err
+	if id != "" {
+		err := u.db.
+			Preload("Roles").
+			Preload("ActualScores").
+			Preload("CalibrationScores").
+			Preload("BusinessUnit").
+			First(&user, "id = ?", id).Error
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &user, nil
 }
