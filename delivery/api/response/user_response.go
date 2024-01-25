@@ -48,11 +48,11 @@ type BusinessUnitResponse struct {
 }
 
 type CalibrationResponse struct {
-	ProjectID                 string `gorm:"primaryKey"`
-	ProjectPhase              ProjectPhaseResponse
-	ProjectPhaseID            string `gorm:"primaryKey"`
-	EmployeeID                string `gorm:"primaryKey"`
-	Calibrator                CalibratorResponse
+	ProjectID                 string               `gorm:"primaryKey"`
+	ProjectPhase              ProjectPhaseResponse `gorm:"foreignKey:ProjectPhaseID;references:ID"`
+	ProjectPhaseID            string               `gorm:"primaryKey"`
+	EmployeeID                string               `gorm:"primaryKey"`
+	Calibrator                CalibratorResponse   `gorm:"foreignKey:CalibratorID;references:ID"`
 	CalibratorID              string
 	CalibrationScore          float64
 	CalibrationRating         string
@@ -68,16 +68,20 @@ type CalibrationResponse struct {
 }
 
 type ProjectPhaseResponse struct {
-	Phase     PhaseResponse
+	model.BaseModel
+	Phase     PhaseResponse `gorm:"foreignKey:PhaseID"`
+	PhaseID   string
 	StartDate time.Time
 	EndDate   time.Time
 }
 
 type PhaseResponse struct {
+	model.BaseModel
 	Order int
 }
 
 type CalibratorResponse struct {
+	model.BaseModel
 	Name string
 }
 

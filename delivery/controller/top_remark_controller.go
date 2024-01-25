@@ -33,7 +33,7 @@ func (r *TopRemarkController) getByIdHandler(c *gin.Context) {
 	for _, data := range topRemarks {
 		if data.EvidenceName != "" {
 			// data.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, data.ID)
-			data.EvidenceLink = fmt.Sprintf("http://%sview-initiative/%s", c.Request.Host, data.ID)
+			data.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, data.ID)
 		}
 	}
 

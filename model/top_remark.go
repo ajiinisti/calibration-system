@@ -15,8 +15,8 @@ type TopRemark struct {
 	Initiative     string
 	Description    string
 	Result         string
-	StartDate      time.Time
-	EndDate        time.Time
+	StartDate      *time.Time
+	EndDate        *time.Time
 	Comment        string
 	EvidenceName   string
 	Evidence       []byte `json:"-"`

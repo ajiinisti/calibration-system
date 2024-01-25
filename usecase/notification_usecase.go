@@ -64,7 +64,7 @@ func (n *notificationUsecase) NotifyCalibrator() error {
 		Deadline:   "12 November 2023",
 	}
 
-	err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
+	err = utils.SendMail([]string{}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,8 @@ func (n *notificationUsecase) NotifyCalibrators(ids []string, deadline time.Time
 			Deadline:   deadline.Format("02-January-2006"),
 		}
 
-		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
+		err = utils.SendMail([]string{employee.Email}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
+		// err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
 		if err != nil {
 			return err
 		}
@@ -130,7 +131,7 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrator(ids []string
 			Subject:   "Approved Calibration",
 		}
 
-		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "approvedCalibrationEmail.html", n.cfg.SMTPConfig)
+		err = utils.SendMail([]string{user.Email}, &emailData, "./utils/templates", "approvedCalibrationEmail.html", n.cfg.SMTPConfig)
 		if err != nil {
 			return err
 		}
@@ -162,7 +163,7 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 			Subject:   "Approved Calibration",
 		}
 
-		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "approvedCalibrationEmail.html", n.cfg.SMTPConfig)
+		err = utils.SendMail([]string{user.Email}, &emailData, "./utils/templates", "approvedCalibrationEmail.html", n.cfg.SMTPConfig)
 		if err != nil {
 			return err
 		}
@@ -193,7 +194,7 @@ func (n *notificationUsecase) NotifySubmittedCalibrationToCalibratorsWithoutRevi
 		Subject:   "Submitted Calibration",
 	}
 
-	err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "submitCalibrationWithoutSpmoEmail.html", n.cfg.SMTPConfig)
+	err = utils.SendMail([]string{user.Email}, &emailData, "./utils/templates", "submitCalibrationWithoutSpmoEmail.html", n.cfg.SMTPConfig)
 	if err != nil {
 		return err
 	}
@@ -227,12 +228,49 @@ func (n *notificationUsecase) NotifyThisCalibrators(data []response.Notification
 			Calibrator: calibratorData.PreviousCalibrator,
 		}
 
-		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "calibratorEmailFromPrevious.html", n.cfg.SMTPConfig)
+		err = utils.SendMail([]string{employee.Email}, &emailData, "./utils/templates", "calibratorEmailFromPrevious.html", n.cfg.SMTPConfig)
+		// err = utils.SendMail([]string{"aji.wijaya@techconnect"}, &emailData, "./utils/templates", "calibratorEmailFromPrevious.html", n.cfg.SMTPConfig)
 		if err != nil {
 			return err
 		}
 
 		data2 := fmt.Sprintf("As a calibrator for Calibration System, you are requested to complete the phase %d of the calibration process from previous Calibrator %s. Please log in to Calibration System and complete before %s.", emailData.PhaseOrder, calibratorData.PreviousCalibrator, emailData.Deadline)
+		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (n *notificationUsecase) NotifySendBackCalibrators(data []response.NotificationModel) error {
+	for _, calibratorData := range data {
+		employee, err := n.employee.FindById(calibratorData.CalibratorID)
+		if err != nil {
+			return err
+		}
+
+		key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
+		if err != nil {
+			return err
+		}
+		emailData := utils.EmailData{
+			URL:        fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator, key),
+			FirstName:  employee.Name,
+			Subject:    "Calibration Assignment",
+			PhaseOrder: calibratorData.ProjectPhase,
+			Deadline:   calibratorData.Deadline.Format("02-January-2006"),
+			Calibrator: calibratorData.PreviousCalibrator,
+		}
+
+		// err = utils.SendMail([]string{employee.Email}, &emailData, "./utils/templates", "sendBackEmail.html", n.cfg.SMTPConfig)
+		err = utils.SendMail([]string{"aji.wijaya@techconnect"}, &emailData, "./utils/templates", "sendBackEmail.html", n.cfg.SMTPConfig)
+		if err != nil {
+			return err
+		}
+
+		data2 := fmt.Sprintf("%s has send back their calibrations, you are requested to complete the phase %d of the calibration process. Please log in to Calibration System and complete before %s.", calibratorData.PreviousCalibrator, emailData.PhaseOrder, emailData.Deadline)
 		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
 		if err != nil {
 			return err
@@ -262,7 +300,8 @@ func (n *notificationUsecase) NotifyThisCurrentCalibrators(data []response.Notif
 			Deadline:   calibratorData.Deadline.Format("02-January-2006"),
 		}
 
-		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
+		err = utils.SendMail([]string{employee.Email}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
+		// err = utils.SendMail([]string{"aji.wijaya@techconnect"}, &emailData, "./utils/templates", "calibratorEmail.html", n.cfg.SMTPConfig)
 		if err != nil {
 			return err
 		}
@@ -296,7 +335,8 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 		EmployeeName: employee,
 	}
 
-	err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "rejectedCalibrationEmail.html", n.cfg.SMTPConfig)
+	err = utils.SendMail([]string{user.Email}, &emailData, "./utils/templates", "rejectedCalibrationEmail.html", n.cfg.SMTPConfig)
+	// err = utils.SendMail([]string{"aji.wijaya@techconnect"}, &emailData, "./utils/templates", "rejectedCalibrationEmail.html", n.cfg.SMTPConfig)
 	if err != nil {
 		return err
 	}
@@ -324,7 +364,8 @@ func (n *notificationUsecase) NotifyCalibrationToSpmo(calibrator *model.User, li
 			Calibrator: calibrator.Name,
 		}
 
-		err := utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "spmoEmail.html", n.cfg.SMTPConfig)
+		err := utils.SendMail([]string{spmo.Email}, &emailData, "./utils/templates", "spmoEmail.html", n.cfg.SMTPConfig)
+		// err := utils.SendMail([]string{"aji.wijaya@techconnect"}, &emailData, "./utils/templates", "spmoEmail.html", n.cfg.SMTPConfig)
 		if err != nil {
 			return err
 		}

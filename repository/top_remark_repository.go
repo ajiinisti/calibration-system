@@ -62,12 +62,16 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []mod
 
 	}
 
+	fmt.Println("banyak projectPhase", len(projectPhases))
+
 	for _, projectPhase := range projectPhases {
 		topRemarks, err := r.Get(payload[0].ProjectID, payload[0].EmployeeID, projectPhase.ID)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
+
+		fmt.Println("banyak founded now", len(topRemarks))
 
 		if len(topRemarks) > 0 {
 			err := r.Delete(payload[0].ProjectID, payload[0].EmployeeID, projectPhase.ID)
@@ -77,11 +81,11 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []mod
 			}
 		}
 
-		allJustification, err := r.Get(payload[0].ProjectID, payload[0].EmployeeID, payload[0].ProjectPhaseID)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
+		// allJustification, err := r.Get(payload[0].ProjectID, payload[0].EmployeeID, payload[0].ProjectPhaseID)
+		// if err != nil {
+		// 	tx.Rollback()
+		// 	return err
+		// }
 
 		var calibrations []model.Calibration
 		err = tx.
@@ -95,7 +99,7 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []mod
 		}
 
 		if len(calibrations) > 0 {
-			for _, justification := range allJustification {
+			for _, justification := range payload {
 				justification.ID = ""
 				justification.ProjectPhaseID = projectPhase.ID
 
