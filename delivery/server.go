@@ -14,7 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
-	"github.com/robfig/cron/v3"
 )
 
 type Server struct {
@@ -78,17 +77,17 @@ func NewServer() *Server {
 	repo := manager.NewRepoManager(infra)
 	uc := manager.NewUsecaseManager(repo, cfg)
 
-	c := cron.New()
-	_, err = c.AddFunc("2 6 * * *", func() {
-		err = uc.NotificationUc().NotifyCalibrator()
-		if err != nil {
-			panic(err.Error())
-		}
-	})
-	if err != nil {
-		panic("failed to add cron job")
-	}
-	c.Start()
+	// c := cron.New()
+	// _, err = c.AddFunc("2 6 * * *", func() {
+	// 	err = uc.NotificationUc().NotifyCalibrator()
+	// 	if err != nil {
+	// 		panic(err.Error())
+	// 	}
+	// })
+	// if err != nil {
+	// 	panic("failed to add cron job")
+	// }
+	// c.Start()
 
 	r := gin.Default()
 	r.GET("/migration", func(ctx *gin.Context) {

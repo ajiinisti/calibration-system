@@ -484,6 +484,8 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 		if len(calibrations) > 0 {
 			ppId = calibrations[0].ProjectPhaseID
 			calibrations[0].Status = "Calibrate"
+			calibrations[0].SpmoStatus = "-"
+			calibrations[0].JustificationReviewStatus = false
 			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[0].CalibratorID)
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()
@@ -558,6 +560,7 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 				"status":                      "Calibrate",
 				"send_back_deadline":          projectPhase.EndDate,
 				"justification_review_status": false,
+				"spmo_status":                 "-",
 			}).Error
 			if err != nil {
 				tx.Rollback()
