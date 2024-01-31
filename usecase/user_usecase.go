@@ -24,6 +24,7 @@ type UserUsecase interface {
 	UpdateData(payload *model.User) error
 	BulkInsert(file *multipart.FileHeader) ([]string, error)
 	FindByNik(nik string) (*model.User, error)
+	FindByGenerateToken(generateToken string) (*model.User, error)
 	FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error)
 	FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.User, response.Paging, error)
 	GeneratePasswordById(id string) error
@@ -42,6 +43,10 @@ func (u *userUsecase) SearchEmail(email string) (*model.User, error) {
 
 func (u *userUsecase) FindByNik(nik string) (*model.User, error) {
 	return u.repo.SearchByNik(nik)
+}
+
+func (u *userUsecase) FindByGenerateToken(generateToken string) (*model.User, error) {
+	return u.repo.SearchByGenerateToken(generateToken)
 }
 
 func (u *userUsecase) FindAll() ([]model.User, error) {

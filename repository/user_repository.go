@@ -13,6 +13,7 @@ type UserRepo interface {
 	BaseRepository[model.User]
 	SearchByEmail(email string) (*model.User, error)
 	SearchByNik(nik string) (*model.User, error)
+	SearchByGenerateToken(generateToken string) (*model.User, error)
 	Update(payload *model.User) error
 	Bulksave(payload *[]model.User) error
 	PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error)
@@ -28,6 +29,15 @@ type userRepo struct {
 func (u *userRepo) SearchByNik(nik string) (*model.User, error) {
 	var user model.User
 	err := u.db.Preload("Roles").First(&user, "nik = ?", nik).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (u *userRepo) SearchByGenerateToken(generateToken string) (*model.User, error) {
+	var user model.User
+	err := u.db.Preload("Roles").First(&user, "access_token_generate = ?", generateToken).Error
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +102,8 @@ func (u *userRepo) Get(id string) (*model.User, error) {
 	if id != "" {
 		err := u.db.
 			Preload("Roles").
-			Preload("ActualScores").
-			Preload("CalibrationScores").
+			// Preload("ActualScores").
+			// Preload("CalibrationScores").
 			Preload("BusinessUnit").
 			First(&user, "id = ?", id).Error
 		if err != nil {
@@ -107,8 +117,6 @@ func (u *userRepo) List() ([]model.User, error) {
 	var users []model.User
 	err := u.db.
 		Preload("Roles").
-		Preload("ActualScores").
-		Preload("CalibrationScores").
 		Preload("BusinessUnit").
 		Find(&users).Error
 	if err != nil {
