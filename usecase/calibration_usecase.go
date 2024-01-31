@@ -93,7 +93,7 @@ func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
 
 	}
 
-	err = r.notification.NotifyThisCurrentCalibrators(currentCalibrators)
+	err = r.notification.NotifyFirstCurrentCalibrators(currentCalibrators)
 	if err != nil {
 		return err
 	}
@@ -464,18 +464,18 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 		return err
 	}
 
+	fmt.Println("DATA SPMONYA BEGIMANA INI,", spmoIDs)
+
 	if projectPhase.ReviewSpmo {
 		mapSpmo := make(map[string]*model.User)
 		for _, spmoID := range spmoIDs {
-			if spmoID != nil {
-				spmo, err := r.user.FindById(*spmoID)
-				if err != nil {
-					return err
-				}
+			spmo, err := r.user.FindById(spmoID)
+			if err != nil {
+				return err
+			}
 
-				if _, ok := mapSpmo[*spmoID]; !ok {
-					mapSpmo[*spmoID] = spmo
-				}
+			if _, ok := mapSpmo[spmo.ID]; !ok {
+				mapSpmo[spmo.ID] = spmo
 			}
 		}
 
@@ -484,7 +484,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 			listSpmo = append(listSpmo, data)
 		}
 
-		err = r.notification.NotifyCalibrationToSpmo(calibrator, listSpmo, projectPhase.Phase.Order)
+		err = r.notification.NotifySubmittedCalibrationToSpmo(calibrator, listSpmo, projectPhase.Phase.Order)
 		if err != nil {
 			return err
 		}
@@ -510,7 +510,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 		uniqueNextCalibrator = append(uniqueNextCalibrator, data)
 	}
 
-	err = r.notification.NotifySubmittedCalibrationToCalibratorsWithoutReview(response.NotificationModel{
+	err = r.notification.NotifySubmittedCalibrationToNextCalibratorsWithoutReview(response.NotificationModel{
 		CalibratorID: calibratorID,
 		// PreviousCalibratorID: ,
 	})
@@ -518,7 +518,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 		return err
 	}
 
-	err = r.notification.NotifyThisCalibrators(uniqueNextCalibrator)
+	err = r.notification.NotifyNextCalibrators(uniqueNextCalibrator)
 	if err != nil {
 		return err
 	}
@@ -542,7 +542,7 @@ func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.Calibrat
 	}
 
 	uniqueCalibrator := removeDuplicates(managerCalibratorIDs)
-	err = r.notification.NotifyCalibrators(uniqueCalibrator, projectPhaseNew.EndDate)
+	err = r.notification.NotifyManager(uniqueCalibrator, projectPhaseNew.EndDate)
 	if err != nil {
 		return err
 	}
@@ -560,8 +560,7 @@ func (r *calibrationUsecase) SendBackCalibrationsToOnePhaseBefore(payload *reque
 		return err
 	}
 
-	uniqueCalibrator := removeDuplicates(managerCalibratorIDs)
-	err = r.notification.NotifyCalibrators(uniqueCalibrator, projectPhase.EndDate)
+	err = r.notification.NotifySendBackCalibrators(managerCalibratorIDs)
 	if err != nil {
 		return err
 	}
@@ -583,11 +582,6 @@ func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustifica
 		return err
 	}
 
-	// err = r.notification.NotifyApprovedCalibrationToCalibrator([]string{payload.CalibratorID})
-	// if err != nil {
-	// 	return err
-	// }
-
 	return nil
 }
 
@@ -601,12 +595,6 @@ func (r *calibrationUsecase) SpmoAcceptMultipleApproval(payload *request.AcceptM
 	for _, acceptJustification := range payload.ArrayOfAcceptsJustification {
 		ids = append(ids, acceptJustification.CalibratorID)
 	}
-
-	// results := removeDuplicates(ids)
-	// err = r.notification.NotifyApprovedCalibrationToCalibrator(results)
-	// if err != nil {
-	// 	return err
-	// }
 
 	return nil
 }
@@ -667,7 +655,7 @@ func (r *calibrationUsecase) SpmoSubmit(payload *request.AcceptMultipleJustifica
 	if err != nil {
 		return err
 	}
-	err = r.notification.NotifyThisCalibrators(nextCalibrator)
+	err = r.notification.NotifyNextCalibrators(nextCalibrator)
 	if err != nil {
 		return err
 	}
