@@ -1,14 +1,18 @@
 package usecase
 
 import (
+	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"calibration-system.com/delivery/api/request"
 	"calibration-system.com/delivery/api/response"
 	"calibration-system.com/model"
 	"calibration-system.com/repository"
 	"calibration-system.com/utils"
+	"github.com/360EntSecGroup-Skylar/excelize"
+	"github.com/gin-gonic/gin"
 )
 
 type ProjectUsecase interface {
@@ -34,6 +38,7 @@ type ProjectUsecase interface {
 	FindActiveProject() (*model.Project, error)
 	FindProjectRatingQuotaByBusinessUnit(businessUnitID string) (*model.Project, error)
 	FindSummaryProjectTotalByCalibratorID(calibratorId string) (*response.SummaryTotal, error)
+	ReportCalibrations(types, calibratorId, businessUnit, prevCalibrator string, c *gin.Context) (string, error)
 }
 
 type projectUsecase struct {
@@ -793,6 +798,248 @@ func (r *projectUsecase) FindProjectRatingQuotaByBusinessUnit(businessUnitID str
 	}
 
 	return projects, nil
+}
+
+func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, prevCalibrator string, c *gin.Context) (string, error) {
+	var responseData response.UserCalibration
+	var err error
+
+	if types == "numberOne" {
+		responseData, err = r.FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit)
+	} else if types == "n-1" {
+		responseData, err = r.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorId, businessUnit)
+	} else if types == "default" {
+		responseData, err = r.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorId, prevCalibrator, businessUnit)
+	} else {
+		responseData, err = r.FindCalibrationsByBusinessUnit(calibratorId, businessUnit)
+	}
+
+	projectPhase, err := r.FindCalibratorPhase(calibratorId)
+	if err != nil {
+		return "", err
+	}
+
+	file := excelize.NewFile()
+	index := file.NewSheet(responseData.UserData[0].BusinessUnit.Name)
+
+	headers := []string{
+		"No",
+		"Employee",
+		"Grade",
+		"BU",
+		"OU",
+		"Supervisor",
+		"PrevRating Y-2",
+		"PrevRating Y-1",
+		"PTT Score",
+		"PAT Score",
+		"360 Score",
+		"Actual Score",
+		"Actual Rating",
+	}
+
+	colorPallete := []string{
+		"#F2C4DE", "#71B1D9", "#AED8F2", "#ABD3DB", "#C2E6DF", "#D1EBD8", "#E5F5DC", "#F2DEA2", "#FFFFE1", "#F2CDC4",
+	}
+
+	for i := 0; i < projectPhase.Phase.Order; i++ {
+		headers = append(headers, fmt.Sprintf("Calibration-%d Score %s", i+1, colorPallete[i]))
+		headers = append(headers, fmt.Sprintf("Calibration-%d Rating %s", i+1, colorPallete[i]))
+		headers = append(headers, fmt.Sprintf("JustificationType-%d %s", i+1, colorPallete[i]))
+		headers = append(headers, fmt.Sprintf("Justification-%d %s", i+1, colorPallete[i]))
+	}
+
+	style1, err := file.NewStyle(`{"alignment":{"wrap_text":true, "vertical":"center"}, "font":{"bold":true}}`)
+	if err != nil {
+		return "", err
+	}
+
+	style2, err := file.NewStyle(`{"alignment":{"wrap_text":true, "vertical":"center"}}`)
+	if err != nil {
+		return "", err
+	}
+
+	firstAppear := true
+	for col, header := range headers {
+		colName := excelize.ToAlphaString(col)
+		cellRef := fmt.Sprintf("%s%d", colName, 1)
+		cellRefUnder := fmt.Sprintf("%s%d", colName, 2)
+		nextColName := excelize.ToAlphaString(col + 1)
+		cellNextCollRef := fmt.Sprintf("%s%d", nextColName, 1)
+		file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRef, style1)
+
+		if (strings.Contains(header, "Prev") || strings.Contains(header, "Actual") || strings.Contains(header, "Calibration")) && firstAppear {
+			file.MergeCell(responseData.UserData[0].BusinessUnit.Name, cellRef, cellNextCollRef)
+			words := strings.Fields(header)
+			file.SetCellValue(responseData.UserData[0].BusinessUnit.Name, cellRef, words[0])
+			file.SetCellValue(responseData.UserData[0].BusinessUnit.Name, cellRefUnder, words[1])
+			if strings.Contains(header, "Calibration") {
+				backgroundColorCalibration, err := file.NewStyle(fmt.Sprintf(`{"alignment":{"wrap_text":true, "vertical":"center"}, "fill":{"type":"pattern", "color":["%s"],"pattern":1}, "font":{"bold":true}}`, words[2]))
+				if err != nil {
+					return "", err
+				}
+				file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRef, backgroundColorCalibration)
+				file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRefUnder, cellRefUnder, backgroundColorCalibration)
+			} else {
+				file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRef, style1)
+				file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRefUnder, cellRefUnder, style1)
+			}
+			firstAppear = false
+		} else if (strings.Contains(header, "Prev") || strings.Contains(header, "Actual") || strings.Contains(header, "Calibration")) && !firstAppear {
+			words := strings.Fields(header)
+			file.SetCellValue(responseData.UserData[0].BusinessUnit.Name, cellRefUnder, words[1])
+			if strings.Contains(header, "Calibration") {
+				backgroundColorCalibration, err := file.NewStyle(fmt.Sprintf(`{"alignment":{"wrap_text":true, "vertical":"center"}, "fill":{"type":"pattern","color":["%s"],"pattern":1}, "font":{"bold":true}}`, words[2]))
+				if err != nil {
+					return "", err
+				}
+				file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRef, backgroundColorCalibration)
+				file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRefUnder, cellRefUnder, backgroundColorCalibration)
+			} else {
+				file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRef, style1)
+				file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRefUnder, cellRefUnder, style1)
+			}
+			firstAppear = true
+		} else if strings.Contains(header, "Justification") {
+			file.MergeCell(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRefUnder)
+			words := strings.Fields(header)
+			backgroundColorCalibration, err := file.NewStyle(fmt.Sprintf(`{"alignment":{"wrap_text":true, "vertical":"center"}, "fill":{"type":"pattern","color":["%s"],"pattern":1}, "font":{"bold":true}}`, words[1]))
+			if err != nil {
+				return "", err
+			}
+			file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRef, backgroundColorCalibration)
+			file.SetCellValue(responseData.UserData[0].BusinessUnit.Name, cellRef, words[0])
+		} else {
+			file.MergeCell(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRefUnder)
+			file.SetCellValue(responseData.UserData[0].BusinessUnit.Name, cellRef, header)
+		}
+	}
+
+	for i, user := range responseData.UserData {
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("A%d", i+3), i+1)
+		file.SetColWidth(user.BusinessUnit.Name, "A", "A", 4)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("A%d", i+3), fmt.Sprintf("A%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+3), user.Name)
+		file.SetColWidth(user.BusinessUnit.Name, "B", "B", 20)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+3), fmt.Sprintf("B%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+3), user.Grade)
+		file.SetColWidth(user.BusinessUnit.Name, "C", "C", 4)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+3), fmt.Sprintf("C%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+3), user.BusinessUnit.Name)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+3), fmt.Sprintf("D%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+3), user.OrganizationUnit)
+		file.SetColWidth(user.BusinessUnit.Name, "E", "E", 15)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+3), fmt.Sprintf("E%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+3), user.SupervisorNames)
+		file.SetColWidth(user.BusinessUnit.Name, "F", "F", 20)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+3), fmt.Sprintf("F%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+3), user.ActualScores[0].Y2Rating)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+3), fmt.Sprintf("G%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+3), user.ActualScores[0].Y1Rating)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+3), fmt.Sprintf("H%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+3), user.ActualScores[0].PTTScore)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+3), fmt.Sprintf("I%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), user.ActualScores[0].PATScore)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), fmt.Sprintf("J%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+3), user.ActualScores[0].Score360)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+3), fmt.Sprintf("K%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+3), user.ActualScores[0].ActualScore)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+3), fmt.Sprintf("L%d", i+3), style2)
+
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+3), user.ActualScores[0].ActualRating)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+3), fmt.Sprintf("M%d", i+3), style2)
+		column := int('N')
+
+		startCalibrationPhaseCol := 13
+		for j := 1; j < projectPhase.Phase.Order+1; j++ {
+			columnBefore := column
+			words := strings.Fields(headers[startCalibrationPhaseCol])
+			startCalibrationPhaseCol += 4
+			backgroundColorCalibration, err := file.NewStyle(fmt.Sprintf(`{"alignment":{"wrap_text":true, "vertical":"center"}, "fill":{"type":"pattern","color":["%s"],"pattern":1}}`, words[2]))
+			if err != nil {
+				return "", err
+			}
+
+			for _, calibrationScore := range user.CalibrationScores {
+				if j == calibrationScore.ProjectPhase.Phase.Order {
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), calibrationScore.CalibrationScore)
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+					column++
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), calibrationScore.CalibrationRating)
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+					column++
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), calibrationScore.JustificationType)
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+					column++
+					if calibrationScore.JustificationType == "default" {
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), calibrationScore.Comment)
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+					} else if calibrationScore.JustificationType == "top" {
+						var justifications string
+						for _, topJustification := range calibrationScore.TopRemarks {
+							justifications = justifications + fmt.Sprintf("Initiative: %s\nDescription: %s\nResult: %s\nComment: %s\nDate: %s - %s\nEvidence: %s",
+								topJustification.Initiative,
+								topJustification.Description,
+								topJustification.Result,
+								topJustification.Comment,
+								topJustification.StartDate,
+								topJustification.EndDate,
+								topJustification.EvidenceLink,
+							)
+						}
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), justifications)
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+						file.SetColWidth(user.BusinessUnit.Name, fmt.Sprintf("%c", byte(column)), fmt.Sprintf("%c", byte(column)), 25)
+					} else {
+						justification := fmt.Sprintf("Attitude: %s\nIndisipliner: %s\nLow Performance: %s\nWarning Letter: %s",
+							calibrationScore.BottomRemark.Attitude,
+							calibrationScore.BottomRemark.Indisipliner,
+							calibrationScore.BottomRemark.LowPerformance,
+							calibrationScore.BottomRemark.WarningLetter,
+						)
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), justification)
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+						file.SetColWidth(user.BusinessUnit.Name, fmt.Sprintf("%c", byte(column)), fmt.Sprintf("%c", byte(column)), 25)
+					}
+					column++
+				}
+			}
+			if columnBefore == column {
+				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
+				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+				column++
+				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
+				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+				column++
+				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
+				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+				column++
+				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
+				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+				column++
+			}
+		}
+	}
+
+	file.SetActiveSheet(index)
+
+	err = file.SaveAs("report.xlsx")
+	if err != nil {
+		return "", err
+	}
+
+	return "report.xlsx", nil
 }
 
 func NewProjectUsecase(repo repository.ProjectRepo) ProjectUsecase {

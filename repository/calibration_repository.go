@@ -22,9 +22,9 @@ type CalibrationRepo interface {
 	Delete(projectId, employeeId string) error
 	DeleteCalibrationPhase(projectId, projectPhaseId, employeeId string) error
 	Bulksave(payload *[]model.Calibration) error
-	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, []*response.NotificationModel, error)
+	BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, []*response.NotificationModel, error)
 	UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, string, error)
-	UpdateCalibrationsOnePhaseBefore(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, error)
+	UpdateCalibrationsOnePhaseBefore(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]response.NotificationModel, error)
 	SaveChanges(payload *request.CalibrationRequest) error
 	AcceptCalibration(payload *request.AcceptJustification, phaseOrder int) error
 	AcceptMultipleCalibration(payload *request.AcceptMultipleJustification) error
@@ -349,7 +349,7 @@ func (r *calibrationRepo) DeleteCalibrationPhase(projectId, projectPhaseId, empl
 	return nil
 }
 
-func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]*string, []*response.NotificationModel, error) {
+func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, []*response.NotificationModel, error) {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -358,14 +358,29 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 	}()
 
 	reviewSPMO := false
-	var spmoID []*string
+	var spmoID []string
 
 	var employeeCalibrationScore []*model.Calibration
 	var nextCalibrator []*response.NotificationModel
 	for _, calibrations := range payload.RequestData {
-		spmoID = append(spmoID, &calibrations.SpmoID)
-		spmoID = append(spmoID, calibrations.Spmo2ID)
-		spmoID = append(spmoID, calibrations.Spmo3ID)
+		var getCalibration *model.Calibration
+		err := tx.Table("calibrations c").
+			Select("c.*").
+			Where("c.project_id = ? AND c.project_phase_id = ? AND c.employee_id = ?", calibrations.ProjectID, calibrations.ProjectPhaseID, calibrations.EmployeeID).
+			First(&getCalibration).Error
+
+		if err != nil {
+			tx.Rollback()
+			return nil, nil, err
+		}
+
+		spmoID = append(spmoID, getCalibration.SpmoID)
+		if getCalibration.Spmo2ID != nil {
+			spmoID = append(spmoID, *getCalibration.Spmo2ID)
+		}
+		if getCalibration.Spmo3ID != nil {
+			spmoID = append(spmoID, *getCalibration.Spmo3ID)
+		}
 
 		if projectPhase.ReviewSpmo == true {
 			calibrations.SpmoStatus = "Waiting"
@@ -498,7 +513,7 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 	return managerCalibratorIDs, ppId, nil
 }
 
-func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, error) {
+func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]response.NotificationModel, error) {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -530,7 +545,7 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 		}
 	}
 
-	var managerCalibratorIDs []string
+	mapResult := make(map[string]response.NotificationModel)
 	for _, employeeCalibration := range employeeCalibrationScore {
 		var calibrations []*model.Calibration
 		err := tx.Table("calibrations").
@@ -538,7 +553,6 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 			Joins("JOIN projects ON projects.id = calibrations.project_id").
 			Joins("JOIN project_phases ON project_phases.id = calibrations.project_phase_id").
 			Joins("JOIN phases ON phases.id = project_phases.phase_id").
-			Preload("Calibrator").
 			Where("projects.active = true AND phases.order < ? AND calibrations.employee_id = ?", projectPhase.Phase.Order, employeeCalibration.EmployeeID).
 			Order("phases.order ASC").
 			Find(&calibrations).Error
@@ -549,7 +563,6 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 		}
 
 		if len(calibrations) > 0 {
-			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[len(calibrations)-1].CalibratorID)
 			err := tx.Model(&model.Calibration{}).
 				Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
 					calibrations[len(calibrations)-1].ProjectID,
@@ -566,11 +579,79 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 				tx.Rollback()
 				return nil, err
 			}
+
+			if len(calibrations) > 2 {
+				if _, ok := mapResult[calibrations[len(calibrations)-1].CalibratorID]; !ok {
+					var projectPhaseNextCalibrator *model.ProjectPhase
+					err := tx.Table("project_phases").
+						Select("project_phases.*").
+						Preload("Phase").
+						Where("project_phases.id= ?", calibrations[len(calibrations)-1].ProjectPhaseID).
+						First(&projectPhaseNextCalibrator).Error
+					if err != nil {
+						tx.Rollback()
+						return nil, err
+					}
+
+					var nextCal *model.User
+					err = tx.Where("id = ?", employeeCalibration.CalibratorID).First(&nextCal).Error
+					if err != nil {
+						return nil, err
+					}
+
+					var prevCal *model.User
+					err = tx.Where("id = ?", calibrations[len(calibrations)-2].CalibratorID).First(&prevCal).Error
+					if err != nil {
+						return nil, err
+					}
+					mapResult[calibrations[len(calibrations)-1].CalibratorID] = response.NotificationModel{
+						CalibratorID:           calibrations[len(calibrations)-1].CalibratorID,
+						ProjectPhase:           projectPhaseNextCalibrator.Phase.Order,
+						Deadline:               projectPhaseNextCalibrator.EndDate,
+						NextCalibrator:         nextCal.Name,
+						PreviousCalibrator:     prevCal.Name,
+						PreviousCalibratorID:   prevCal.ID,
+						PreviousBusinessUnitID: *prevCal.BusinessUnitId,
+					}
+				}
+			} else {
+				if _, ok := mapResult[calibrations[len(calibrations)-1].CalibratorID]; !ok {
+					var projectPhaseNextCalibrator *model.ProjectPhase
+					err := tx.Table("project_phases").
+						Select("project_phases.*").
+						Preload("Phase").
+						Where("project_phases.id= ?", calibrations[len(calibrations)-1].ProjectPhaseID).
+						First(&projectPhaseNextCalibrator).Error
+					if err != nil {
+						tx.Rollback()
+						return nil, err
+					}
+
+					var nextCal *model.User
+					err = tx.Where("id = ?", employeeCalibration.CalibratorID).First(&nextCal).Error
+					if err != nil {
+						return nil, err
+					}
+
+					mapResult[calibrations[len(calibrations)-1].CalibratorID] = response.NotificationModel{
+						CalibratorID:   calibrations[len(calibrations)-1].CalibratorID,
+						ProjectPhase:   projectPhaseNextCalibrator.Phase.Order,
+						Deadline:       projectPhaseNextCalibrator.EndDate,
+						NextCalibrator: nextCal.Name,
+					}
+				}
+			}
+
 		}
 	}
 
+	var nextCalibrator []response.NotificationModel
+	for _, data := range mapResult {
+		nextCalibrator = append(nextCalibrator, data)
+	}
+
 	tx.Commit()
-	return managerCalibratorIDs, nil
+	return nextCalibrator, nil
 }
 
 func (r *calibrationRepo) SaveChanges(payload *request.CalibrationRequest) error {
@@ -728,7 +809,7 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 			}
 
 			if _, ok := mapResult[calibrations[0].CalibratorID]; !ok {
-				fmt.Println("DATA PROJECT", calibrations[0].ProjectPhaseID)
+				// fmt.Println("DATA PROJECT", calibrations[0].ProjectPhaseID)
 				var projectPhaseNextCalibrator *model.ProjectPhase
 				err := tx.Table("project_phases").
 					Select("project_phases.*").
@@ -757,7 +838,7 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 		}
 	}
 
-	fmt.Println("DATA NEXT", mapResult)
+	// fmt.Println("DATA NEXT", mapResult)
 	var nextCalibrator []response.NotificationModel
 	for _, data := range mapResult {
 		nextCalibrator = append(nextCalibrator, data)

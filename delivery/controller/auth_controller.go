@@ -232,7 +232,8 @@ func (a *AuthController) changePassword(c *gin.Context) {
 
 func (a *AuthController) autoLogin(c *gin.Context) {
 	resetToken := c.Params.ByName("token")
-	user, err := a.uc.CheckToken(resetToken, a.cfg.SecretKeyEncryption)
+	// user, err := a.uc.CheckToken(resetToken, a.cfg.SecretKeyEncryption)
+	user, err := a.uc.CheckToken(resetToken)
 	if err != nil {
 		a.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return

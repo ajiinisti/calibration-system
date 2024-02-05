@@ -13,14 +13,14 @@ import (
 
 type NotificationUsecase interface {
 	NotifyCalibrator() error
-	NotifyCalibrators(ids []string, deadline time.Time) error
-	NotifyThisCurrentCalibrators(data []response.NotificationModel) error
-	NotifyThisCalibrators(data []response.NotificationModel) error
-	NotifyApprovedCalibrationToCalibrator(ids []string) error
-	NotifyApprovedCalibrationToCalibrators(data []response.NotificationModel) error
-	NotifySubmittedCalibrationToCalibratorsWithoutReview(data response.NotificationModel) error
-	NotifyRejectedCalibrationToCalibrator(id, employee, comment string) error
-	NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error
+	NotifyManager(ids []string, deadline time.Time) error                                               // Send to Manager
+	NotifyFirstCurrentCalibrators(data []response.NotificationModel) error                              // First Send Calibrator on Click in Project Active
+	NotifyNextCalibrators(data []response.NotificationModel) error                                      // From Previous Phase
+	NotifyApprovedCalibrationToCalibrators(data []response.NotificationModel) error                     // Spmo Submit
+	NotifySubmittedCalibrationToNextCalibratorsWithoutReview(data response.NotificationModel) error     // Without Spmo Review to Prev Calibrator
+	NotifyRejectedCalibrationToCalibrator(id, employee, comment string) error                           // Spmo Reject
+	NotifySubmittedCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error // Spmo When Submit
+	NotifySendBackCalibrators(data []response.NotificationModel) error                                  // Send Back Calibration
 }
 
 type notificationUsecase struct {
@@ -77,20 +77,15 @@ func (n *notificationUsecase) NotifyCalibrator() error {
 	return nil
 }
 
-func (n *notificationUsecase) NotifyCalibrators(ids []string, deadline time.Time) error {
+func (n *notificationUsecase) NotifyManager(ids []string, deadline time.Time) error {
 	for _, calibratorID := range ids {
 		employee, err := n.employee.FindById(calibratorID)
 		if err != nil {
 			return err
 		}
-
-		// key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
-		// if err != nil {
-		// 	return err
-		// }
 		emailData := utils.EmailData{
-			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-			// URL:        fmt.Sprintf("%s/#/autologin/%s/%s", n.cfg.FrontEndApi, key, *employee.BusinessUnitId),
+			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: 1,
@@ -104,45 +99,12 @@ func (n *notificationUsecase) NotifyCalibrators(ids []string, deadline time.Time
 		}
 
 		data2 := fmt.Sprintf("As a calibrator for Calibration System, you are requested to complete the phase %d of the calibration process. Please log in to Calibration System and complete before %s.", emailData.PhaseOrder, deadline)
-		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
-}
-
-func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrator(ids []string) error {
-	for _, id := range ids {
-		user, err := n.employee.FindById(id)
-		if err != nil {
-			return err
-		}
-
-		// key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
-		// if err != nil {
-		// 	return err
-		// }
-		emailData := utils.EmailData{
-			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-			// URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
-			FirstName: user.Name,
-			Subject:   "Approved Calibration",
-		}
-
-		// err = utils.SendMail([]string{user.Email}, &emailData, "./utils/templates", "approvedCalibrationEmail.html", n.cfg.SMTPConfig)
-		err = utils.SendMail([]string{"aji.wijaya@techconnect.co.id"}, &emailData, "./utils/templates", "approvedCalibrationEmail.html", n.cfg.SMTPConfig)
-		if err != nil {
-			return err
-		}
-
-		data2 := fmt.Sprintf("SPMO has approved your calibration worksheet, and it will now be forwarded to the next phase's calibrator. We would greatly appreciate it if you do not disclose these interim results to anyone. Thank you for your attention and cooperation.")
-		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, user.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -153,13 +115,7 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 			return err
 		}
 
-		// key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
-		// if err != nil {
-		// 	return err
-		// }
 		emailData := utils.EmailData{
-			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-			// URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 			FirstName: user.Name,
 			Subject:   "Approved Calibration",
 		}
@@ -171,7 +127,7 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 		}
 
 		data2 := fmt.Sprintf("SPMO has approved your calibration worksheet, and it will now be forwarded to the next phase's calibrator. We would greatly appreciate it if you do not disclose these interim results to anyone. Thank you for your attention and cooperation.")
-		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, user.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, user.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi))
 		if err != nil {
 			return err
 		}
@@ -179,19 +135,13 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 	return nil
 }
 
-func (n *notificationUsecase) NotifySubmittedCalibrationToCalibratorsWithoutReview(data response.NotificationModel) error {
+func (n *notificationUsecase) NotifySubmittedCalibrationToNextCalibratorsWithoutReview(data response.NotificationModel) error {
 	user, err := n.employee.FindById(data.CalibratorID)
 	if err != nil {
 		return err
 	}
 
-	// key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
-	// if err != nil {
-	// 	return err
-	// }
 	emailData := utils.EmailData{
-		URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-		// URL:       fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
 		FirstName: user.Name,
 		Subject:   "Submitted Calibration",
 	}
@@ -203,27 +153,23 @@ func (n *notificationUsecase) NotifySubmittedCalibrationToCalibratorsWithoutRevi
 	}
 
 	data2 := fmt.Sprintf("Your calibration has been submitted, and it will now be forwarded to the next phase's calibrator. We would greatly appreciate it if you do not disclose these interim results to anyone. Thank you for your attention and cooperation.")
-	err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, user.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+	err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, user.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (n *notificationUsecase) NotifyThisCalibrators(data []response.NotificationModel) error {
+func (n *notificationUsecase) NotifyNextCalibrators(data []response.NotificationModel) error {
 	for _, calibratorData := range data {
 		employee, err := n.employee.FindById(calibratorData.CalibratorID)
 		if err != nil {
 			return err
 		}
 
-		// key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
-		// if err != nil {
-		// 	return err
-		// }
 		emailData := utils.EmailData{
-			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-			// URL:        fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator, key),
+			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			URL:        fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
@@ -237,8 +183,9 @@ func (n *notificationUsecase) NotifyThisCalibrators(data []response.Notification
 			return err
 		}
 
+		fmt.Println("ACCESS TOKEN KEY", employee.AccessTokenGenerate)
 		data2 := fmt.Sprintf("As a calibrator for Calibration System, you are requested to complete the phase %d of the calibration process from previous Calibrator %s. Please log in to Calibration System and complete before %s.", emailData.PhaseOrder, calibratorData.PreviousCalibrator, emailData.Deadline)
-		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 		if err != nil {
 			return err
 		}
@@ -254,17 +201,20 @@ func (n *notificationUsecase) NotifySendBackCalibrators(data []response.Notifica
 			return err
 		}
 
-		key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
-		if err != nil {
-			return err
+		var url string
+		if calibratorData.PreviousBusinessUnitID != "" && calibratorData.PreviousCalibratorID != "" && calibratorData.PreviousCalibrator != "" {
+			url = fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator)
+		} else {
+			url = fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate)
+
 		}
 		emailData := utils.EmailData{
-			URL:        fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator, key),
+			URL:        url,
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
 			Deadline:   calibratorData.Deadline.Format("02-January-2006"),
-			Calibrator: calibratorData.PreviousCalibrator,
+			Calibrator: calibratorData.NextCalibrator,
 		}
 
 		// err = utils.SendMail([]string{employee.Email}, &emailData, "./utils/templates", "sendBackEmail.html", n.cfg.SMTPConfig)
@@ -273,8 +223,9 @@ func (n *notificationUsecase) NotifySendBackCalibrators(data []response.Notifica
 			return err
 		}
 
+		fmt.Println("ACCESS TOKEN KEY", employee.AccessTokenGenerate)
 		data2 := fmt.Sprintf("%s has send back their calibrations, you are requested to complete the phase %d of the calibration process. Please log in to Calibration System and complete before %s.", calibratorData.PreviousCalibrator, emailData.PhaseOrder, emailData.Deadline)
-		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 		if err != nil {
 			return err
 		}
@@ -283,20 +234,15 @@ func (n *notificationUsecase) NotifySendBackCalibrators(data []response.Notifica
 	return nil
 }
 
-func (n *notificationUsecase) NotifyThisCurrentCalibrators(data []response.NotificationModel) error {
+func (n *notificationUsecase) NotifyFirstCurrentCalibrators(data []response.NotificationModel) error {
 	for _, calibratorData := range data {
 		employee, err := n.employee.FindById(calibratorData.CalibratorID)
 		if err != nil {
 			return err
 		}
 
-		// key, err := utils.EncryptUUID(employee.ID, n.cfg.SecretKeyEncryption)
-		// if err != nil {
-		// 	return err
-		// }
 		emailData := utils.EmailData{
-			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-			// URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
+			URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate),
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
@@ -310,7 +256,7 @@ func (n *notificationUsecase) NotifyThisCurrentCalibrators(data []response.Notif
 		}
 
 		data2 := fmt.Sprintf("As a calibrator for Calibration System, you are requested to complete the phase %d of the calibration process. Please log in to Calibration System and complete before %s.", emailData.PhaseOrder, emailData.Deadline)
-		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 		if err != nil {
 			return err
 		}
@@ -325,13 +271,8 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 		return err
 	}
 
-	// key, err := utils.EncryptUUID(user.ID, n.cfg.SecretKeyEncryption)
-	// if err != nil {
-	// 	return err
-	// }
 	emailData := utils.EmailData{
-		URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-		// URL:          fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, key),
+		URL:          fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, user.AccessTokenGenerate),
 		FirstName:    user.Name,
 		Subject:      "Rejected Calibration",
 		Comment:      comment,
@@ -345,7 +286,7 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 	}
 
 	data2 := fmt.Sprintf("SPMO has rejected your calibration worksheet. Please re-do and re-submit your calibration worksheet.")
-	err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, user.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+	err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, user.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 	if err != nil {
 		return err
 	}
@@ -353,15 +294,12 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 	return nil
 }
 
-func (n *notificationUsecase) NotifyCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error {
+func (n *notificationUsecase) NotifySubmittedCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error {
+	fmt.Println("DATA SPMO:", &listOfSpmo[0])
 	for _, spmo := range listOfSpmo {
-		// key, err := utils.EncryptUUID(spmo.ID, n.cfg.SecretKeyEncryption)
-		// if err != nil {
-		// 	return err
-		// }
 		emailData := utils.EmailData{
-			URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-			// URL:        fmt.Sprintf("%s/#/autologin-spmo/%s/%s/%d/%s", n.cfg.FrontEndApi, calibrator.ID, *calibrator.BusinessUnitId, phase, key),
+			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
+			URL:        fmt.Sprintf("%s/#/autologin-spmo/%s/%s/%s/%d", n.cfg.FrontEndApi, spmo.AccessTokenGenerate, calibrator.ID, *calibrator.BusinessUnitId, phase),
 			FirstName:  spmo.Name,
 			Subject:    "Submitted Worksheet",
 			Calibrator: calibrator.Name,
@@ -373,8 +311,9 @@ func (n *notificationUsecase) NotifyCalibrationToSpmo(calibrator *model.User, li
 			return err
 		}
 
+		fmt.Println("ACCESS TOKEN KEY SPMO", spmo.AccessTokenGenerate)
 		data2 := fmt.Sprintf("%s on Calibration System has submitted the calibration worksheet. Please review and approve as soon as possible to proceed to the next phase.", emailData.Calibrator)
-		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, spmo.PhoneNumber, emailData.FirstName, data2, fmt.Sprintf("http://%s:%s", n.cfg.ApiHost, "3000"))
+		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, spmo.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 		if err != nil {
 			return err
 		}
