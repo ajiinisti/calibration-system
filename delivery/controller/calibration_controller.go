@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -337,6 +338,14 @@ func (r *CalibrationController) getAllDetailActiveCalibrationsBySPMOIDHandler(c 
 		return
 	}
 
+	for _, data := range payload {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
+	}
+
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
@@ -355,6 +364,14 @@ func (r *CalibrationController) getAllDetailActiveCalibrations2BySPMOIDHandler(c
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	for _, data := range payload {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
 	}
 
 	r.NewSuccessSingleResponse(c, payload, "OK")

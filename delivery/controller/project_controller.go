@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"calibration-system.com/delivery/api"
@@ -196,6 +198,14 @@ func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnit(c *gin.C
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	for _, data := range projects.UserData {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
+	}
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
@@ -206,6 +216,14 @@ func (r *ProjectController) getCalibrationsByBusinessUnit(c *gin.Context) {
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	for _, data := range projects.UserData {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
 	}
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
@@ -219,6 +237,14 @@ func (r *ProjectController) getNumberOneCalibrationsByPrevCalibratorBusinessUnit
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	for _, data := range projects.UserData {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
+	}
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
@@ -229,6 +255,14 @@ func (r *ProjectController) getNMinusOneCalibrationsByPrevCalibratorBusinessUnit
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	for _, data := range projects.UserData {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
 	}
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
@@ -243,6 +277,14 @@ func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnitAndRating
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	for _, data := range projects.UserData {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
+	}
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
@@ -255,6 +297,15 @@ func (r *ProjectController) getCalibrationsByBusinessUnitAndRating(c *gin.Contex
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	for _, data := range projects.UserData {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
+	}
+
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
@@ -265,6 +316,14 @@ func (r *ProjectController) getCalibrationsByRating(c *gin.Context) {
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	for _, data := range projects.UserData {
+		for _, score := range data.CalibrationScores {
+			for _, topRemark := range score.TopRemarks {
+				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
+			}
+		}
 	}
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
@@ -307,6 +366,60 @@ func (r *ProjectController) getActiveManagerPhaseHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
+func (r *ProjectController) getReportCalibrations(c *gin.Context) {
+	types := c.Param("type")
+	calibratorID := c.Param("calibratorID")
+	businessUnit := c.Param("businessUnit")
+	prevCalibrator := c.Param("prevCalibrator")
+	file, err := r.uc.ReportCalibrations(types, calibratorID, businessUnit, prevCalibrator, c)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	defer func() {
+		// Clean up: Remove the file after it has been served
+		err := os.Remove(file)
+		if err != nil {
+			fmt.Println("Error removing file:", err)
+		}
+	}()
+
+	// Set the response headers for downloading
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename="+file)
+
+	// Serve the file
+	c.File(file)
+}
+
+func (r *ProjectController) getReportAllCalibrations(c *gin.Context) {
+	types := c.Param("type")
+	calibratorID := c.Param("calibratorID")
+	businessUnit := c.Param("businessUnit")
+	prevCalibrator := c.Param("prevCalibrator")
+	file, err := r.uc.ReportCalibrations(types, calibratorID, businessUnit, prevCalibrator, c)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	defer func() {
+		// Clean up: Remove the file after it has been served
+		err := os.Remove(file)
+		if err != nil {
+			fmt.Println("Error removing file:", err)
+		}
+	}()
+
+	// Set the response headers for downloading
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename="+file)
+
+	// Serve the file
+	c.File(file)
+}
+
 func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.ProjectUsecase) *ProjectController {
 	controller := ProjectController{
 		router:       r,
@@ -337,5 +450,6 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth.POST("/projects", controller.createHandler)
 	auth.POST("/projects/publish/:id", controller.publishHandler)
 	auth.DELETE("/projects/:id", controller.deleteHandler)
+	auth.GET("/projects-report/:type/:calibratorID/:businessUnit/:prevCalibrator", controller.getReportCalibrations)
 	return &controller
 }
