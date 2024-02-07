@@ -97,7 +97,7 @@ func (c *Config) ReadConfigFile() error {
 	c.ApiConfig = ApiConfig{
 		ApiHost:     os.Getenv("API_HOST"),
 		ApiPort:     os.Getenv("API_PORT"),
-		FrontEndApi: os.Getenv("FRONT_END_API"),
+		FrontEndApi: os.Getenv("FRONT_END_APIS"),
 	}
 
 	if os.Getenv("PORT") != "" {

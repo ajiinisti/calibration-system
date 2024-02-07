@@ -464,6 +464,8 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 
 		if len(employeeCalibrations) == 2 {
 			calibrations.Status = "Waiting"
+			calibrations.SpmoStatus = "-"
+			calibrations.JustificationReviewStatus = false
 			employeeCalibrationScore = append(employeeCalibrationScore, calibrations)
 		}
 
@@ -532,6 +534,7 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 		if len(employeeCalibrations) > 1 {
 			calibrations.Status = "Waiting"
 			calibrations.JustificationReviewStatus = false
+			calibrations.SpmoStatus = "-"
 			employeeCalibrationScore = append(employeeCalibrationScore, calibrations)
 		}
 
