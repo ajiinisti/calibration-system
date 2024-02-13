@@ -1016,15 +1016,19 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, p
 				}
 			}
 			if columnBefore == column {
+				fmt.Println("DATANYA ROW := ", fmt.Sprintf("%c%d", byte(column), i+3))
 				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
 				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
 				column++
+				fmt.Println("DATANYA ROW := ", fmt.Sprintf("%c%d", byte(column), i+3))
 				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
 				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
 				column++
+				fmt.Println("DATANYA ROW := ", fmt.Sprintf("%c%d", byte(column), i+3))
 				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
 				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
 				column++
+				fmt.Println("DATANYA ROW := ", fmt.Sprintf("%c%d", byte(column), i+3))
 				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
 				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
 				column++
