@@ -973,18 +973,22 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, p
 
 			for _, calibrationScore := range user.CalibrationScores {
 				if j == calibrationScore.ProjectPhase.Phase.Order {
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), calibrationScore.CalibrationScore)
-					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), calibrationScore.CalibrationScore)
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 					column++
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), calibrationScore.CalibrationRating)
-					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), calibrationScore.CalibrationRating)
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 					column++
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), calibrationScore.JustificationType)
-					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), calibrationScore.JustificationType)
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 					column++
+
 					if calibrationScore.JustificationType == "default" {
-						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), calibrationScore.Comment)
-						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), calibrationScore.Comment)
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 					} else if calibrationScore.JustificationType == "top" {
 						var justifications string
 						for _, topJustification := range calibrationScore.TopRemarks {
@@ -998,9 +1002,9 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, p
 								topJustification.EvidenceLink,
 							)
 						}
-						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), justifications)
-						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
-						file.SetColWidth(user.BusinessUnit.Name, fmt.Sprintf("%c", byte(column)), fmt.Sprintf("%c", byte(column)), 25)
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), justifications)
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+						file.SetColWidth(user.BusinessUnit.Name, fmt.Sprintf("%s", asciiToName(column)), fmt.Sprintf("%s", asciiToName(column)), 25)
 					} else {
 						justification := fmt.Sprintf("Attitude: %s\nIndisipliner: %s\nLow Performance: %s\nWarning Letter: %s",
 							calibrationScore.BottomRemark.Attitude,
@@ -1008,29 +1012,28 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, p
 							calibrationScore.BottomRemark.LowPerformance,
 							calibrationScore.BottomRemark.WarningLetter,
 						)
-						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), justification)
-						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
-						file.SetColWidth(user.BusinessUnit.Name, fmt.Sprintf("%c", byte(column)), fmt.Sprintf("%c", byte(column)), 25)
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), justification)
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+						file.SetColWidth(user.BusinessUnit.Name, fmt.Sprintf("%s", asciiToName(column)), fmt.Sprintf("%s", asciiToName(column)), 25)
 					}
 					column++
 				}
 			}
 			if columnBefore == column {
-				fmt.Println("DATANYA ROW := ", fmt.Sprintf("%c%d", byte(column), i+3))
-				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
-				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), "-")
+				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 				column++
-				fmt.Println("DATANYA ROW := ", fmt.Sprintf("%c%d", byte(column), i+3))
-				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
-				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+
+				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), "-")
+				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 				column++
-				fmt.Println("DATANYA ROW := ", fmt.Sprintf("%c%d", byte(column), i+3))
-				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
-				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+
+				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), "-")
+				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 				column++
-				fmt.Println("DATANYA ROW := ", fmt.Sprintf("%c%d", byte(column), i+3))
-				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), "-")
-				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%c%d", byte(column), i+3), fmt.Sprintf("%c%d", byte(column), i+3), backgroundColorCalibration)
+
+				file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), "-")
+				file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 				column++
 			}
 		}
@@ -1044,6 +1047,17 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, p
 	}
 
 	return "report.xlsx", nil
+}
+
+func asciiToName(column int) string {
+	columnName := fmt.Sprintf("%c", column)
+	if column > int('Z') {
+		offset := (column - int('A')) % 26
+		firstLetterOffset := int((column - int('A')) / 26)
+		firstLetter := int('A') - 1 + firstLetterOffset
+		columnName = fmt.Sprintf("%c%c", firstLetter, offset+int('A'))
+	}
+	return columnName
 }
 
 func NewProjectUsecase(repo repository.ProjectRepo) ProjectUsecase {
