@@ -273,15 +273,14 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 	logs = append(logs, dateLogs...)
 	logs = append(logs, buLogs...)
 
-	if len(logs) > 0 {
-		return logs, fmt.Errorf("Error when insert data")
-	}
-
 	err = u.repo.Bulksave(&users)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(logs) > 0 {
+		return logs, fmt.Errorf("Error when insert data")
+	}
 	return logs, nil
 }
 
