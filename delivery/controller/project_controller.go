@@ -90,6 +90,16 @@ func (r *ProjectController) publishHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, "Success Publish", "OK")
 }
 
+func (r *ProjectController) deactivateHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := r.uc.DeactivateProject(id); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, "Success Publish", "OK")
+}
+
 func (r *ProjectController) updateHandler(c *gin.Context) {
 	var payload model.Project
 
@@ -449,6 +459,7 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth.PUT("/projects", controller.updateHandler)
 	auth.POST("/projects", controller.createHandler)
 	auth.POST("/projects/publish/:id", controller.publishHandler)
+	auth.POST("/projects/deactive/:id", controller.deactivateHandler)
 	auth.DELETE("/projects/:id", controller.deleteHandler)
 	auth.GET("/projects-report/:type/:calibratorID/:businessUnit/:prevCalibrator", controller.getReportCalibrations)
 	return &controller
