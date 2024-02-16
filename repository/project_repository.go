@@ -16,6 +16,7 @@ type ProjectRepo interface {
 	PaginateList(pagination model.PaginationQuery) ([]model.Project, response.Paging, error)
 	GetTotalRows(name string) (int, error)
 	ActivateByID(id string) error
+	NonactivateByID(id string) error
 	DeactivateAllExceptID(id string) error
 	GetProjectPhaseOrder(calibratorID string) (int, error)
 	GetProjectPhase(calibratorID string) (*model.ProjectPhase, error)
@@ -208,6 +209,14 @@ func (r *projectRepo) GetTotalRows(name string) (int, error) {
 
 func (r *projectRepo) ActivateByID(id string) error {
 	result := r.db.Model(&model.Project{}).Where("id = ?", id).Updates(map[string]interface{}{"active": true})
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func (r *projectRepo) NonactivateByID(id string) error {
+	result := r.db.Model(&model.Project{}).Where("id = ?", id).Updates(map[string]interface{}{"active": false})
 	if result.Error != nil {
 		return result.Error
 	}

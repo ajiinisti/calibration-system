@@ -19,6 +19,7 @@ type ProjectUsecase interface {
 	BaseUsecase[model.Project]
 	FindPagination(param request.PaginationParam) ([]model.Project, response.Paging, error)
 	PublishProject(id string) error
+	DeactivateProject(id string) error
 	// FindActiveProject() (*model.Project, error)
 	// FindActiveProjectByCalibratorID(calibratorId string) (*response.ProjectCalibrationResponse, error)
 	FindScoreDistributionByCalibratorID(businessUnitName string) (*model.Project, error)
@@ -73,6 +74,10 @@ func (r *projectUsecase) PublishProject(id string) error {
 	}
 
 	return r.repo.DeactivateAllExceptID(id)
+}
+
+func (r *projectUsecase) DeactivateProject(id string) error {
+	return r.repo.NonactivateByID(id)
 }
 
 func (r *projectUsecase) FindActiveProject() (*model.Project, error) {
