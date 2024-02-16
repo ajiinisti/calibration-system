@@ -393,12 +393,12 @@ func (r *CalibrationController) createByUserHandler(c *gin.Context) {
 }
 
 func (r *CalibrationController) sendNotificationFirstCalibratorHandler(c *gin.Context) {
-	err := r.uc.SendNotificationToCurrentCalibrator()
+	data, err := r.uc.SendNotificationToCurrentCalibrator()
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	r.NewSuccessSingleResponse(c, "", "OK")
+	r.NewSuccessSingleResponse(c, data, "OK")
 }
 
 func (r *CalibrationController) getRatingQuotaSPMOHandlerByID(c *gin.Context) {

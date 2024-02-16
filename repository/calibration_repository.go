@@ -45,6 +45,7 @@ func (r *calibrationRepo) GetAllCalibrationByCalibratorID(calibratorId string) (
 	var calibrations []model.Calibration
 	err := r.db.
 		Table("calibrations c").
+		Joins("JOIN projects pr ON pr.id = c.project_id AND pr.active = true").
 		Where("c.calibrator_id = ?", calibratorId).
 		Find(&calibrations).
 		Error
