@@ -350,7 +350,7 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		return err
 	}
 
-	sheetName := xlsFile.GetSheetName(5)
+	sheetName := xlsFile.GetSheetName(4)
 	rows := xlsFile.GetRows(sheetName)
 
 	for i, row := range rows {
@@ -463,8 +463,6 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("DATA SPMONYA BEGIMANA INI,", spmoIDs)
 
 	if projectPhase.ReviewSpmo {
 		mapSpmo := make(map[string]*model.User)

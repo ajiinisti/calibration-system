@@ -74,7 +74,7 @@ func (r *actualScoreUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		return nil, err
 	}
 
-	sheetName := xlsFile.GetSheetName(4)
+	sheetName := xlsFile.GetSheetName(3)
 	rows := xlsFile.GetRows(sheetName)
 
 	for i, row := range rows {

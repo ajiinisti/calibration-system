@@ -225,6 +225,11 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			}
 		}
 
+		password, err := utils.SaltPassword([]byte("password"))
+		if err != nil {
+			return nil, err
+		}
+
 		user := model.User{
 			Email:            row[10],
 			Name:             row[1],
@@ -241,6 +246,7 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			GeneratePassword: false,
 			PhoneNumber:      row[11],
 			ScoringMethod:    row[12],
+			Password:         password,
 		}
 
 		inputedData, _ := u.repo.SearchByNik(row[0])
