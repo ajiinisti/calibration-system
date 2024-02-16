@@ -88,7 +88,7 @@ func (r *ratingQuotaUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		return nil, err
 	}
 
-	sheetName := xlsFile.GetSheetName(6)
+	sheetName := xlsFile.GetSheetName(5)
 	rows := xlsFile.GetRows(sheetName)
 
 	for i, row := range rows {
