@@ -202,7 +202,7 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 		layout := "01-02-06"
 		parsedTime, err := time.Parse(layout, row[2])
 		if err != nil {
-			dateLogs = append(dateLogs, fmt.Sprintf("Cannot parse date on Employee NIK %s", row[1]))
+			// dateLogs = append(dateLogs, fmt.Sprintf("Cannot parse date on Employee NIK %s", row[1]))
 			passed = false
 		}
 
@@ -249,10 +249,16 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 			Password:         password,
 		}
 
-		inputedData, _ := u.repo.SearchByNik(row[0])
-		if err != nil {
-			return nil, err
+		role, _ := u.role.FindByName(row[13])
+		// if err != nil {
+		// 	buLogs = append(buLogs, fmt.Sprintf("Error Role Name on Row %d", i+1))
+		// }
+
+		if role != nil {
+			user.Roles = []model.Role{*role}
 		}
+
+		inputedData, _ := u.repo.SearchByNik(row[0])
 
 		if inputedData != nil {
 			user.ID = inputedData.ID
@@ -266,6 +272,10 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 
 	logs = append(logs, dateLogs...)
 	logs = append(logs, buLogs...)
+
+	if len(logs) > 0 {
+		return logs, fmt.Errorf("Error when insert data")
+	}
 
 	err = u.repo.Bulksave(&users)
 	if err != nil {

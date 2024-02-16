@@ -200,12 +200,11 @@ func (u *UserController) uploadHandler(c *gin.Context) {
 
 	logs, err := u.uc.BulkInsert(file)
 	if err != nil {
-		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	if len(logs) > 0 {
-		u.NewSuccessSingleResponse(c, strings.Join(logs, "."), "Success with some error")
+		if len(logs) > 0 {
+			u.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, ","))
+		} else {
+			u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
