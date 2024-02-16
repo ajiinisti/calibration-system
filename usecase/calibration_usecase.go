@@ -225,7 +225,7 @@ func (r *calibrationUsecase) CheckEmployee(file *multipart.FileHeader, projectId
 		return nil, err
 	}
 
-	sheetName := xlsFile.GetSheetName(5)
+	sheetName := xlsFile.GetSheetName(4)
 	rows := xlsFile.GetRows(sheetName)
 
 	for i, row := range rows {
@@ -272,7 +272,7 @@ func (r *calibrationUsecase) CheckCalibrator(file *multipart.FileHeader, project
 		return nil, err
 	}
 
-	sheetName := xlsFile.GetSheetName(5)
+	sheetName := xlsFile.GetSheetName(4)
 	rows := xlsFile.GetRows(sheetName)
 
 	for i, row := range rows {
