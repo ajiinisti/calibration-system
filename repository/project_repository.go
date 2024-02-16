@@ -1008,14 +1008,14 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 	var resultUsers []response.UserResponse
 
 	// prev calibrator
-	// queryPrevCalibrator := r.db.
-	// 	Table("users u2").
-	// 	Select("u2.id").
-	// 	Joins("JOIN calibrations c2 ON c2.calibrator_id = u2.id AND c2.deleted_at IS NULL").
-	// 	Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.active = true").
-	// 	Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
-	// 	Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
-	// 	Where("u2.business_unit_id = ?", businessUnit)
+	queryPrevCalibrator := r.db.
+		Table("users u2").
+		Select("u2.id").
+		Joins("JOIN calibrations c2 ON c2.calibrator_id = u2.id AND c2.deleted_at IS NULL").
+		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.active = true").
+		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
+		Where("u2.business_unit_id = ?", businessUnit)
 
 	// Subquery
 	subquery := r.db.
@@ -1053,8 +1053,7 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
-		// Where("u.business_unit_id = ? AND u.id NOT IN (?) AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
-		Where("u.business_unit_id = ? AND u.id NOT IN (?) ", businessUnit, subquery).
+		Where("u.business_unit_id = ? AND u.id NOT IN (?)  AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
 		Find(&users).Error
 	if err != nil {
 		return response.UserCalibration{}, err
