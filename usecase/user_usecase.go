@@ -200,11 +200,11 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 		}
 
 		layout := "01-02-06"
-		parsedTime, err := time.Parse(layout, row[2])
-		if err != nil {
-			// dateLogs = append(dateLogs, fmt.Sprintf("Cannot parse date on Employee NIK %s", row[1]))
-			passed = false
-		}
+		parsedTime, _ := time.Parse(layout, row[2])
+		// if err != nil {
+		// dateLogs = append(dateLogs, fmt.Sprintf("Cannot parse date on Employee NIK %s", row[1]))
+		// passed = false
+		// }
 
 		var found bool
 		buId := row[4]
