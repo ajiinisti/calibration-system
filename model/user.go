@@ -8,7 +8,7 @@ type User struct {
 	BaseModel
 	CreatedBy              string `gorm:"default:admin" json:"-"`
 	UpdatedBy              string `gorm:"default:admin" json:"-"`
-	Email                  string `gorm:"unique"`
+	Email                  string
 	Name                   string
 	Nik                    string
 	DateOfBirth            time.Time `gorm:"type:timestamp without time zone"`
