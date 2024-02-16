@@ -28,7 +28,7 @@ type UpdateUser struct {
 	Nik              string
 	DateOfBirth      time.Time
 	SupervisorNik    string
-	BusinessUnitId   string
+	BusinessUnitId   *string
 	OrganizationUnit string
 	Division         string
 	Department       string
