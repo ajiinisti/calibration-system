@@ -37,7 +37,7 @@ type CalibrationUsecase interface {
 	FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error)
 	FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
 	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
-	SendNotificationToCurrentCalibrator() error
+	SendNotificationToCurrentCalibrator() ([]response.NotificationModel, error)
 	FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID string, order int) (*response.RatingQuota, error)
 }
 
@@ -50,19 +50,21 @@ type calibrationUsecase struct {
 	actualScore  ActualScoreUsecase
 }
 
-func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
+func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() ([]response.NotificationModel, error) {
 	calibrations, err := r.repo.GetCalibrateCalibration()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	uniqueCalibratorIDs := make(map[string]response.NotificationModel)
 	for _, data := range calibrations {
 		if _, ok := uniqueCalibratorIDs[data.CalibratorID]; !ok {
+			user, _ := r.user.FindById(data.CalibratorID)
 			uniqueCalibratorIDs[data.CalibratorID] = response.NotificationModel{
-				CalibratorID: data.CalibratorID,
-				ProjectPhase: data.ProjectPhase.Phase.Order,
-				Deadline:     data.ProjectPhase.EndDate,
+				CalibratorID:   data.CalibratorID,
+				ProjectPhase:   data.ProjectPhase.Phase.Order,
+				Deadline:       data.ProjectPhase.EndDate,
+				NextCalibrator: user.Name,
 			}
 		}
 	}
@@ -76,14 +78,13 @@ func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
 	for _, calibratorData := range uniqueCalibratorIDsSlice {
 		calibrations, err := r.repo.GetAllCalibrationByCalibratorID(calibratorData.CalibratorID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		flag := true
 		for _, calibrationData := range calibrations {
 			if calibrationData.Status != "Calibrate" {
 				flag = flag && false
-				break
 			}
 		}
 
@@ -95,9 +96,9 @@ func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() error {
 
 	err = r.notification.NotifyFirstCurrentCalibrators(currentCalibrators)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return currentCalibrators, nil
 }
 
 func (r *calibrationUsecase) FindAll() ([]model.Calibration, error) {
