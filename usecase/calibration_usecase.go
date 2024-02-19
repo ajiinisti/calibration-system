@@ -15,7 +15,7 @@ import (
 
 type CalibrationUsecase interface {
 	FindAll() ([]model.Calibration, error)
-	FindActiveBySPMOID(spmoID string) ([]model.Calibration, error)
+	FindActiveBySPMOID(spmoID string) ([]model.User, error)
 	FindAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindById(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
@@ -105,7 +105,7 @@ func (r *calibrationUsecase) FindAll() ([]model.Calibration, error) {
 	return r.repo.List()
 }
 
-func (r *calibrationUsecase) FindActiveBySPMOID(spmoID string) ([]model.Calibration, error) {
+func (r *calibrationUsecase) FindActiveBySPMOID(spmoID string) ([]model.User, error) {
 	return r.repo.GetActiveBySPMOID(spmoID)
 }
 

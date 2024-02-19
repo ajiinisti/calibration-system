@@ -1,8 +1,8 @@
 <div>
     <p>Dear {{ .FirstName}},</p>
-    <p>SPMO has assigned you to <b>Calibration System</b> as the calibrator on phase {{ .PhaseOrder}} from previous Calibrator {{ .Calibrator}}. You can start the calibration process until <b>{{ .Deadline}}</b>. Follow the below steps to complete the process:</p>
+    <p>In regards to the Performance Calibration process, as a supervisor, you will act as the Calibrator from previous Calibrator {{ .Calibrator}}. You can start the calibration process by following the steps below:</p>
     <ol>
-        <p>1.Login to the <a href="{{ .URL}}">website</a>.</p>
+        <p>1.Login to the <a href="{{ .URL}}">{{ .URL}}</a>.</p>
         <p>2.Click on the <b>My Task</b> tab to review and make adjustments to the calibration worksheet.</p>
         <p>3.Click on <b>Submit</b> once all the validations or requirements are met.</p>
     </ol>

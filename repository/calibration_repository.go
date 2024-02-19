@@ -16,7 +16,7 @@ type CalibrationRepo interface {
 	GetAllPreviousEmployeeCalibrationByActiveProject(employeeID string, phaseOrder int) ([]model.Calibration, error)
 	GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error)
 	List() ([]model.Calibration, error)
-	GetActiveBySPMOID(spmoID string) ([]model.Calibration, error)
+	GetActiveBySPMOID(spmoID string) ([]model.User, error)
 	GetAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
 	GetRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	Delete(projectId, employeeId string) error
@@ -111,6 +111,17 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 		}
 	}
 
+	projectPhaseStartIndex := 0
+	var projectProjectPhase model.ProjectPhase
+	err := r.db.Preload("Phase").First(&projectProjectPhase, "id = ?", payload.CalibrationDataForms[0].ProjectPhaseID).Error
+	if err != nil {
+		return err
+	}
+
+	if projectProjectPhase.Phase.Order == 1 {
+		projectPhaseStartIndex = 1
+	}
+
 	for index, calibrationData := range payload.CalibrationDataForms {
 		data := model.Calibration{
 			ProjectID:         calibrationData.ProjectID,
@@ -147,7 +158,7 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 			data.Spmo3ID = &calibrationData.Spmo3ID
 		}
 
-		if index == 0 {
+		if index == projectPhaseStartIndex {
 			data.Status = "Calibrate"
 		}
 
@@ -253,25 +264,20 @@ func (r *calibrationRepo) GetByProjectEmployeeID(projectID, employeeID string) (
 	return calibration, nil
 }
 
-func (r *calibrationRepo) GetActiveBySPMOID(id string) ([]model.Calibration, error) {
-	var calibration []model.Calibration
+func (r *calibrationRepo) GetActiveBySPMOID(spmoID string) ([]model.User, error) {
+	var calibration []model.User
 	err := r.db.
-		Table("calibrations c").
-		Preload("Calibrator").
-		Preload("Employee").
-		Preload("ProjectPhase", "review_spmo = ?", true).
-		Preload("ProjectPhase.Phase").
-		Preload("BottomRemark").
-		Preload("TopRemarks").
-		Joins("JOIN projects pr ON pr.id = c.project_id AND pr.active = true").
-		Joins("JOIN project_phases pp ON pp.id = c.project_phase_id").
-		Joins("JOIN phases p ON p.id = pp.phase_id").
-		Where("c.spmo_id = ? AND c.spmo_status = 'Waiting'", id).
-		Order("p.order ASC").
+		Table("users u").
+		Preload("BusinessUnit").
+		Select("u.*").
+		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID).
+		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
+		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
 		Find(&calibration).Error
 	if err != nil {
 		return nil, err
 	}
+
 	return calibration, nil
 }
 
