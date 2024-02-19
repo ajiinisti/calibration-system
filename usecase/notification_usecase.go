@@ -224,7 +224,7 @@ func (n *notificationUsecase) NotifySendBackCalibrators(data []response.Notifica
 		}
 
 		// fmt.Println("ACCESS TOKEN KEY", employee.AccessTokenGenerate)
-		data2 := fmt.Sprintf("%s has send back their calibrations, you are requested to complete the phase %d of the calibration process. Please log in to Performance Calibration Process and complete before %s.", calibratorData.PreviousCalibrator, emailData.PhaseOrder, emailData.Deadline)
+		data2 := fmt.Sprintf("In regards to the Performance Calibration process, %s has sendback their calibrations to you.", calibratorData.PreviousCalibrator)
 		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 		if err != nil {
 			return err
