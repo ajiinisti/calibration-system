@@ -184,7 +184,7 @@ func (n *notificationUsecase) NotifyNextCalibrators(data []response.Notification
 		}
 
 		// fmt.Println("ACCESS TOKEN KEY", employee.AccessTokenGenerate)
-		data2 := fmt.Sprintf("In regards to Performance Calibration Process, as a Supervisor you will be act as a calibrator. You are requested to complete the calibration process from previous Calibrator %s.", calibratorData.PreviousCalibrator)
+		data2 := fmt.Sprintf("In regards to Performance Calibration Process, you will act as the next Calibrator previously from %s.", calibratorData.PreviousCalibrator)
 		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 		if err != nil {
 			return err
@@ -255,7 +255,7 @@ func (n *notificationUsecase) NotifyFirstCurrentCalibrators(data []response.Noti
 			return err
 		}
 
-		data2 := "In regards to Performance Calibration Process, as a Supervisor you will be act as a calibrator. You can start the calibration process. Kindly please follow the below steps to complete the process. To login you can use password password"
+		data2 := "We would like to inform you that Calibration 2023 has started. You will act as one of the Calibrators for your team member."
 		err = utils.SendWhatsAppNotif(n.cfg.WhatsAppConfig, employee.PhoneNumber, emailData.FirstName, data2, emailData.URL)
 		if err != nil {
 			return err
