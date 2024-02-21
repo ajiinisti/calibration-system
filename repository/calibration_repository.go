@@ -273,6 +273,7 @@ func (r *calibrationRepo) GetActiveBySPMOID(spmoID string) ([]model.User, error)
 		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID).
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
+		Distinct().
 		Find(&calibration).Error
 	if err != nil {
 		return nil, err
