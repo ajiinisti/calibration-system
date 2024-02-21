@@ -443,6 +443,7 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 				Deadline:     calibrations[0].ProjectPhase.EndDate,
 			})
 			calibrations[0].Status = "Calibrate"
+			calibrations[0].Comment = employeeCalibration.Comment
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()
 				return nil, nil, err
@@ -812,7 +813,19 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 			return nil, err
 		}
 
+		var calibrationBefore *model.Calibration
+		err = tx.Table("calibrations").
+			Select("calibrations.*").
+			Where("employee_id = ? AND calibrator_id = ? and project_id = ?", justification.EmployeeID, justification.CalibratorID, justification.ProjectID).
+			First(&calibrationBefore).Error
+
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
 		if len(calibrations) > 0 {
+			calibrations[0].Comment = calibrationBefore.Comment
 			calibrations[0].Status = "Calibrate"
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()
