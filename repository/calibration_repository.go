@@ -273,6 +273,7 @@ func (r *calibrationRepo) GetActiveBySPMOID(spmoID string) ([]model.User, error)
 		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID).
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
+		Distinct().
 		Find(&calibration).Error
 	if err != nil {
 		return nil, err
@@ -442,6 +443,7 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 				Deadline:     calibrations[0].ProjectPhase.EndDate,
 			})
 			calibrations[0].Status = "Calibrate"
+			calibrations[0].Comment = employeeCalibration.Comment
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()
 				return nil, nil, err
@@ -811,7 +813,19 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 			return nil, err
 		}
 
+		var calibrationBefore *model.Calibration
+		err = tx.Table("calibrations").
+			Select("calibrations.*").
+			Where("employee_id = ? AND calibrator_id = ? and project_id = ?", justification.EmployeeID, justification.CalibratorID, justification.ProjectID).
+			First(&calibrationBefore).Error
+
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
 		if len(calibrations) > 0 {
+			calibrations[0].Comment = calibrationBefore.Comment
 			calibrations[0].Status = "Calibrate"
 			if err := tx.Updates(calibrations[0]).Error; err != nil {
 				tx.Rollback()

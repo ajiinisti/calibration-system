@@ -738,9 +738,11 @@ func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID string) (resp
 					if lastCalibrationStatus == "Waiting" || (lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == false) {
 						status = "Pending"
 						allSubmitted = allSubmitted && false
-						break
-					} else if (lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == true) || lastCalibrationStatus == "Rejected" {
+					} else if lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == true {
 						allSubmitted = allSubmitted && true
+					} else if lastCalibrationStatus == "Rejected" {
+						allSubmitted = true
+						break
 					} else {
 						allSubmitted = allSubmitted && false
 					}
