@@ -62,7 +62,7 @@ func (r *TopRemarkController) viewFileHandler(c *gin.Context) {
 	case "doc", "docx":
 		contentType = "application/msword"
 	case "xlsx", "xls":
-		contentType = "application/vnd.ms-excel"
+		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	case "jpg", "jpeg":
 		contentType = "image/jpeg"
 	case "png":
