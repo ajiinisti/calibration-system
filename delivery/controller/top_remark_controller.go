@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"calibration-system.com/delivery/api"
 	"calibration-system.com/delivery/api/request"
@@ -52,11 +54,29 @@ func (r *TopRemarkController) viewFileHandler(c *gin.Context) {
 		return
 	}
 
-	c.Header("Content-Type", "application/pdf")
-	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%s", topRemarks.EvidenceName)) // Suggest the file name
+	var contentType string
+	var fileExtension = strings.ToLower(strings.TrimPrefix(filepath.Ext(topRemarks.EvidenceName), "."))
+	switch fileExtension {
+	case "pdf":
+		contentType = "application/pdf"
+	case "doc", "docx":
+		contentType = "application/msword"
+	case "xlsx", "xls":
+		contentType = "application/vnd.ms-excel"
+	case "jpg", "jpeg":
+		contentType = "image/jpeg"
+	case "png":
+		contentType = "image/png"
+	// Add cases for other file types as needed
+	default:
+		// Default to octet-stream for unknown file types
+		contentType = "application/octet-stream"
+	}
 
-	// Write the PDF data from the byte slice to the response body
-	c.Data(200, "application/pdf", topRemarks.Evidence)
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%s", topRemarks.EvidenceName))
+
+	c.Data(http.StatusOK, contentType, topRemarks.Evidence)
 	r.NewSuccessSingleResponse(c, topRemarks, "OK")
 }
 

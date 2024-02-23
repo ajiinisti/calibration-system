@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"calibration-system.com/delivery/api/request"
@@ -84,7 +85,7 @@ func (a *authUsecase) ResetPassword(email string, resetToken string, newPassword
 
 // verifyLogin implements AuthUsecase
 func (a *authUsecase) Login(payload request.Login) (*model.User, error) {
-	user, err := a.user.SearchEmail(payload.Email)
+	user, err := a.user.SearchEmail(strings.ToLower(payload.Email))
 	if err == gorm.ErrRecordNotFound {
 		return nil, fmt.Errorf("Email/Password invalid")
 	}
