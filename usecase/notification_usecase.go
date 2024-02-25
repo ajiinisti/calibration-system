@@ -167,9 +167,17 @@ func (n *notificationUsecase) NotifyNextCalibrators(data []response.Notification
 			return err
 		}
 
+		var url string
+		if calibratorData.PreviousBusinessUnitID != "" && calibratorData.PreviousCalibratorID != "" && calibratorData.PreviousCalibrator != "" {
+			url = fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator)
+		} else {
+			url = fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate)
+
+		}
+
 		emailData := utils.EmailData{
 			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-			URL:        fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator),
+			URL:        url,
 			FirstName:  employee.Name,
 			Subject:    "Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,

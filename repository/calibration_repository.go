@@ -442,9 +442,28 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 				ProjectPhase: calibrations[0].ProjectPhase.Phase.Order,
 				Deadline:     calibrations[0].ProjectPhase.EndDate,
 			})
-			calibrations[0].Status = "Calibrate"
-			calibrations[0].Comment = employeeCalibration.Comment
-			if err := tx.Updates(calibrations[0]).Error; err != nil {
+			// err := tx.Model(&model.Calibration{}).
+			// 	Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
+			// 		calibrations[0].ProjectID,
+			// 		calibrations[0].ProjectPhaseID,
+			// 		calibrations[0].EmployeeID,
+			// 		calibrations[0].CalibratorID,
+			// 	).Updates(map[string]interface{}{
+			// 	"comment": employeeCalibration.Comment,
+			// 	"status":  "Calibrate",
+			// }).Error
+			err := tx.Updates(&model.Calibration{
+				ProjectID:      calibrations[0].ProjectID,
+				ProjectPhaseID: calibrations[0].ProjectPhaseID,
+				EmployeeID:     calibrations[0].EmployeeID,
+				Comment:        employeeCalibration.Comment,
+				Status:         "Calibrate",
+			}).Error
+			if err != nil {
+				tx.Rollback()
+				return nil, nil, err
+			}
+			if err != nil {
 				tx.Rollback()
 				return nil, nil, err
 			}
@@ -509,11 +528,27 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload *request.Calibration
 
 		if len(calibrations) > 0 {
 			ppId = calibrations[0].ProjectPhaseID
-			calibrations[0].Status = "Calibrate"
-			calibrations[0].SpmoStatus = "-"
-			calibrations[0].JustificationReviewStatus = false
 			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[0].CalibratorID)
-			if err := tx.Updates(calibrations[0]).Error; err != nil {
+			// err := tx.Model(&model.Calibration{}).
+			// 	Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
+			// 		calibrations[0].ProjectID,
+			// 		calibrations[0].ProjectPhaseID,
+			// 		calibrations[0].EmployeeID,
+			// 		calibrations[0].CalibratorID,
+			// 	).Updates(map[string]interface{}{
+			// 	"spmo_status":                 "-",
+			// 	"status":                      "Calibrate",
+			// 	"justification_review_status": false,
+			// }).Error
+			err := tx.Updates(&model.Calibration{
+				ProjectID:                 calibrations[0].ProjectID,
+				ProjectPhaseID:            calibrations[0].ProjectPhaseID,
+				EmployeeID:                calibrations[0].EmployeeID,
+				Status:                    "Calibrate",
+				JustificationReviewStatus: false,
+				SpmoStatus:                "-",
+			}).Error
+			if err != nil {
 				tx.Rollback()
 				return nil, "", err
 			}
@@ -773,14 +808,11 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 
 	mapResult := make(map[string]response.NotificationModel)
 	for _, justification := range payload.ArrayOfAcceptsJustification {
-		err := tx.Model(&model.Calibration{}).
-			Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
-				justification.ProjectID,
-				justification.ProjectPhaseID,
-				justification.EmployeeID,
-				justification.CalibratorID,
-			).Updates(map[string]interface{}{
-			"justification_review_status": true,
+		err := tx.Updates(&model.Calibration{
+			ProjectID:                 justification.ProjectID,
+			ProjectPhaseID:            justification.ProjectPhaseID,
+			EmployeeID:                justification.EmployeeID,
+			JustificationReviewStatus: true,
 		}).Error
 		if err != nil {
 			tx.Rollback()
@@ -807,33 +839,39 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 			Where("projects.active = true AND phases.order > ? AND calibrations.employee_id = ?", projectPhase.Phase.Order, justification.EmployeeID).
 			Order("phases.order ASC").
 			Find(&calibrations).Error
-
 		if err != nil {
 			tx.Rollback()
 			return nil, err
 		}
+
+		fmt.Println('1', calibrations[0])
 
 		var calibrationBefore *model.Calibration
 		err = tx.Table("calibrations").
 			Select("calibrations.*").
 			Where("employee_id = ? AND calibrator_id = ? and project_id = ?", justification.EmployeeID, justification.CalibratorID, justification.ProjectID).
 			First(&calibrationBefore).Error
-
 		if err != nil {
 			tx.Rollback()
 			return nil, err
 		}
 
+		fmt.Println("2", calibrationBefore.JustificationReviewStatus, len(calibrations))
+
 		if len(calibrations) > 0 {
-			calibrations[0].Comment = calibrationBefore.Comment
-			calibrations[0].Status = "Calibrate"
-			if err := tx.Updates(calibrations[0]).Error; err != nil {
+			err := tx.Updates(&model.Calibration{
+				ProjectID:      calibrations[0].ProjectID,
+				ProjectPhaseID: calibrations[0].ProjectPhaseID,
+				EmployeeID:     calibrations[0].EmployeeID,
+				Comment:        calibrationBefore.Comment,
+				Status:         "Calibrate",
+			}).Error
+			if err != nil {
 				tx.Rollback()
 				return nil, err
 			}
 
 			if _, ok := mapResult[calibrations[0].CalibratorID]; !ok {
-				// fmt.Println("DATA PROJECT", calibrations[0].ProjectPhaseID)
 				var projectPhaseNextCalibrator *model.ProjectPhase
 				err := tx.Table("project_phases").
 					Select("project_phases.*").
@@ -848,27 +886,38 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 				var prevCal *model.User
 				err = tx.Where("id = ?", justification.CalibratorID).First(&prevCal).Error
 				if err != nil {
+					tx.Rollback()
 					return nil, err
 				}
-				mapResult[calibrations[0].CalibratorID] = response.NotificationModel{
-					CalibratorID:           calibrations[0].CalibratorID,
-					ProjectPhase:           projectPhaseNextCalibrator.Phase.Order,
-					Deadline:               projectPhaseNextCalibrator.EndDate,
-					PreviousCalibrator:     prevCal.Name,
-					PreviousCalibratorID:   prevCal.ID,
-					PreviousBusinessUnitID: *prevCal.BusinessUnitId,
+
+				if prevCal.BusinessUnitId != nil {
+					mapResult[calibrations[0].CalibratorID] = response.NotificationModel{
+						CalibratorID:           calibrations[0].CalibratorID,
+						ProjectPhase:           projectPhaseNextCalibrator.Phase.Order,
+						Deadline:               projectPhaseNextCalibrator.EndDate,
+						PreviousCalibrator:     prevCal.Name,
+						PreviousCalibratorID:   prevCal.ID,
+						PreviousBusinessUnitID: *prevCal.BusinessUnitId,
+					}
+				} else {
+					mapResult[calibrations[0].CalibratorID] = response.NotificationModel{
+						CalibratorID:         calibrations[0].CalibratorID,
+						ProjectPhase:         projectPhaseNextCalibrator.Phase.Order,
+						Deadline:             projectPhaseNextCalibrator.EndDate,
+						PreviousCalibrator:   prevCal.Name,
+						PreviousCalibratorID: prevCal.ID,
+					}
 				}
 			}
 		}
 	}
+	tx.Commit()
 
-	// fmt.Println("DATA NEXT", mapResult)
 	var nextCalibrator []response.NotificationModel
 	for _, data := range mapResult {
 		nextCalibrator = append(nextCalibrator, data)
 	}
 
-	tx.Commit()
 	return nextCalibrator, nil
 }
 

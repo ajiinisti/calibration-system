@@ -654,6 +654,7 @@ func (r *calibrationUsecase) SpmoSubmit(payload *request.AcceptMultipleJustifica
 	if err != nil {
 		return err
 	}
+
 	err = r.notification.NotifyNextCalibrators(nextCalibrator)
 	if err != nil {
 		return err
@@ -741,7 +742,8 @@ func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID string) (resp
 					} else if lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == true {
 						allSubmitted = allSubmitted && true
 					} else if lastCalibrationStatus == "Rejected" {
-						allSubmitted = true
+						status = "-"
+						allSubmitted = allSubmitted && false
 						break
 					} else {
 						allSubmitted = allSubmitted && false
