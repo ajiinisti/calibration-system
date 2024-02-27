@@ -829,6 +829,7 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, p
 
 	headers := []string{
 		"No",
+		"Nik",
 		"Employee",
 		"Grade",
 		"BU",
@@ -925,53 +926,57 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, p
 		file.SetColWidth(user.BusinessUnit.Name, "A", "A", 4)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("A%d", i+3), fmt.Sprintf("A%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+3), user.Name)
-		file.SetColWidth(user.BusinessUnit.Name, "B", "B", 20)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+3), user.Nik)
+		file.SetColWidth(user.BusinessUnit.Name, "B", "B", 15)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+3), fmt.Sprintf("B%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+3), user.Grade)
-		file.SetColWidth(user.BusinessUnit.Name, "C", "C", 4)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+3), user.Name)
+		file.SetColWidth(user.BusinessUnit.Name, "C", "C", 20)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+3), fmt.Sprintf("C%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+3), user.BusinessUnit.Name)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+3), user.Grade)
+		file.SetColWidth(user.BusinessUnit.Name, "D", "D", 4)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+3), fmt.Sprintf("D%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+3), user.OrganizationUnit)
-		file.SetColWidth(user.BusinessUnit.Name, "E", "E", 15)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+3), user.BusinessUnit.Name)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+3), fmt.Sprintf("E%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+3), user.SupervisorNames)
-		file.SetColWidth(user.BusinessUnit.Name, "F", "F", 20)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+3), user.OrganizationUnit)
+		file.SetColWidth(user.BusinessUnit.Name, "F", "F", 15)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+3), fmt.Sprintf("F%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+3), user.ActualScores[0].Y2Rating)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+3), user.SupervisorNames)
+		file.SetColWidth(user.BusinessUnit.Name, "G", "G", 20)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+3), fmt.Sprintf("G%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+3), user.ActualScores[0].Y1Rating)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+3), user.ActualScores[0].Y2Rating)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+3), fmt.Sprintf("H%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+3), user.ActualScores[0].PTTScore)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+3), user.ActualScores[0].Y1Rating)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+3), fmt.Sprintf("I%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), user.ActualScores[0].PATScore)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), fmt.Sprintf("%.2f", user.ActualScores[0].PTTScore))
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), fmt.Sprintf("J%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+3), user.ActualScores[0].Score360)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+3), fmt.Sprintf("%.2f", user.ActualScores[0].PATScore))
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+3), fmt.Sprintf("K%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+3), user.ActualScores[0].ActualScore)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+3), fmt.Sprintf("%.2f", user.ActualScores[0].Score360))
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+3), fmt.Sprintf("L%d", i+3), style2)
 
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+3), user.ActualScores[0].ActualRating)
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+3), fmt.Sprintf("%.2f", user.ActualScores[0].ActualScore))
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+3), fmt.Sprintf("M%d", i+3), style2)
-		column := int('N')
 
-		startCalibrationPhaseCol := 13
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("N%d", i+3), user.ActualScores[0].ActualRating)
+		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("N%d", i+3), fmt.Sprintf("N%d", i+3), style2)
+		column := int('O')
+
+		startCalibrationPhaseCol := 14
 		for j := 1; j < projectPhase.Phase.Order+1; j++ {
 			columnBefore := column
 			words := strings.Fields(headers[startCalibrationPhaseCol])
 			startCalibrationPhaseCol += 4
-			backgroundColorCalibration, err := file.NewStyle(fmt.Sprintf(`{"alignment":{"wrap_text":true, "vertical":"center"}, "fill":{"type":"pattern","color":["%s"],"pattern":1}}`, words[2]))
+			backgroundColorCalibration, err := file.NewStyle(fmt.Sprintf(`{"alignment":{"vertical":"center"}, "fill":{"type":"pattern","color":["%s"],"pattern":1}}`, words[2]))
 			if err != nil {
 				return "", err
 			}
@@ -979,7 +984,7 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, p
 			for _, calibrationScore := range user.CalibrationScores {
 				if j == calibrationScore.ProjectPhase.Phase.Order {
 
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), calibrationScore.CalibrationScore)
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%.2f", calibrationScore.CalibrationScore))
 					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
 					column++
 
