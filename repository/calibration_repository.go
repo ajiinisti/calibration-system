@@ -16,7 +16,7 @@ type CalibrationRepo interface {
 	GetAllPreviousEmployeeCalibrationByActiveProject(employeeID string, phaseOrder int) ([]model.Calibration, error)
 	GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error)
 	List() ([]model.Calibration, error)
-	GetActiveBySPMOID(spmoID string) ([]model.User, error)
+	GetActiveUserBySPMOID(spmoID string) ([]model.User, error)
 	GetAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
 	GetRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	Delete(projectId, employeeId string) error
@@ -26,6 +26,7 @@ type CalibrationRepo interface {
 	UpdateManagerCalibrations(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]string, string, error)
 	UpdateCalibrationsOnePhaseBefore(payload *request.CalibrationRequest, projectPhase model.ProjectPhase) ([]response.NotificationModel, error)
 	SaveChanges(payload *request.CalibrationRequest) error
+	SaveCommentCalibration(payload *model.Calibration) error
 	AcceptCalibration(payload *request.AcceptJustification, phaseOrder int) error
 	AcceptMultipleCalibration(payload *request.AcceptMultipleJustification) error
 	RejectCalibration(payload *request.RejectJustification) error
@@ -264,13 +265,13 @@ func (r *calibrationRepo) GetByProjectEmployeeID(projectID, employeeID string) (
 	return calibration, nil
 }
 
-func (r *calibrationRepo) GetActiveBySPMOID(spmoID string) ([]model.User, error) {
+func (r *calibrationRepo) GetActiveUserBySPMOID(spmoID string) ([]model.User, error) {
 	var calibration []model.User
 	err := r.db.
 		Table("users u").
 		Preload("BusinessUnit").
 		Select("u.*").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID).
+		Joins("JOIN calibrations c1 ON (c1.employee_id = u.id OR c1.calibrator_id = u.id) AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID).
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
 		Distinct().
@@ -718,6 +719,32 @@ func (r *calibrationRepo) SaveChanges(payload *request.CalibrationRequest) error
 			tx.Rollback()
 			return fmt.Errorf("Calibrations not found!")
 		}
+	}
+
+	tx.Commit()
+	return nil
+}
+
+func (r *calibrationRepo) SaveCommentCalibration(payload *model.Calibration) error {
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	err := tx.Model(&model.Calibration{}).
+		Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
+			payload.ProjectID,
+			payload.ProjectPhaseID,
+			payload.EmployeeID,
+			payload.CalibratorID,
+		).Updates(map[string]interface{}{
+		"comment": payload.Comment,
+	}).Error
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	tx.Commit()

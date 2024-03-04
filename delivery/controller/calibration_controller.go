@@ -169,6 +169,21 @@ func (r *CalibrationController) saveCalibrationsHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
+func (r *CalibrationController) saveCommentCalibrationHandler(c *gin.Context) {
+	var payload model.Calibration
+	if err := r.ParseRequestBody(c, &payload); err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := r.uc.SaveCommentCalibration(&payload); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
 func (r *CalibrationController) submitCalibrationsHandler(c *gin.Context) {
 	calibratorID := c.Param("calibratorID")
 	var payload request.CalibrationRequest
@@ -231,31 +246,7 @@ func (r *CalibrationController) getSummaryCalibrationsBySPMOIDHandler(c *gin.Con
 func (r *CalibrationController) getAllActiveCalibrationsBySPMOIDHandler(c *gin.Context) {
 	spmoID := c.Param("spmoID")
 
-	payload, err := r.uc.FindActiveBySPMOID(spmoID)
-	if err != nil {
-		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	r.NewSuccessSingleResponse(c, payload, "OK")
-}
-
-func (r *CalibrationController) getAllAcceptedCalibrationsBySPMOIDHandler(c *gin.Context) {
-	spmoID := c.Param("spmoID")
-
-	payload, err := r.uc.FindAcceptedBySPMOID(spmoID)
-	if err != nil {
-		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	r.NewSuccessSingleResponse(c, payload, "OK")
-}
-
-func (r *CalibrationController) getAllRejectdCalibrationsBySPMOIDHandler(c *gin.Context) {
-	spmoID := c.Param("spmoID")
-
-	payload, err := r.uc.FindRejectedBySPMOID(spmoID)
+	payload, err := r.uc.FindActiveUserBySPMOID(spmoID)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -318,35 +309,6 @@ func (r *CalibrationController) spmoSubmitHandler(c *gin.Context) {
 		return
 	}
 	r.NewSuccessSingleResponse(c, "", "OK")
-}
-
-func (r *CalibrationController) getAllDetailActiveCalibrationsBySPMOIDHandler(c *gin.Context) {
-	spmoID := c.Param("spmoID")
-	calibratorID := c.Param("calibratorID")
-	businessUnitID := c.Param("businessUnitID")
-	order := c.Param("order")
-	department := c.Param("department")
-
-	intOrder, err := strconv.Atoi(order)
-	if err != nil {
-		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
-	}
-
-	payload, err := r.uc.FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department, intOrder)
-	if err != nil {
-		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	for _, data := range payload {
-		for _, score := range data.CalibrationScores {
-			for _, topRemark := range score.TopRemarks {
-				topRemark.EvidenceLink = fmt.Sprintf("http://%s/view-initiative/%s", c.Request.Host, topRemark.ID)
-			}
-		}
-	}
-
-	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
 func (r *CalibrationController) getAllDetailActiveCalibrations2BySPMOIDHandler(c *gin.Context) {
@@ -432,9 +394,6 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.GET("/calibrations-project-employee/:projectID/:employeeID", controller.getByProjectEmployeeIdHandler)
 	auth.GET("/summary-calibrations/spmo/:spmoID", controller.getSummaryCalibrationsBySPMOIDHandler)
 	auth.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
-	// auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:department", controller.getAllDetailActiveCalibrationsBySPMOIDHandler)
-	// auth.GET("/calibrations/spmo-accepted/:spmoID", controller.getAllAcceptedCalibrationsBySPMOIDHandler)
-	// auth.GET("/calibrations/spmo-rejected/:spmoID", controller.getAllRejectdCalibrationsBySPMOIDHandler)
 	auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
 	auth.GET("/calibrations/spmo/rating-quota/:spmoID/:calibratorID/:businessUnitID/:order", controller.getRatingQuotaSPMOHandlerByID)
 	auth.PUT("/calibrations", controller.updateHandler)
@@ -443,6 +402,7 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/upload", controller.uploadHandler)
 	auth.POST("/calibrations/upload-employee", controller.uploadNikHandler)
 	auth.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)
+	auth.POST("/calibrations/save-comment", controller.saveCommentCalibrationHandler)
 	auth.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
 	auth.POST("/calibrations/submit-calibrations/:calibratorID", controller.submitCalibrationsHandler)
 	auth.POST("/calibrations/send-calibration-to-manager/:calibratorID", controller.sendCalibrationToManagerHandler)
