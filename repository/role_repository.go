@@ -44,7 +44,7 @@ func (r *roleRepo) SearchByName(name string) (*model.Role, error) {
 
 func (r *roleRepo) List() ([]model.Role, error) {
 	var roles []model.Role
-	err := r.db.Where("name != 'admin'").Find(&roles).Error
+	err := r.db.Find(&roles).Error
 	if err != nil {
 		return nil, err
 	}

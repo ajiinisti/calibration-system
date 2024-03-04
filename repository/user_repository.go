@@ -20,6 +20,7 @@ type UserRepo interface {
 	PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error)
 	GetTotalRows(name string) (int, error)
 	GetTotalRowsByProjectID(projectId, name string) (int, error)
+	ListUserAdmin() ([]model.User, error)
 }
 
 type userRepo struct {
@@ -125,6 +126,36 @@ func (u *userRepo) List() ([]model.User, error) {
 	return users, nil
 }
 
+func (u *userRepo) ListUserAdmin() ([]model.User, error) {
+	subquery := u.db.
+		Table("users u").
+		Select("u.id").
+		Joins("JOIN user_roles ur on u.id = ur.user_id").
+		Joins("JOIN roles r on ur.role_id = r.id").
+		Where("r.name = 'exclude'")
+
+	var subqueryResults []string
+	if err := subquery.Pluck("u.id", &subqueryResults).Error; err != nil {
+		return nil, err
+	}
+
+	var users []model.User
+	err := u.db.
+		Table("users u").
+		Preload("Roles", func(db *gorm.DB) *gorm.DB {
+			return db.Where("name <> 'exclude'")
+		}).
+		Preload("BusinessUnit").
+		Select("u.*").
+		Where("u.id NOT IN (?)", subqueryResults).
+		Distinct().
+		Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
 func (u *userRepo) Delete(id string) error {
 	result := u.db.Delete(&model.User{
 		BaseModel: model.BaseModel{ID: id},
@@ -138,6 +169,14 @@ func (u *userRepo) Delete(id string) error {
 }
 
 func (u *userRepo) Update(payload *model.User) error {
+	payloadRole := payload.Roles
+	err := u.db.Model(&payload).Association("Roles").Clear()
+	if err != nil {
+		return err
+	}
+
+	payload.Roles = payloadRole
+
 	if err := u.db.Session(&gorm.Session{FullSaveAssociations: true}).Updates(&payload); err.Error != nil {
 		return err.Error
 	}

@@ -61,6 +61,15 @@ func (u *UserController) allListHandler(c *gin.Context) {
 	u.NewSuccessSingleResponse(c, userList, "OK")
 }
 
+func (u *UserController) listUserAdminHandler(c *gin.Context) {
+	userList, err := u.uc.FindListUserAdmin()
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	u.NewSuccessSingleResponse(c, userList, "OK")
+}
+
 func (u *UserController) getByIdHandler(c *gin.Context) {
 	id := c.Param("id")
 	roles, err := u.uc.FindById(id)
@@ -230,6 +239,7 @@ func NewUserController(u *gin.Engine, tokenService authenticator.AccessToken, uc
 	auth := u.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/users", controller.listHandler)
 	auth.GET("/users/all", controller.allListHandler)
+	auth.GET("/users/all-admin", controller.listUserAdminHandler)
 	auth.GET("/users/:id", controller.getByIdHandler)
 	auth.GET("/users-switch/:id", controller.getByIdSwitchHandler)
 	auth.GET("/users/project/:projectId", controller.getByProjectId)
