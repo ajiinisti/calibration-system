@@ -28,6 +28,7 @@ type UserUsecase interface {
 	FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error)
 	FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.User, response.Paging, error)
 	GeneratePasswordById(id string) error
+	FindListUserAdmin() ([]model.User, error)
 }
 
 type userUsecase struct {
@@ -51,6 +52,10 @@ func (u *userUsecase) FindByGenerateToken(generateToken string) (*model.User, er
 
 func (u *userUsecase) FindAll() ([]model.User, error) {
 	return u.repo.List()
+}
+
+func (u *userUsecase) FindListUserAdmin() ([]model.User, error) {
+	return u.repo.ListUserAdmin()
 }
 
 func (u *userUsecase) FindById(id string) (*model.User, error) {

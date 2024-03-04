@@ -15,7 +15,7 @@ import (
 
 type CalibrationUsecase interface {
 	FindAll() ([]model.Calibration, error)
-	FindActiveBySPMOID(spmoID string) ([]model.User, error)
+	FindActiveUserBySPMOID(spmoID string) ([]model.User, error)
 	FindAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindById(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
@@ -28,6 +28,7 @@ type CalibrationUsecase interface {
 	BulkInsert(file *multipart.FileHeader, projectId string) error
 	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error
 	SaveCalibrations(payload *request.CalibrationRequest) error
+	SaveCommentCalibration(payload *model.Calibration) error
 	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error
 	SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID string) error
 	SpmoAcceptApproval(payload *request.AcceptJustification) error
@@ -105,8 +106,8 @@ func (r *calibrationUsecase) FindAll() ([]model.Calibration, error) {
 	return r.repo.List()
 }
 
-func (r *calibrationUsecase) FindActiveBySPMOID(spmoID string) ([]model.User, error) {
-	return r.repo.GetActiveBySPMOID(spmoID)
+func (r *calibrationUsecase) FindActiveUserBySPMOID(spmoID string) ([]model.User, error) {
+	return r.repo.GetActiveUserBySPMOID(spmoID)
 }
 
 func (r *calibrationUsecase) FindAcceptedBySPMOID(spmoID string) ([]model.Calibration, error) {
@@ -568,6 +569,10 @@ func (r *calibrationUsecase) SendBackCalibrationsToOnePhaseBefore(payload *reque
 
 func (r *calibrationUsecase) SaveCalibrations(payload *request.CalibrationRequest) error {
 	return r.repo.SaveChanges(payload)
+}
+
+func (r *calibrationUsecase) SaveCommentCalibration(payload *model.Calibration) error {
+	return r.repo.SaveCommentCalibration(payload)
 }
 
 func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustification) error {
