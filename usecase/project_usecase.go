@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 
 	"calibration-system.com/delivery/api/request"
@@ -806,12 +807,13 @@ func (r *projectUsecase) FindProjectRatingQuotaByBusinessUnit(businessUnitID str
 	return projects, nil
 }
 
-func truncateFloat(f float64, decimals int) float64 {
-	pow := 1.0
-	for i := 0; i < decimals; i++ {
-		pow *= 10.0
+func truncateFloat(f float64, decimals int) string {
+	str := strconv.FormatFloat(f, 'f', -1, 64) // Convert float to string
+	parts := strings.Split(str, ".")           // Split into integer and decimal parts
+	if len(parts) > 1 && len(parts[1]) > decimals {
+		return parts[0] + "." + parts[1][:decimals]
 	}
-	return float64(int(f*pow)) / pow
+	return str
 }
 
 func (r *projectUsecase) ReportCalibrations(types, calibratorId, businessUnit, prevCalibrator string, c *gin.Context) (string, error) {
