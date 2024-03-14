@@ -403,6 +403,30 @@ func (r *ProjectController) getReportCalibrations(c *gin.Context) {
 	c.File(file)
 }
 
+func (r *ProjectController) getSummaryReportCalibrations(c *gin.Context) {
+	calibratorID := c.Param("calibratorID")
+	file, err := r.uc.SummaryReportCalibrations(calibratorID, c)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	defer func() {
+		// Clean up: Remove the file after it has been served
+		err := os.Remove(file)
+		if err != nil {
+			fmt.Println("Error removing file:", err)
+		}
+	}()
+
+	// Set the response headers for downloading
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename="+file)
+
+	// Serve the file
+	c.File(file)
+}
+
 func (r *ProjectController) getReportAllCalibrations(c *gin.Context) {
 	types := c.Param("type")
 	calibratorID := c.Param("calibratorID")
@@ -462,5 +486,6 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth.POST("/projects/deactive/:id", controller.deactivateHandler)
 	auth.DELETE("/projects/:id", controller.deleteHandler)
 	auth.GET("/projects-report/:type/:calibratorID/:businessUnit/:prevCalibrator", controller.getReportCalibrations)
+	auth.GET("/projects-report-summary/:calibratorID", controller.getSummaryReportCalibrations)
 	return &controller
 }
