@@ -295,9 +295,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 		fmt.Println("DATA KITA", prevCalibratorIDs, fmt.Sprintf("%s-%s", picId, *user.BusinessUnitId), contains(prevCalibratorIDs, fmt.Sprintf("%s-%s", picId, *user.BusinessUnitId)))
 
 		checkCalibrator := picId
-		if picId == "N-1" {
-			checkCalibrator = fmt.Sprintf("%s-%s", picId, *user.BusinessUnitId)
-		}
+		checkCalibrator = fmt.Sprintf("%s-%s", picId, *user.BusinessUnitId)
 
 		if len(prevCalibratorIDs) > 0 && contains(prevCalibratorIDs, checkCalibrator) {
 			filterCheck = true
