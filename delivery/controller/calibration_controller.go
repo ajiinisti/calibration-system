@@ -186,13 +186,14 @@ func (r *CalibrationController) saveCommentCalibrationHandler(c *gin.Context) {
 
 func (r *CalibrationController) submitCalibrationsHandler(c *gin.Context) {
 	calibratorID := c.Param("calibratorID")
+	projectID := c.Param("projectID")
 	var payload request.CalibrationRequest
 	if err := r.ParseRequestBody(c, &payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := r.uc.SubmitCalibrations(&payload, calibratorID); err != nil {
+	if err := r.uc.SubmitCalibrations(&payload, calibratorID, projectID); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -202,13 +203,14 @@ func (r *CalibrationController) submitCalibrationsHandler(c *gin.Context) {
 
 func (r *CalibrationController) sendCalibrationToManagerHandler(c *gin.Context) {
 	calibratorID := c.Param("calibratorID")
+	projectID := c.Param("projectID")
 	var payload request.CalibrationRequest
 	if err := r.ParseRequestBody(c, &payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := r.uc.SendCalibrationsToManager(&payload, calibratorID); err != nil {
+	if err := r.uc.SendCalibrationsToManager(&payload, calibratorID, projectID); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -218,13 +220,14 @@ func (r *CalibrationController) sendCalibrationToManagerHandler(c *gin.Context) 
 
 func (r *CalibrationController) sendBackCalibrationsToOnePhaseBeforeHandler(c *gin.Context) {
 	calibratorID := c.Param("calibratorID")
+	projectID := c.Param("projectID")
 	var payload request.CalibrationRequest
 	if err := r.ParseRequestBody(c, &payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := r.uc.SendBackCalibrationsToOnePhaseBefore(&payload, calibratorID); err != nil {
+	if err := r.uc.SendBackCalibrationsToOnePhaseBefore(&payload, calibratorID, projectID); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -233,8 +236,9 @@ func (r *CalibrationController) sendBackCalibrationsToOnePhaseBeforeHandler(c *g
 }
 
 func (r *CalibrationController) getSummaryCalibrationsBySPMOIDHandler(c *gin.Context) {
-	spmoID := c.Param("spmoID")
-	payload, err := r.uc.FindSummaryCalibrationBySPMOID(spmoID)
+	spmoID := c.Query("spmoID")
+	projectID := c.Query("projectID")
+	payload, err := r.uc.FindSummaryCalibrationBySPMOID(spmoID, projectID)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -257,12 +261,13 @@ func (r *CalibrationController) getAllActiveCalibrationsBySPMOIDHandler(c *gin.C
 
 func (r *CalibrationController) spmoAcceptApprovalHandler(c *gin.Context) {
 	var payload request.AcceptJustification
+	projectID := c.Param("projectID")
 	if err := r.ParseRequestBody(c, &payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := r.uc.SpmoAcceptApproval(&payload); err != nil {
+	if err := r.uc.SpmoAcceptApproval(&payload, projectID); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -316,13 +321,14 @@ func (r *CalibrationController) getAllDetailActiveCalibrations2BySPMOIDHandler(c
 	calibratorID := c.Param("calibratorID")
 	businessUnitID := c.Param("businessUnitID")
 	order := c.Param("order")
+	projectID := c.Param("projectID")
 
 	intOrder, err := strconv.Atoi(order)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 	}
 
-	payload, err := r.uc.FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, intOrder)
+	payload, err := r.uc.FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, projectID, intOrder)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -368,13 +374,14 @@ func (r *CalibrationController) getRatingQuotaSPMOHandlerByID(c *gin.Context) {
 	calibratorID := c.Param("calibratorID")
 	businessUnitID := c.Param("businessUnitID")
 	order := c.Param("order")
+	projectID := c.Param("projectID")
 
 	intOrder, err := strconv.Atoi(order)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 	}
 
-	projects, err := r.uc.FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID, intOrder)
+	projects, err := r.uc.FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID, projectID, intOrder)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -392,10 +399,10 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.GET("/calibrations", controller.listHandler)
 	auth.GET("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.getByIdHandler)
 	auth.GET("/calibrations-project-employee/:projectID/:employeeID", controller.getByProjectEmployeeIdHandler)
-	auth.GET("/summary-calibrations/spmo/:spmoID", controller.getSummaryCalibrationsBySPMOIDHandler)
-	auth.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
-	auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
-	auth.GET("/calibrations/spmo/rating-quota/:spmoID/:calibratorID/:businessUnitID/:order", controller.getRatingQuotaSPMOHandlerByID)
+	auth.GET("/summary-calibrations/spmo", controller.getSummaryCalibrationsBySPMOIDHandler)
+	// auth.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
+	auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:projectID", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
+	auth.GET("/calibrations/spmo/rating-quota/:spmoID/:calibratorID/:businessUnitID/:order/:projectID", controller.getRatingQuotaSPMOHandlerByID)
 	auth.PUT("/calibrations", controller.updateHandler)
 	auth.POST("/calibrations", controller.createHandler)
 	auth.POST("/calibrations-user", controller.createByUserHandler)

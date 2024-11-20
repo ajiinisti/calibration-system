@@ -12,7 +12,7 @@ import (
 )
 
 type NotificationUsecase interface {
-	NotifyCalibrator() error
+	NotifyCalibrator(projectID string) error
 	NotifyManager(ids []string, deadline time.Time) error                                               // Send to Manager
 	NotifyFirstCurrentCalibrators(data []response.NotificationModel) error                              // First Send Calibrator on Click in Project Active
 	NotifyNextCalibrators(data []response.NotificationModel) error                                      // From Previous Phase
@@ -30,11 +30,11 @@ type notificationUsecase struct {
 	cfg      config.Config
 }
 
-func (n *notificationUsecase) NotifyCalibrator() error {
+func (n *notificationUsecase) NotifyCalibrator(projectID string) error {
 	year, month, day := time.Now().Date()
 	fmt.Println("Tanggal sekarang", year, month, day)
 
-	projectPhases, err := n.project.FindActiveProjectPhase()
+	projectPhases, err := n.project.FindActiveProjectPhase(projectID)
 	if err != nil {
 		return err
 	}

@@ -26,20 +26,20 @@ type CalibrationUsecase interface {
 	CheckEmployee(file *multipart.FileHeader, projectId string) ([]string, error)
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
 	BulkInsert(file *multipart.FileHeader, projectId string) error
-	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error
+	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID, projectID string) error
 	SaveCalibrations(payload *request.CalibrationRequest) error
 	SaveCommentCalibration(payload *model.Calibration) error
-	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error
-	SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID string) error
-	SpmoAcceptApproval(payload *request.AcceptJustification) error
+	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID, projectID string) error
+	SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID, projectID string) error
+	SpmoAcceptApproval(payload *request.AcceptJustification, projectID string) error
 	SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error
 	SpmoRejectApproval(payload *request.RejectJustification) error
 	SpmoSubmit(payload *request.AcceptMultipleJustification) error
-	FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error)
+	FindSummaryCalibrationBySPMOID(spmoID, projectID string) (response.SummarySPMO, error)
 	FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
-	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
+	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, projectID string, order int) ([]response.UserResponse, error)
 	SendNotificationToCurrentCalibrator() ([]response.NotificationModel, error)
-	FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID string, order int) (*response.RatingQuota, error)
+	FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID, projectID string, order int) (*response.RatingQuota, error)
 }
 
 type calibrationUsecase struct {
@@ -450,8 +450,8 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 	return r.repo.Bulksave(&calibrations)
 }
 
-func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequest, calibratorID string) error {
-	projectPhase, err := r.project.FindCalibratorPhase(calibratorID)
+func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequest, calibratorID, projectID string) error {
+	projectPhase, err := r.project.FindCalibratorPhase(calibratorID, projectID)
 	if err != nil {
 		return err
 	}
@@ -525,8 +525,8 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 	return nil
 }
 
-func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID string) error {
-	projectPhase, err := r.project.FindCalibratorPhase(calibratorID)
+func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID, projectID string) error {
+	projectPhase, err := r.project.FindCalibratorPhase(calibratorID, projectID)
 	if err != nil {
 		return err
 	}
@@ -549,8 +549,8 @@ func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.Calibrat
 	return nil
 }
 
-func (r *calibrationUsecase) SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID string) error {
-	projectPhase, err := r.project.FindCalibratorPhase(calibratorID)
+func (r *calibrationUsecase) SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID, projectID string) error {
+	projectPhase, err := r.project.FindCalibratorPhase(calibratorID, projectID)
 	if err != nil {
 		return err
 	}
@@ -575,8 +575,8 @@ func (r *calibrationUsecase) SaveCommentCalibration(payload *model.Calibration) 
 	return r.repo.SaveCommentCalibration(payload)
 }
 
-func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustification) error {
-	projectPhase, err := r.project.FindCalibratorPhase(payload.CalibratorID)
+func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustification, projectID string) error {
+	projectPhase, err := r.project.FindCalibratorPhase(payload.CalibratorID, projectID)
 	if err != nil {
 		return err
 	}
@@ -667,8 +667,8 @@ func (r *calibrationUsecase) SpmoSubmit(payload *request.AcceptMultipleJustifica
 	return nil
 }
 
-func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID string) (response.SummarySPMO, error) {
-	results, err := r.repo.GetSummaryBySPMOID(spmoID)
+func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID, projectID string) (response.SummarySPMO, error) {
+	results, err := r.repo.GetSummaryBySPMOID(spmoID, projectID)
 	if err != nil {
 		return response.SummarySPMO{}, err
 	}
@@ -733,7 +733,7 @@ func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID string) (resp
 			for _, calibrationSummary := range projectPhase.CalibratorSummarys {
 				countMaximum += 1
 				status := "-"
-				data, err := r.repo.GetAllDetailCalibration2BySPMOID(spmoID, calibrationSummary.CalibratorID, smry.BusinessUnitID, projectPhase.Order)
+				data, err := r.repo.GetAllDetailCalibration2BySPMOID(spmoID, calibrationSummary.CalibratorID, smry.BusinessUnitID, projectID, projectPhase.Order)
 				if err != nil {
 					return response.SummarySPMO{}, err
 				}
@@ -776,17 +776,17 @@ func (r *calibrationUsecase) FindAllDetailCalibrationbySPMOID(spmoID, calibrator
 	return r.repo.GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department, order)
 }
 
-func (r *calibrationUsecase) FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error) {
-	return r.repo.GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID, order)
+func (r *calibrationUsecase) FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, projectID string, order int) ([]response.UserResponse, error) {
+	return r.repo.GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID, projectID, order)
 }
 
-func (r *calibrationUsecase) FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID string, order int) (*response.RatingQuota, error) {
-	users, err := r.FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, order)
+func (r *calibrationUsecase) FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID, projectID string, order int) (*response.RatingQuota, error) {
+	users, err := r.FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, projectID, order)
 	if err != nil {
 		return nil, err
 	}
 
-	projects, err := r.project.FindProjectRatingQuotaByBusinessUnit(businessUnitID)
+	projects, err := r.project.FindProjectRatingQuotaByBusinessUnit(businessUnitID, projectID)
 	if err != nil {
 		return nil, err
 	}

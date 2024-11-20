@@ -31,9 +31,9 @@ type CalibrationRepo interface {
 	AcceptMultipleCalibration(payload *request.AcceptMultipleJustification) error
 	RejectCalibration(payload *request.RejectJustification) error
 	SubmitReview(payload *request.AcceptMultipleJustification) ([]response.NotificationModel, error)
-	GetSummaryBySPMOID(spmoID string) ([]response.SPMOSummaryResult, error)
+	GetSummaryBySPMOID(spmoID, projectID string) ([]response.SPMOSummaryResult, error)
 	GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
-	GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error)
+	GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID, projectID string, order int) ([]response.UserResponse, error)
 	GetCalibrateCalibration() ([]model.Calibration, error)
 	GetAllCalibrationByCalibratorID(calibratorId string) ([]model.Calibration, error)
 }
@@ -948,7 +948,7 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 	return nextCalibrator, nil
 }
 
-func (r *calibrationRepo) GetSummaryBySPMOID(spmoID string) ([]response.SPMOSummaryResult, error) {
+func (r *calibrationRepo) GetSummaryBySPMOID(spmoID, projectID string) ([]response.SPMOSummaryResult, error) {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -965,7 +965,7 @@ func (r *calibrationRepo) GetSummaryBySPMOID(spmoID string) ([]response.SPMOSumm
 		Joins("JOIN users u on c.employee_id = u.id").
 		Joins("JOIN business_units b on u.business_unit_id = b.id").
 		Joins("JOIN users u2 on c.calibrator_id = u2.id").
-		Joins("JOIN projects pr on pr.id = c.project_id AND pr.active = true").
+		Joins("JOIN projects pr on pr.id = c.project_id AND pr.id = ?", projectID).
 		Where("(spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND p.order NOT IN (SELECT MAX(\"order\") FROM phases)", spmoID, spmoID, spmoID).
 		Group("u.business_unit_id, b.name, u2.name, c.calibrator_id, c.project_phase_id, p.order").
 		Order("p.order ASC").
@@ -1014,21 +1014,21 @@ func (r *calibrationRepo) GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, 
 	return calibration, nil
 }
 
-func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID string, order int) ([]response.UserResponse, error) {
+func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID, projectID string, order int) ([]response.UserResponse, error) {
 	var calibration []model.User
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id AND actual_scores.deleted_at IS NULL").
-				Where("proj1.active = ?", true)
+				Where("proj1.id = ?", projectID)
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Joins("JOIN projects ON calibrations.project_id = projects.id").
 				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
 				Joins("JOIN phases p ON p.id = pp.phase_id ").
-				Where("projects.active = true AND p.order <= ?", order).
+				Where("projects.id = ? AND p.order <= ?", projectID, order).
 				Order("p.order ASC")
 		}).
 		Preload("CalibrationScores.Calibrator").
@@ -1039,7 +1039,7 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 		Select("u.*, u2.name as supervisor_names").
 		Joins("JOIN business_units b ON u.business_unit_id = b.id AND b.id = ?", businessUnitID).
 		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.calibrator_id = ? AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID, calibratorID).
-		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
+		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.id = ?", projectID).
 		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
 		Find(&calibration).Error
 	if err != nil {
