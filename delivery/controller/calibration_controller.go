@@ -411,7 +411,7 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)
 	auth.POST("/calibrations/save-comment", controller.saveCommentCalibrationHandler)
 	auth.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
-	auth.POST("/calibrations/submit-calibrations/:calibratorID", controller.submitCalibrationsHandler)
+	auth.POST("/calibrations/submit-calibrations/:calibratorID/:projectID", controller.submitCalibrationsHandler)
 	auth.POST("/calibrations/send-calibration-to-manager/:calibratorID", controller.sendCalibrationToManagerHandler)
 	auth.POST("/calibrations/send-calibrations-back/:calibratorID", controller.sendBackCalibrationsToOnePhaseBeforeHandler)
 	auth.POST("/calibrations/accept-approval", controller.spmoAcceptApprovalHandler)

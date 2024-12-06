@@ -18,6 +18,7 @@ type SummaryProject struct {
 }
 
 type CalibratorBusinessUnit struct {
+	Pillar                   string
 	CalibratorName           string
 	CalibratorID             string
 	CalibratorBusinessUnit   string

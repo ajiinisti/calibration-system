@@ -404,11 +404,11 @@ func (r *ProjectController) getActiveManagerPhaseHandler(c *gin.Context) {
 }
 
 func (r *ProjectController) getReportCalibrations(c *gin.Context) {
-	types := c.Query("type")
-	calibratorID := c.Query("calibratorID")
-	businessUnit := c.Query("businessUnit")
-	prevCalibrator := c.Query("prevCalibrator")
-	projectID := c.Query("projectID")
+	types := c.Param("type")
+	calibratorID := c.Param("calibratorID")
+	businessUnit := c.Param("businessUnit")
+	prevCalibrator := c.Param("prevCalibrator")
+	projectID := c.Param("projectID")
 	file, err := r.uc.ReportCalibrations(types, calibratorID, businessUnit, prevCalibrator, projectID, c)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
@@ -514,7 +514,7 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth.POST("/projects/publish/:id", controller.publishHandler)
 	auth.POST("/projects/deactive/:id", controller.deactivateHandler)
 	auth.DELETE("/projects/:id", controller.deleteHandler)
-	auth.GET("/projects-report", controller.getReportCalibrations)
+	auth.GET("/projects-report/:type/:calibratorID/:businessUnit/:prevCalibrator/:projectID", controller.getReportCalibrations)
 	auth.GET("/projects-report-summary", controller.getSummaryReportCalibrations)
 	return &controller
 }

@@ -20,4 +20,6 @@ type TopRemark struct {
 	Comment        string
 	EvidenceName   string
 	Evidence       []byte `json:"-"`
+	IsProject      bool
+	IsInitiative   bool
 }

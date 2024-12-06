@@ -58,6 +58,8 @@ func (r *topRemarkUsecase) FindByForeignKeyID(projectID, employeeID, projectPhas
 			EndDate:        data.EndDate,
 			Comment:        data.Comment,
 			EvidenceName:   data.EvidenceName,
+			IsProject:      data.IsProject,
+			IsInitiative:   data.IsInitiative,
 		})
 	}
 

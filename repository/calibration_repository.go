@@ -1111,6 +1111,8 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 					EndDate:        topRemark.EndDate,
 					Comment:        topRemark.Comment,
 					EvidenceName:   topRemark.EvidenceName,
+					IsProject:      topRemark.IsProject,
+					IsInitiative:   topRemark.IsInitiative,
 				})
 			}
 			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{

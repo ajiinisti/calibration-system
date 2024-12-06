@@ -312,6 +312,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 
 			if _, isExist := businessUnit[user.BusinessUnit.Name]; bu && pic && (picName != "N-1" || !isExist) {
 				resp := &response.CalibratorBusinessUnit{
+					Pillar:                   user.BusinessUnit.Pillar,
 					CalibratorName:           picName,
 					CalibratorID:             picId,
 					CalibratorBusinessUnit:   user.BusinessUnit.Name,
@@ -842,6 +843,56 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 
 	file := excelize.NewFile()
 	index := file.NewSheet(responseData.UserData[0].BusinessUnit.Name)
+
+	sheet := "Sheet1"
+
+	// Add data for the chart
+	data := map[string]interface{}{
+		"A1": "Category", "B1": "Bar 1", "C1": "Bar 2", "D1": "Line",
+		"A2": "A", "B2": 10, "C2": 15, "D2": 12,
+		"A3": "B", "B3": 20, "C3": 25, "D3": 28,
+		"A4": "C", "B4": 30, "C4": 35, "D4": 40,
+	}
+	for k, v := range data {
+		file.SetCellValue(sheet, k, v)
+	}
+
+	err = file.AddChart(sheet, "F1", `{
+		"type": "colClustered",
+		"series": [
+			{
+				"name": "Sheet1!$B$1",
+				"categories": "Sheet1!$A$2:$A$4",
+				"values": "Sheet1!$B$2:$B$4"
+			},
+			{
+				"name": "Sheet1!$C$1",
+				"categories": "Sheet1!$A$2:$A$4",
+				"values": "Sheet1!$C$2:$C$4"
+			}
+		],
+		"title": {
+			"name": "Combined Chart"
+		}
+	}`)
+	if err != nil {
+		return "", err
+	}
+
+	// file.AddChart(sheet, "F1", `{
+	// 	"type": "line",
+	// 	"series": [
+	// 		{
+	// 			"name": "Sheet1!$D$1",
+	// 			"categories": "Sheet1!$A$2:$A$4",
+	// 			"values": "Sheet1!$D$2:$D$4"
+	// 		}
+	// 	],
+	// 	"combine": true
+	// }`)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	headers := []string{
 		"No",

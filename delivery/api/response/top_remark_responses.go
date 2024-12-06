@@ -19,4 +19,6 @@ type TopRemarkResponse struct {
 	Comment        string
 	EvidenceLink   string
 	EvidenceName   string
+	IsProject      bool
+	IsInitiative   bool
 }

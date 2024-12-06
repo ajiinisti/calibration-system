@@ -579,6 +579,8 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorID, 
 					EndDate:        topRemark.EndDate,
 					Comment:        topRemark.Comment,
 					EvidenceName:   topRemark.EvidenceName,
+					IsProject:      topRemark.IsProject,
+					IsInitiative:   topRemark.IsInitiative,
 				})
 			}
 			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{
@@ -741,6 +743,8 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 					EndDate:        topRemark.EndDate,
 					Comment:        topRemark.Comment,
 					EvidenceName:   topRemark.EvidenceName,
+					IsProject:      topRemark.IsProject,
+					IsInitiative:   topRemark.IsInitiative,
 				})
 			}
 			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{
@@ -949,6 +953,8 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 					EndDate:        topRemark.EndDate,
 					Comment:        topRemark.Comment,
 					EvidenceName:   topRemark.EvidenceName,
+					IsProject:      topRemark.IsProject,
+					IsInitiative:   topRemark.IsInitiative,
 				})
 			}
 			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{
@@ -1125,6 +1131,8 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 					EndDate:        topRemark.EndDate,
 					Comment:        topRemark.Comment,
 					EvidenceName:   topRemark.EvidenceName,
+					IsProject:      topRemark.IsProject,
+					IsInitiative:   topRemark.IsInitiative,
 				})
 			}
 			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{
@@ -1323,6 +1331,8 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calib
 					EndDate:        topRemark.EndDate,
 					Comment:        topRemark.Comment,
 					EvidenceName:   topRemark.EvidenceName,
+					IsProject:      topRemark.IsProject,
+					IsInitiative:   topRemark.IsInitiative,
 				})
 			}
 			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{
@@ -1484,6 +1494,8 @@ func (r *projectRepo) GetCalibrationsByBusinessUnitAndRating(calibratorID, busin
 					EndDate:        topRemark.EndDate,
 					Comment:        topRemark.Comment,
 					EvidenceName:   topRemark.EvidenceName,
+					IsProject:      topRemark.IsProject,
+					IsInitiative:   topRemark.IsInitiative,
 				})
 			}
 			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{
@@ -1645,6 +1657,8 @@ func (r *projectRepo) GetCalibrationsByRating(calibratorID, rating, projectID st
 					EndDate:        topRemark.EndDate,
 					Comment:        topRemark.Comment,
 					EvidenceName:   topRemark.EvidenceName,
+					IsProject:      topRemark.IsProject,
+					IsInitiative:   topRemark.IsInitiative,
 				})
 			}
 			dataOneResponse.CalibrationScores = append(dataOneResponse.CalibrationScores, response.CalibrationResponse{
