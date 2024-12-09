@@ -328,9 +328,7 @@ func (r *projectRepo) GetRatingQuotaByCalibratorID(businessUnitID, projectID str
 	var project model.Project
 	err := r.db.
 		Preload("RatingQuotas", func(db *gorm.DB) *gorm.DB {
-			return db.
-				Joins("JOIN business_units AS bu ON rating_quota.business_unit_id = bu.id").
-				Where("bu.id = ?", businessUnitID)
+			return db.Where("business_unit_id = ?", businessUnitID)
 		}).
 		First(&project, "projects.id = ?", projectID).Error
 	if err != nil {

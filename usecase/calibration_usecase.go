@@ -409,7 +409,7 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 				if row[lenProjectPhase+2] != "None" {
 					spmo2, err := r.user.FindByNik(row[lenProjectPhase+2])
 					if err != nil {
-						return fmt.Errorf("SPMO ID not available in database %s", row[lenProjectPhase+1])
+						return fmt.Errorf("SPMO ID not available in database %s", row[lenProjectPhase+2])
 					}
 					if spmo2 != nil {
 						cali.Spmo2ID = &spmo2.ID
@@ -419,7 +419,7 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 				if row[lenProjectPhase+3] != "None" {
 					spmo3, err := r.user.FindByNik(row[lenProjectPhase+3])
 					if err != nil {
-						return fmt.Errorf("SPMO ID not available in database %s", row[lenProjectPhase+1])
+						return fmt.Errorf("SPMO ID not available in database %s", row[lenProjectPhase+3])
 					}
 
 					if spmo3 != nil {

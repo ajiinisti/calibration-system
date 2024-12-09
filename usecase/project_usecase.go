@@ -388,6 +388,8 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 					if user.CalibrationScores[calibrationLength-1].Status == "Calibrate" || user.CalibrationScores[calibrationLength-1].SpmoStatus == "Rejected" {
 						if summary.Status != "Waiting" {
 							summary.Status = "Calibrate"
+						} else {
+							summary.Status = "Waiting"
 						}
 					}
 
