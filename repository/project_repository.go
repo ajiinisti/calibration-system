@@ -639,9 +639,7 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
-			return db.
-				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id").
-				Where("proj1.id = ?", projectID)
+			return db.Where("project_id = ?", projectID)
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
@@ -684,6 +682,8 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 		if err != nil {
 			return response.UserCalibration{}, err
 		}
+
+		fmt.Println("==========================================DATA USER ACTUAL SCORE==========================", user.ActualScores)
 		dataOneResponse := &response.UserResponse{
 			BaseModel: model.BaseModel{
 				ID:        user.ID,
@@ -1033,9 +1033,7 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
-			return db.
-				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id").
-				Where("proj1.id = ?", projectID)
+			return db.Where("project_id = ?", projectID)
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
@@ -1215,9 +1213,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calib
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
-			return db.
-				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id").
-				Where("proj1.id = ?", projectID)
+			return db.Where("project_id = ?", projectID)
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
@@ -1392,9 +1388,7 @@ func (r *projectRepo) GetCalibrationsByBusinessUnitAndRating(calibratorID, busin
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
-			return db.
-				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id").
-				Where("proj1.id = ?", projectID)
+			return db.Where("project_id = ?", projectID)
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
@@ -1555,9 +1549,7 @@ func (r *projectRepo) GetCalibrationsByRating(calibratorID, rating, projectID st
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
-			return db.
-				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id").
-				Where("proj1.id = ?", projectID)
+			return db.Where("project_id = ?", projectID)
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
