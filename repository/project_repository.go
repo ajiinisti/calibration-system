@@ -683,7 +683,7 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 			return response.UserCalibration{}, err
 		}
 
-		fmt.Println("==========================================DATA USER ACTUAL SCORE==========================", user.ActualScores)
+		fmt.Println(user.Name, user.Nik, "==========================================DATA USER ACTUAL SCORE==========================", user.ActualScores)
 		dataOneResponse := &response.UserResponse{
 			BaseModel: model.BaseModel{
 				ID:        user.ID,
