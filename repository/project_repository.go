@@ -656,15 +656,15 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
 		Select("u.*, COUNT(u.id) AS calibration_count").
-		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
-		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.id = ?", projectID).
-		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
-		Joins("JOIN phases p ON p.id = pp.phase_id").
-		Joins("JOIN calibrations c2 ON c2.employee_id = u.id AND c2.deleted_at is NULL").
-		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.id = ?", projectID).
-		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
-		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order <= ?", phase).
+		Joins("INNER JOIN business_units b ON u.business_unit_id = b.id").
+		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
+		Joins("INNER JOIN projects pr ON pr.id = c1.project_id AND pr.id = ?", projectID).
+		Joins("INNER JOIN project_phases pp ON pp.id = c1.project_phase_id").
+		Joins("INNER JOIN phases p ON p.id = pp.phase_id").
+		Joins("INNER JOIN calibrations c2 ON c2.employee_id = u.id AND c2.deleted_at is NULL").
+		Joins("INNER JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.id = ?", projectID).
+		Joins("INNER JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+		Joins("INNER JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order <= ?", phase).
 		Where("p.order = ? AND c1.calibrator_id = ? AND b.id = ?", phase, calibratorID, businessUnit).
 		Group("u.id").
 		Order("calibration_count ASC").
@@ -847,17 +847,17 @@ func (r *projectRepo) GetNumberOneCalibrationsByPrevCalibratorBusinessUnit(calib
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
 		Select("u.*, COUNT(u.id) AS calibration_count").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
-		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
-		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
-		Joins("JOIN phases p ON p.id = pp.phase_id").
-		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN users u2 ON c1.calibrator_id = u2.id").
-		Joins("JOIN calibrations c2 ON c2.employee_id = u.id").
-		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.active = true").
-		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
-		Joins("JOIN phases p2 ON p2.id = pp2.phase_id").
-		Joins("JOIN users u3 ON c2.calibrator_id = u3.id").
+		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
+		Joins("INNER JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
+		Joins("INNER JOIN project_phases pp ON pp.id = c1.project_phase_id").
+		Joins("INNER JOIN phases p ON p.id = pp.phase_id").
+		Joins("INNER JOIN business_units b ON u.business_unit_id = b.id").
+		Joins("INNER JOIN users u2 ON c1.calibrator_id = u2.id").
+		Joins("INNER JOIN calibrations c2 ON c2.employee_id = u.id").
+		Joins("INNER JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.active = true").
+		Joins("INNER JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+		Joins("INNER JOIN phases p2 ON p2.id = pp2.phase_id").
+		Joins("INNER JOIN users u3 ON c2.calibrator_id = u3.id").
 		Where("(p.order <= ? AND u.id IN (?))", phase, subqueryResults).
 		Or("(p.order = ? AND c1.calibrator_id = ? AND b.id = ? AND u.id NOT IN (?))", phase, calibratorID, businessUnit, exceptUsers).
 		Group("u.id").
@@ -1050,10 +1050,10 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
 		Select("u.*").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.calibrator_id = ?", calibratorID).
-		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.id = ?", projectID).
-		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
-		Joins("JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
+		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.calibrator_id = ?", calibratorID).
+		Joins("INNER JOIN projects pr ON pr.id = c1.project_id AND pr.id = ?", projectID).
+		Joins("INNER JOIN project_phases pp ON pp.id = c1.project_phase_id").
+		Joins("INNER JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
 		Where("u.business_unit_id = ? AND u.id NOT IN (?) AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
 		Find(&users).Error
 	if err != nil {
