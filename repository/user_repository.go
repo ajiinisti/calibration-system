@@ -239,9 +239,9 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 			Preload("CalibrationScores.Spmo").
 			Preload("CalibrationScores.ProjectPhase").
 			Preload("CalibrationScores.ProjectPhase.Phase").
-			Joins("JOIN actual_scores ON users.id = actual_scores.employee_id AND actual_scores.deleted_at IS NULL").
-			Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id").
-			Where("actual_scores.project_id = ? OR calibrations.project_id = ?", projectId, projectId).
+			Joins("LEFT JOIN actual_scores ON users.id = actual_scores.employee_id AND actual_scores.deleted_at IS NULL").
+			Joins("LEFT JOIN calibrations ON users.id = calibrations.employee_id AND calibrations.deleted_at IS NULL").
+			Where("(actual_scores.project_id = ? OR calibrations.project_id = ?)", projectId, projectId).
 			Group("users.id").
 			Limit(pagination.Take).Offset(pagination.Skip).
 			Find(&users).Error

@@ -665,7 +665,7 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 		Joins("INNER JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.id = ?", projectID).
 		Joins("INNER JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
 		Joins("INNER JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order <= ?", phase).
-		Where("p.order = ? AND c1.calibrator_id = ? AND b.id = ?", phase, calibratorID, businessUnit).
+		Where("p.order = ? AND c1.calibrator_id = ? AND b.id = ? and c1.project_id = ?", phase, calibratorID, businessUnit, projectID).
 		Group("u.id").
 		Order("calibration_count ASC").
 		Find(&users).Error
