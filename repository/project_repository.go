@@ -1069,7 +1069,7 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		if err != nil {
 			return response.UserCalibration{}, err
 		}
-
+		fmt.Println(user.Name, user.Nik, "==========================================DATA USER ACTUAL SCORE==========================", user.ActualScores)
 		dataOneResponse := &response.UserResponse{
 			BaseModel: model.BaseModel{
 				ID:        user.ID,
