@@ -35,6 +35,7 @@ type ProjectRepo interface {
 	GetCalibrationsByBusinessUnitAndRating(calibratorID, businessUnit, rating, projectID string, phase int) (response.UserCalibration, error)
 	GetCalibrationsByRating(calibratorID, rating, projectID string, phase int) (response.UserCalibration, error)
 	GetAllBusinessUnitSummary(calibratorID, projectID string, phase int) ([]model.BusinessUnit, error)
+	GetCalibrationsForSummaryHelper(types, calibratorID, prevCalibrator, businessUnit, projectID string, phase int) (int, error)
 }
 
 type projectRepo struct {
@@ -353,21 +354,11 @@ func (r *projectRepo) GetAllUserCalibrationByCalibratorID(calibratorID, projectI
 		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
-		Select("u.*, COUNT(u.id) AS calibration_count").
-		Joins("JOIN business_units b ON u.business_unit_id = b.id").
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL").
-		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.id = ?", projectID).
+		Select("u.*").
+		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.project_id = ?", projectID).
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
-		Joins("JOIN phases p ON p.id = pp.phase_id").
-		Joins("JOIN users u2 ON c1.calibrator_id = u2.id").
-		Joins("JOIN calibrations c2 ON c2.employee_id = u.id").
-		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.id = ?", projectID).
-		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
-		Joins("JOIN phases p2 ON p2.id = pp2.phase_id").
-		Joins("JOIN users u3 ON c2.calibrator_id = u3.id").
-		Where("p2.order <= ? AND c1.calibrator_id = ?", calibratorPhase, calibratorID).
+		Joins("JOIN phases p ON p.id = pp.phase_id AND p.order = ?", calibratorPhase).
 		Group("u.id").
-		Order("calibration_count DESC").
 		Find(&calibration).Error
 	if err != nil {
 		return nil, err
@@ -520,6 +511,21 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorID, 
 			}
 		}
 
+		actScore := []response.ActualScoreResponse{}
+		if len(user.ActualScores) > 0 {
+			actScore = append(actScore, response.ActualScoreResponse{
+				ProjectID:    user.ActualScores[0].ProjectID,
+				EmployeeID:   user.ActualScores[0].EmployeeID,
+				ActualScore:  user.ActualScores[0].ActualScore,
+				ActualRating: user.ActualScores[0].ActualRating,
+				Y1Rating:     user.ActualScores[0].Y1Rating,
+				Y2Rating:     user.ActualScores[0].Y2Rating,
+				PTTScore:     user.ActualScores[0].PTTScore,
+				PATScore:     user.ActualScores[0].PATScore,
+				Score360:     user.ActualScores[0].Score360,
+			})
+		}
+
 		dataOneResponse := &response.UserResponse{
 			BaseModel: model.BaseModel{
 				ID:        user.ID,
@@ -539,24 +545,14 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorID, 
 				Name:                user.BusinessUnit.Name,
 				GroupBusinessUnitId: user.BusinessUnit.GroupBusinessUnitId,
 			},
-			BusinessUnitId:   user.BusinessUnitId,
-			OrganizationUnit: user.OrganizationUnit,
-			Division:         user.Division,
-			Department:       user.Department,
-			Grade:            user.Grade,
-			Position:         user.Position,
-			Roles:            user.Roles,
-			ActualScores: []response.ActualScoreResponse{{
-				ProjectID:    user.ActualScores[0].ProjectID,
-				EmployeeID:   user.ActualScores[0].EmployeeID,
-				ActualScore:  user.ActualScores[0].ActualScore,
-				ActualRating: user.ActualScores[0].ActualRating,
-				Y1Rating:     user.ActualScores[0].Y1Rating,
-				Y2Rating:     user.ActualScores[0].Y2Rating,
-				PTTScore:     user.ActualScores[0].PTTScore,
-				PATScore:     user.ActualScores[0].PATScore,
-				Score360:     user.ActualScores[0].Score360,
-			}},
+			BusinessUnitId:    user.BusinessUnitId,
+			OrganizationUnit:  user.OrganizationUnit,
+			Division:          user.Division,
+			Department:        user.Department,
+			Grade:             user.Grade,
+			Position:          user.Position,
+			Roles:             user.Roles,
+			ActualScores:      actScore,
 			CalibrationScores: []response.CalibrationResponse{},
 			ScoringMethod:     user.ScoringMethod,
 			Directorate:       user.Directorate,
@@ -683,7 +679,21 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 			return response.UserCalibration{}, err
 		}
 
-		fmt.Println(user.Name, user.Nik, "==========================================DATA USER ACTUAL SCORE==========================", user.ActualScores)
+		actScore := []response.ActualScoreResponse{}
+		if len(user.ActualScores) > 0 {
+			actScore = append(actScore, response.ActualScoreResponse{
+				ProjectID:    user.ActualScores[0].ProjectID,
+				EmployeeID:   user.ActualScores[0].EmployeeID,
+				ActualScore:  user.ActualScores[0].ActualScore,
+				ActualRating: user.ActualScores[0].ActualRating,
+				Y1Rating:     user.ActualScores[0].Y1Rating,
+				Y2Rating:     user.ActualScores[0].Y2Rating,
+				PTTScore:     user.ActualScores[0].PTTScore,
+				PATScore:     user.ActualScores[0].PATScore,
+				Score360:     user.ActualScores[0].Score360,
+			})
+		}
+		// fmt.Println(user.Name, user.Nik, "==========================================DATA USER ACTUAL SCORE==========================", user.ActualScores)
 		dataOneResponse := &response.UserResponse{
 			BaseModel: model.BaseModel{
 				ID:        user.ID,
@@ -703,24 +713,14 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 				Name:                user.BusinessUnit.Name,
 				GroupBusinessUnitId: user.BusinessUnit.GroupBusinessUnitId,
 			},
-			BusinessUnitId:   user.BusinessUnitId,
-			OrganizationUnit: user.OrganizationUnit,
-			Division:         user.Division,
-			Department:       user.Department,
-			Grade:            user.Grade,
-			Position:         user.Position,
-			Roles:            user.Roles,
-			ActualScores: []response.ActualScoreResponse{{
-				ProjectID:    user.ActualScores[0].ProjectID,
-				EmployeeID:   user.ActualScores[0].EmployeeID,
-				ActualScore:  user.ActualScores[0].ActualScore,
-				ActualRating: user.ActualScores[0].ActualRating,
-				Y1Rating:     user.ActualScores[0].Y1Rating,
-				Y2Rating:     user.ActualScores[0].Y2Rating,
-				PTTScore:     user.ActualScores[0].PTTScore,
-				PATScore:     user.ActualScores[0].PATScore,
-				Score360:     user.ActualScores[0].Score360,
-			}},
+			BusinessUnitId:    user.BusinessUnitId,
+			OrganizationUnit:  user.OrganizationUnit,
+			Division:          user.Division,
+			Department:        user.Department,
+			Grade:             user.Grade,
+			Position:          user.Position,
+			Roles:             user.Roles,
+			ActualScores:      actScore,
 			CalibrationScores: []response.CalibrationResponse{},
 			ScoringMethod:     user.ScoringMethod,
 			Directorate:       user.Directorate,
@@ -1014,8 +1014,7 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 	queryPrevCalibrator := r.db.
 		Table("users u2").
 		Select("u2.id").
-		Joins("JOIN calibrations c2 ON c2.calibrator_id = u2.id AND c2.deleted_at IS NULL").
-		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.id = ?", projectID).
+		Joins("JOIN calibrations c2 ON c2.calibrator_id = u2.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
 		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
 		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
 		Where("u2.business_unit_id = ?", businessUnit)
@@ -1024,8 +1023,7 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 	subquery := r.db.
 		Table("users u2").
 		Select("u2.id").
-		Joins("JOIN calibrations c2 ON c2.employee_id = u2.id AND c2.deleted_at IS NULL").
-		Joins("JOIN projects pr2 ON pr2.id = c2.project_id AND pr2.id = ?", projectID).
+		Joins("JOIN calibrations c2 ON c2.employee_id = u2.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
 		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
 		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
 		Where("u2.business_unit_id = ?", businessUnit)
@@ -1037,10 +1035,9 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
-				Joins("JOIN projects proj2 ON calibrations.project_id = proj2.id").
 				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
 				Joins("JOIN phases p ON p.id = pp.phase_id ").
-				Where("proj2.id = ? AND p.order <= ?", projectID, phase).
+				Where("calibrations.project_id = ? AND p.order <= ?", projectID, phase).
 				Order("p.order")
 		}).
 		Preload("CalibrationScores.Calibrator").
@@ -1051,7 +1048,6 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Preload("BusinessUnit").
 		Select("u.*").
 		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.calibrator_id = ? AND c1.project_id = ?", calibratorID, projectID).
-		Joins("INNER JOIN projects pr ON pr.id = c1.project_id AND pr.id = ?", projectID).
 		Joins("INNER JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("INNER JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
 		Where("u.business_unit_id = ? AND u.id NOT IN (?) AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
@@ -1720,6 +1716,117 @@ func (r *projectRepo) GetAllBusinessUnitSummary(calibratorID, projectID string, 
 	}
 
 	return results, nil
+}
+
+func (r *projectRepo) GetCalibrationsForSummaryHelper(types, calibratorID, prevCalibrator, businessUnit, projectID string, phase int) (int, error) {
+	var users []model.User
+	var err error
+	// prev calibrator
+	if types == "numberOne" {
+		return -1, nil
+	} else if types == "n-1" {
+		queryPrevCalibrator := r.db.
+			Table("users u2").
+			Select("u2.id").
+			Joins("JOIN calibrations c2 ON c2.calibrator_id = u2.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
+			Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+			Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
+			Where("u2.business_unit_id = ?", businessUnit)
+
+		// Subquery
+		subquery := r.db.
+			Table("users u2").
+			Select("u2.id").
+			Joins("JOIN calibrations c2 ON c2.employee_id = u2.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
+			Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+			Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
+			Where("u2.business_unit_id = ?", businessUnit)
+
+		err = r.db.
+			Table("users u").
+			Select("u.*").
+			Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.calibrator_id = ? AND c1.project_id = ?", calibratorID, projectID).
+			Joins("INNER JOIN project_phases pp ON pp.id = c1.project_phase_id").
+			Joins("INNER JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
+			Where("u.business_unit_id = ? AND u.id NOT IN (?) AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
+			Find(&users).Error
+		// fmt.Println("===============================DATA N-1========================", count)
+	} else if types == "default" {
+		subquery := r.db.
+			Table("users u").
+			Select("u.id").
+			Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.project_id = ?", projectID).
+			Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
+			Joins("JOIN phases p ON p.id = pp.phase_id").
+			Joins("LEFT JOIN calibrations c2 ON c2.employee_id = u.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
+			Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+			Joins("JOIN phases p2 ON p2.id = pp2.phase_id").
+			Joins("JOIN users u3 ON c2.calibrator_id = u3.id").
+			Where("p2.order < ? AND u3.id = ? AND u.business_unit_id = ? AND c1.calibrator_id = ?",
+				phase, prevCalibrator, businessUnit, calibratorID).
+			Or("u.id = ? AND b.id = ? AND p.order = ? AND p2.order = ?",
+				prevCalibrator, businessUnit, phase, phase)
+
+		var subqueryResults []string
+		if err := subquery.Pluck("u.id", &subqueryResults).Error; err != nil {
+			return -1, err
+		}
+
+		err = r.db.
+			Table("users u").
+			Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+				return db.
+					Where("actual_score.project_id = ?", projectID)
+			}).
+			Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+				return db.
+					Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+					Joins("JOIN phases p ON p.id = pp.phase_id ").
+					Where("calibrations.project_id = ? AND p.order <= ?", projectID, phase).
+					Order("p.order")
+			}).
+			Select("u.*, COUNT(u.id) AS calibration_count").
+			Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.project_id = ?", projectID).
+			Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
+			Joins("JOIN phases p ON p.id = pp.phase_id").
+			Where("p.order <= ? AND u.id IN (?)", phase, subqueryResults).
+			Group("u.id").
+			Order("calibration_count ASC").
+			Find(&users).Error
+		// fmt.Println("===============================DATA DEFAULT========================", count)
+	} else {
+		err = r.db.
+			Table("users u").
+			Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+				return db.Where("project_id = ?", projectID)
+			}).
+			Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+				return db.
+					Joins("JOIN projects proj2 ON calibrations.project_id = proj2.id").
+					Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+					Joins("JOIN phases p ON p.id = pp.phase_id").
+					Where("proj2.id = ? AND p.order <= ?", projectID, phase).
+					Order("p.order")
+			}).
+			Select("u.*, COUNT(u.id) AS calibration_count").
+			Joins("INNER JOIN business_units b ON u.business_unit_id = b.id").
+			Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.project_id = ?", projectID).
+			Joins("INNER JOIN project_phases pp ON pp.id = c1.project_phase_id").
+			Joins("INNER JOIN phases p ON p.id = pp.phase_id").
+			Joins("INNER JOIN calibrations c2 ON c2.employee_id = u.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
+			Joins("INNER JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+			Joins("INNER JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order <= ?", phase).
+			Where("p.order = ? AND c1.calibrator_id = ? AND u.business_unit_id = ? AND c1.project_id = ?", phase, calibratorID, businessUnit, projectID).
+			Group("u.id").
+			Order("calibration_count ASC").
+			Find(&users).Error
+		// fmt.Println("===============================DATA BU========================", count)
+	}
+	if err != nil {
+		return -1, err
+	}
+
+	return len(users), nil
 }
 
 func NewProjectRepo(db *gorm.DB) ProjectRepo {
