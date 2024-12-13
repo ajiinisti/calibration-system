@@ -303,7 +303,7 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 }
 
 func (n *notificationUsecase) NotifySubmittedCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error {
-	fmt.Println("DATA SPMO:", &listOfSpmo[0])
+	// fmt.Println("DATA SPMO:", &listOfSpmo[0])
 	for _, spmo := range listOfSpmo {
 		emailData := utils.EmailData{
 			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),

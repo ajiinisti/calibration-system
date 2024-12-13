@@ -41,7 +41,7 @@ func SendMail(to []string, data *EmailData, templateDir string, templatePath str
 		mailer.SetHeader("From", cfg.SMTPSenderName)
 		mailer.SetHeader("To", to...)
 		mailer.SetHeader("Subject", data.Subject)
-		fmt.Println("SCONTENT BODY", emailContent.String())
+		// fmt.Println("SCONTENT BODY", emailContent.String())
 		mailer.SetBody("text/html", emailContent.String())
 		// mailer.AddAlternative("text/plain", html2text.HTML2Text(emailContent.String()))
 

@@ -117,7 +117,7 @@ func (u *userRepo) Get(id string) (*model.User, error) {
 func (u *userRepo) List() ([]model.User, error) {
 	var users []model.User
 	err := u.db.
-		Preload("Roles").
+		// Preload("Roles").
 		Preload("BusinessUnit").
 		Find(&users).Error
 	if err != nil {
@@ -195,7 +195,7 @@ func (u *userRepo) PaginateList(pagination model.PaginationQuery) ([]model.User,
 			return nil, response.Paging{}, err
 		}
 	} else {
-		fmt.Println(len(pagination.Name), pagination.Name)
+		// fmt.Println(len(pagination.Name), pagination.Name)
 		err := u.db.
 			Preload("Roles").
 			Preload("BusinessUnit").

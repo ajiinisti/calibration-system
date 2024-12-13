@@ -871,7 +871,7 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 			return nil, err
 		}
 
-		fmt.Println('1', calibrations[0])
+		// fmt.Println('1', calibrations[0])
 
 		var calibrationBefore *model.Calibration
 		err = tx.Table("calibrations").
@@ -883,7 +883,7 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 			return nil, err
 		}
 
-		fmt.Println("2", calibrationBefore.JustificationReviewStatus, len(calibrations))
+		// fmt.Println("2", calibrationBefore.JustificationReviewStatus, len(calibrations))
 
 		if len(calibrations) > 0 {
 			err := tx.Updates(&model.Calibration{

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -125,7 +124,7 @@ func (r *RemarkSettingController) deleteHandlerByProject(c *gin.Context) {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	fmt.Println("PAYLOAD := ", payload.IDs)
+	// fmt.Println("PAYLOAD := ", payload.IDs)
 
 	if err := r.uc.BulkDeleteData(payload); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())

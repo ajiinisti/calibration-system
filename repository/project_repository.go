@@ -154,24 +154,24 @@ func (r *projectRepo) PaginateList(pagination model.PaginationQuery) ([]model.Pr
 
 	if pagination.Name == "" {
 		err = r.db.
-			Preload("ActualScores").
-			Preload("ProjectPhases").
-			Preload("ProjectPhases.Phase").
-			Preload("ScoreDistributions").
-			Preload("ScoreDistributions.GroupBusinessUnit").
-			Preload("RemarkSettings").
+			// Preload("ActualScores").
+			// Preload("ProjectPhases").
+			// Preload("ProjectPhases.Phase").
+			// Preload("ScoreDistributions").
+			// Preload("ScoreDistributions.GroupBusinessUnit").
+			// Preload("RemarkSettings").
 			Limit(pagination.Take).Offset(pagination.Skip).Find(&projects).Error
 		if err != nil {
 			return nil, response.Paging{}, err
 		}
 	} else {
 		err = r.db.
-			Preload("ActualScores").
-			Preload("ProjectPhases").
-			Preload("ProjectPhases.Phase").
-			Preload("ScoreDistributions").
-			Preload("ScoreDistributions.GroupBusinessUnit").
-			Preload("RemarkSettings").
+			// Preload("ActualScores").
+			// Preload("ProjectPhases").
+			// Preload("ProjectPhases.Phase").
+			// Preload("ScoreDistributions").
+			// Preload("ScoreDistributions.GroupBusinessUnit").
+			// Preload("RemarkSettings").
 			Where("name ILIKE ?", "%"+pagination.Name+"%").
 			Limit(pagination.Take).Offset(pagination.Skip).Find(&projects).Error
 		if err != nil {
@@ -358,6 +358,7 @@ func (r *projectRepo) GetAllUserCalibrationByCalibratorID(calibratorID, projectI
 		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.project_id = ?", projectID).
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id AND p.order = ?", calibratorPhase).
+		Where("c1.calibrator_id = ?", calibratorID).
 		Group("u.id").
 		Find(&calibration).Error
 	if err != nil {
