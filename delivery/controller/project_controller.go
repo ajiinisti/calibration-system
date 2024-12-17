@@ -154,6 +154,26 @@ func (r *ProjectController) getActiveHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
+func (r *ProjectController) getActiveHandlerByCalibratorID(c *gin.Context) {
+	calibratorID := c.Query("calibratorID")
+	projects, err := r.uc.FindActiveProjectByCalibratorID(calibratorID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getActiveHandlerBySpmoID(c *gin.Context) {
+	spmoID := c.Query("spmoID")
+	projects, err := r.uc.FindActiveProjectBySpmoID(spmoID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
 func (r *ProjectController) getScoreDistributionHandlerByID(c *gin.Context) {
 	id := c.Query("businessUnit")
 	projectID := c.Query("projectID")
@@ -493,6 +513,8 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth := r.Group("/auth").Use(middleware.NewTokenValidator(tokenService).RequireToken())
 	auth.GET("/projects", controller.listHandler)
 	auth.GET("/projects/active", controller.getActiveHandler)
+	auth.GET("/projects/calibrator", controller.getActiveHandlerByCalibratorID)
+	auth.GET("/projects/spmo", controller.getActiveHandlerBySpmoID)
 	auth.GET("/projects/score-distribution", controller.getScoreDistributionHandlerByID) // BELUM
 	auth.GET("/projects/rating-quota", controller.getRatingQuotaHandlerByID)
 	auth.GET("/projects/total-actual-score", controller.getTotalActualScoreHandlerByID)

@@ -400,7 +400,7 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.GET("/calibrations/:projectID/:projectPhaseID/:employeeID", controller.getByIdHandler)
 	auth.GET("/calibrations-project-employee/:projectID/:employeeID", controller.getByProjectEmployeeIdHandler)
 	auth.GET("/summary-calibrations/spmo", controller.getSummaryCalibrationsBySPMOIDHandler)
-	// auth.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
+	auth.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
 	auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:projectID", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
 	auth.GET("/calibrations/spmo/rating-quota/:spmoID/:calibratorID/:businessUnitID/:order/:projectID", controller.getRatingQuotaSPMOHandlerByID)
 	auth.PUT("/calibrations", controller.updateHandler)

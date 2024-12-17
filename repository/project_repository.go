@@ -38,6 +38,8 @@ type ProjectRepo interface {
 	GetAllBusinessUnitSummary(calibratorID, projectID string, phase int) ([]model.BusinessUnit, error)
 	GetCalibrationsForSummaryHelper(types, calibratorID, prevCalibrator, businessUnit, projectID string, phase int) (int, error)
 	FindIfCalibratorOnPhaseBefore(calibratorID, projectID string, phase int) (bool, error)
+	GetAllActiveProjectByCalibratorID(calibratorID string) ([]model.Project, error)
+	GetAllActiveProjectBySpmoID(spmoID string) ([]model.Project, error)
 }
 
 type projectRepo struct {
@@ -1852,6 +1854,34 @@ func (r *projectRepo) FindIfCalibratorOnPhaseBefore(calibratorID, projectID stri
 
 	// If we found the record, return true
 	return true, nil
+}
+
+func (r *projectRepo) GetAllActiveProjectByCalibratorID(calibratorID string) ([]model.Project, error) {
+	var projectList []model.Project
+	err := r.db.Table("projects p").
+		Select("p.*").
+		Distinct().
+		Joins("INNER JOIN calibrations c ON p.id = c.project_id AND p.active = ? AND c.calibrator_id = ?", true, calibratorID).
+		Find(&projectList).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return projectList, nil
+}
+
+func (r *projectRepo) GetAllActiveProjectBySpmoID(spmoID string) ([]model.Project, error) {
+	var projectList []model.Project
+	err := r.db.Table("projects p").
+		Select("p.*").
+		Distinct().
+		Joins("INNER JOIN calibrations c ON p.id = c.project_id AND p.active = ? AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?)", true, spmoID, spmoID, spmoID).
+		Find(&projectList).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return projectList, nil
 }
 
 func NewProjectRepo(db *gorm.DB) ProjectRepo {

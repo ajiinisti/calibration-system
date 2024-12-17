@@ -42,6 +42,8 @@ type ProjectUsecase interface {
 	ReportCalibrations(types, calibratorID, businessUnit, prevCalibrator, projectID string, c *gin.Context) (string, error)
 	SummaryReportCalibrations(calibratorID, projectID string, c *gin.Context) (string, error)
 	FindRatingQuotaByCalibratorIDforSummaryHelper(calibratorID, prevCalibrator, businessUnitID, types, projectID string, countCurrentUser int) (*response.RatingQuota, error)
+	FindActiveProjectByCalibratorID(calibratorID string) ([]model.Project, error)
+	FindActiveProjectBySpmoID(spmoID string) ([]model.Project, error)
 }
 
 type projectUsecase struct {
@@ -1561,6 +1563,14 @@ func (r *projectUsecase) FindRatingQuotaByCalibratorIDforSummaryHelper(calibrato
 	responses.Total = total
 
 	return &responses, nil
+}
+
+func (r *projectUsecase) FindActiveProjectByCalibratorID(calibratorID string) ([]model.Project, error) {
+	return r.repo.GetAllActiveProjectByCalibratorID(calibratorID)
+}
+
+func (r *projectUsecase) FindActiveProjectBySpmoID(spmoID string) ([]model.Project, error) {
+	return r.repo.GetAllActiveProjectBySpmoID(spmoID)
 }
 
 func NewProjectUsecase(repo repository.ProjectRepo) ProjectUsecase {
