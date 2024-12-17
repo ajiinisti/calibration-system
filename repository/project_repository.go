@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -36,6 +37,7 @@ type ProjectRepo interface {
 	GetCalibrationsByRating(calibratorID, rating, projectID string, phase int) (response.UserCalibration, error)
 	GetAllBusinessUnitSummary(calibratorID, projectID string, phase int) ([]model.BusinessUnit, error)
 	GetCalibrationsForSummaryHelper(types, calibratorID, prevCalibrator, businessUnit, projectID string, phase int) (int, error)
+	FindIfCalibratorOnPhaseBefore(calibratorID, projectID string, phase int) (bool, error)
 }
 
 type projectRepo struct {
@@ -1828,6 +1830,28 @@ func (r *projectRepo) GetCalibrationsForSummaryHelper(types, calibratorID, prevC
 	}
 
 	return len(users), nil
+}
+
+func (r *projectRepo) FindIfCalibratorOnPhaseBefore(calibratorID, projectID string, phase int) (bool, error) {
+	var cal *model.Calibration
+
+	err := r.db.Table("calibrations c").
+		Select("c.*").
+		Joins("INNER JOIN project_phases pp ON pp.id = c.project_phase_id").
+		Joins("INNER JOIN phases p ON p.id = pp.phase_id").
+		Where("p.order < ? AND c.calibrator_id = ? and c.project_id = ?", phase, calibratorID, projectID).
+		First(&cal).
+		Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		// Other errors should be returned
+		return false, err
+	}
+
+	// If we found the record, return true
+	return true, nil
 }
 
 func NewProjectRepo(db *gorm.DB) ProjectRepo {

@@ -267,18 +267,27 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 		picName := "N-1"
 		picId := "N-1"
 		calibrationLength := len(user.CalibrationScores)
+		fmt.Println("prev calibrator", prevCalibrator)
 		for _, calibration := range user.CalibrationScores {
 			if calibration.ProjectPhase.Phase.Order == phase && calibration.CalibratorID == calibratorID {
-				if _, isExist := prevCalibrator[user.Name]; calibrationLength == 1 && isExist {
-					picName = user.Name
-					picId = user.ID
+				if _, isExist := prevCalibrator[user.Name]; calibrationLength == 1 && !isExist {
+					// check if n-1 or not
+					checkIfTrue, err := r.repo.FindIfCalibratorOnPhaseBefore(user.ID, projectID, calibration.ProjectPhase.Phase.Order)
+					if err != nil {
+						return nil, err
+					}
+
+					if checkIfTrue {
+						prevCalibrator[user.Name] = user.Name
+						picName = user.Name
+						picId = user.ID
+					}
 				}
+				pic = true
 				// else if name, isExist := businessUnit[user.BusinessUnit.Name]; calibrationLength == 1 && isExist {
 				// 	picName = name
 				// 	picId = picIDs[user.BusinessUnit.Name]
 				// }
-
-				pic = true
 				break
 			} else if calibration.ProjectPhase.Phase.Order >= phase && calibration.CalibratorID != calibratorID {
 				break
@@ -296,7 +305,6 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 
 		checkCalibrator := picId
 		checkCalibrator = fmt.Sprintf("%s-%s", picId, *user.BusinessUnitId)
-
 		if len(prevCalibratorIDs) > 0 && contains(prevCalibratorIDs, checkCalibrator) {
 			filterCheck = true
 		} else if len(prevCalibratorIDs) > 0 && !contains(prevCalibratorIDs, checkCalibrator) {
@@ -308,6 +316,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 			if _, ok := resultSummary[picName+user.BusinessUnit.Name]; ok {
 				bu = false
 			}
+			fmt.Println("=======================data peruser", user.Name, user.BusinessUnit.Name, pic, picName)
 
 			if _, isExist := businessUnit[user.BusinessUnit.Name]; bu && pic && (picName != "N-1" || !isExist) {
 				resp := &response.CalibratorBusinessUnit{
@@ -1493,7 +1502,7 @@ func (r *projectUsecase) FindRatingQuotaByCalibratorIDforSummaryHelper(calibrato
 	if countCurrentUser > 0 {
 		totalCalibrations = countCurrentUser
 	}
-	fmt.Println("TOTAL CALIBRATIONS =========================================================== ", totalCalibrations)
+	// fmt.Println("TOTAL CALIBRATIONS =========================================================== ", totalCalibrations)
 	// Jangan di round down
 	responses := response.RatingQuota{
 		APlus: int(math.Round(((ratingQuota.APlusQuota) / float64(100)) * float64(totalCalibrations))),

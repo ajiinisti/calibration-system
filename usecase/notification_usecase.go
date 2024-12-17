@@ -13,14 +13,14 @@ import (
 
 type NotificationUsecase interface {
 	NotifyCalibrator(projectID string) error
-	NotifyManager(ids []string, deadline time.Time) error                                               // Send to Manager
-	NotifyFirstCurrentCalibrators(data []response.NotificationModel) error                              // First Send Calibrator on Click in Project Active
-	NotifyNextCalibrators(data []response.NotificationModel) error                                      // From Previous Phase
-	NotifyApprovedCalibrationToCalibrators(data []response.NotificationModel) error                     // Spmo Submit
-	NotifySubmittedCalibrationToNextCalibratorsWithoutReview(data response.NotificationModel) error     // Without Spmo Review to Prev Calibrator
-	NotifyRejectedCalibrationToCalibrator(id, employee, comment string) error                           // Spmo Reject
-	NotifySubmittedCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error // Spmo When Submit
-	NotifySendBackCalibrators(data []response.NotificationModel) error                                  // Send Back Calibration
+	NotifyManager(ids []string, deadline time.Time) error                                                                 // Send to Manager
+	NotifyFirstCurrentCalibrators(data []response.NotificationModel) error                                                // First Send Calibrator on Click in Project Active
+	NotifyNextCalibrators(data []response.NotificationModel) error                                                        // From Previous Phase
+	NotifyApprovedCalibrationToCalibrators(data []response.NotificationModel) error                                       // Spmo Submit
+	NotifySubmittedCalibrationToNextCalibratorsWithoutReview(data response.NotificationModel) error                       // Without Spmo Review to Prev Calibrator
+	NotifyRejectedCalibrationToCalibrator(id, employee, comment, projectID string) error                                  // Spmo Reject
+	NotifySubmittedCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int, projectID string) error // Spmo When Submit
+	NotifySendBackCalibrators(data []response.NotificationModel) error                                                    // Send Back Calibration
 }
 
 type notificationUsecase struct {
@@ -168,8 +168,8 @@ func (n *notificationUsecase) NotifyNextCalibrators(data []response.Notification
 		}
 
 		var url string
-		if calibratorData.PreviousBusinessUnitID != "" && calibratorData.PreviousCalibratorID != "" && calibratorData.PreviousCalibrator != "" {
-			url = fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator)
+		if calibratorData.PreviousBusinessUnitID != "" && calibratorData.PreviousCalibratorID != "" && calibratorData.PreviousCalibrator != "" && calibratorData.ProjectID != "" {
+			url = fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate, calibratorData.ProjectID, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator)
 		} else {
 			url = fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate)
 
@@ -211,7 +211,7 @@ func (n *notificationUsecase) NotifySendBackCalibrators(data []response.Notifica
 
 		var url string
 		if calibratorData.PreviousBusinessUnitID != "" && calibratorData.PreviousCalibratorID != "" && calibratorData.PreviousCalibrator != "" {
-			url = fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator)
+			url = fmt.Sprintf("%s/#/autologin/%s/%s/%s/%s/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate, calibratorData.ProjectID, calibratorData.PreviousBusinessUnitID, calibratorData.PreviousCalibratorID, calibratorData.PreviousCalibrator)
 		} else {
 			url = fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate)
 
@@ -273,7 +273,7 @@ func (n *notificationUsecase) NotifyFirstCurrentCalibrators(data []response.Noti
 	return nil
 }
 
-func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee, comment string) error {
+func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee, comment, projectID string) error {
 	user, err := n.employee.FindById(id)
 	if err != nil {
 		return err
@@ -302,12 +302,12 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 	return nil
 }
 
-func (n *notificationUsecase) NotifySubmittedCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int) error {
+func (n *notificationUsecase) NotifySubmittedCalibrationToSpmo(calibrator *model.User, listOfSpmo []*model.User, phase int, projectID string) error {
 	// fmt.Println("DATA SPMO:", &listOfSpmo[0])
 	for _, spmo := range listOfSpmo {
 		emailData := utils.EmailData{
 			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
-			URL:        fmt.Sprintf("%s/#/autologin-spmo/%s/%s/%s/%d", n.cfg.FrontEndApi, spmo.AccessTokenGenerate, calibrator.ID, *calibrator.BusinessUnitId, phase),
+			URL:        fmt.Sprintf("%s/#/autologin-spmo/%s/%s/%s/%s/%d", n.cfg.FrontEndApi, spmo.AccessTokenGenerate, projectID, calibrator.ID, *calibrator.BusinessUnitId, phase),
 			FirstName:  spmo.Name,
 			Subject:    "Submitted Worksheet",
 			Calibrator: calibrator.Name,

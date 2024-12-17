@@ -484,7 +484,7 @@ func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequ
 			listSpmo = append(listSpmo, data)
 		}
 
-		err = r.notification.NotifySubmittedCalibrationToSpmo(calibrator, listSpmo, projectPhase.Phase.Order)
+		err = r.notification.NotifySubmittedCalibrationToSpmo(calibrator, listSpmo, projectPhase.Phase.Order, projectID)
 		if err != nil {
 			return err
 		}
@@ -628,7 +628,7 @@ func (r *calibrationUsecase) SpmoRejectApproval(payload *request.RejectJustifica
 
 	employeeName := fmt.Sprintf("%s(%s) - %s - %s", employee.Name, employee.Nik, employee.BusinessUnit.Name, employee.OrganizationUnit)
 
-	err = r.notification.NotifyRejectedCalibrationToCalibrator(payload.CalibratorID, employeeName, payload.Comment)
+	err = r.notification.NotifyRejectedCalibrationToCalibrator(payload.CalibratorID, employeeName, payload.Comment, payload.ProjectID)
 	if err != nil {
 		return err
 	}
@@ -740,6 +740,7 @@ func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID, projectID st
 
 				allSubmitted := true
 				for _, user := range data {
+					fmt.Println("====================================u", user.CalibrationScores, len(user.CalibrationScores)-1, user.Name, user.Nik, projectPhase.Order)
 					lastCalibrationStatus := user.CalibrationScores[len(user.CalibrationScores)-1].SpmoStatus
 					if lastCalibrationStatus == "Waiting" || (lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == false) {
 						status = "Pending"
@@ -747,7 +748,11 @@ func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID, projectID st
 					} else if lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == true {
 						allSubmitted = allSubmitted && true
 					} else if lastCalibrationStatus == "Rejected" {
-						status = "-"
+						if status == "-" || status == "Pending" {
+							status = "Pending"
+						} else {
+							status = "-"
+						}
 						allSubmitted = allSubmitted && false
 						break
 					} else {

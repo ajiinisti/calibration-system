@@ -164,9 +164,7 @@ func (u *UserController) updateHandler(c *gin.Context) {
 	}
 
 	user := model.User{
-		BaseModel: model.BaseModel{
-			ID: payload.ID,
-		},
+		BaseModel:        model.BaseModel{ID: payload.ID},
 		Email:            payload.Email,
 		Name:             payload.Name,
 		Nik:              payload.Nik,
@@ -180,6 +178,7 @@ func (u *UserController) updateHandler(c *gin.Context) {
 		Grade:            payload.Grade,
 		HRBP:             payload.HRBP,
 		Position:         payload.Position,
+		PhoneNumber:      payload.PhoneNumber,
 		ScoringMethod:    payload.ScoringMethod,
 	}
 	if err := u.uc.SaveUser(user, payload.Roles); err != nil {

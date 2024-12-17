@@ -441,6 +441,7 @@ func (r *calibrationRepo) BulkUpdate(payload *request.CalibrationRequest, projec
 			nextCalibrator = append(nextCalibrator, &response.NotificationModel{
 				CalibratorID: calibrations[0].CalibratorID,
 				ProjectPhase: calibrations[0].ProjectPhase.Phase.Order,
+				ProjectID:    calibrations[0].ProjectID,
 				Deadline:     calibrations[0].ProjectPhase.EndDate,
 			})
 			// err := tx.Model(&model.Calibration{}).
@@ -654,6 +655,7 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 					}
 					mapResult[calibrations[len(calibrations)-1].CalibratorID] = response.NotificationModel{
 						CalibratorID:           calibrations[len(calibrations)-1].CalibratorID,
+						ProjectID:              calibrations[len(calibrations)-1].ProjectID,
 						ProjectPhase:           projectPhaseNextCalibrator.Phase.Order,
 						Deadline:               projectPhaseNextCalibrator.EndDate,
 						NextCalibrator:         nextCal.Name,
@@ -683,6 +685,7 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload *request.Cali
 
 					mapResult[calibrations[len(calibrations)-1].CalibratorID] = response.NotificationModel{
 						CalibratorID:   calibrations[len(calibrations)-1].CalibratorID,
+						ProjectID:      calibrations[len(calibrations)-1].ProjectID,
 						ProjectPhase:   projectPhaseNextCalibrator.Phase.Order,
 						Deadline:       projectPhaseNextCalibrator.EndDate,
 						NextCalibrator: nextCal.Name,
@@ -920,6 +923,7 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 				if prevCal.BusinessUnitId != nil {
 					mapResult[calibrations[0].CalibratorID] = response.NotificationModel{
 						CalibratorID:           calibrations[0].CalibratorID,
+						ProjectID:              calibrations[0].ProjectID,
 						ProjectPhase:           projectPhaseNextCalibrator.Phase.Order,
 						Deadline:               projectPhaseNextCalibrator.EndDate,
 						PreviousCalibrator:     prevCal.Name,
@@ -929,6 +933,7 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 				} else {
 					mapResult[calibrations[0].CalibratorID] = response.NotificationModel{
 						CalibratorID:         calibrations[0].CalibratorID,
+						ProjectID:            calibrations[0].ProjectID,
 						ProjectPhase:         projectPhaseNextCalibrator.Phase.Order,
 						Deadline:             projectPhaseNextCalibrator.EndDate,
 						PreviousCalibrator:   prevCal.Name,
@@ -1025,22 +1030,22 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
-				Joins("JOIN projects ON calibrations.project_id = projects.id").
 				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
 				Joins("JOIN phases p ON p.id = pp.phase_id ").
-				Where("projects.id = ? AND p.order <= ?", projectID, order).
+				Where("calibrations.project_id = ? AND p.order <= ?", projectID, order).
 				Order("p.order ASC")
 		}).
-		Preload("CalibrationScores.Calibrator").
+		// Preload("CalibrationScores.Calibrator").
 		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("CalibrationScores.TopRemarks").
 		Preload("CalibrationScores.BottomRemark").
 		Select("u.*, u2.name as supervisor_names").
-		Joins("JOIN business_units b ON u.business_unit_id = b.id AND b.id = ?", businessUnitID).
-		Joins("JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.calibrator_id = ? AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID, calibratorID).
-		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.id = ?", projectID).
+		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.calibrator_id = ? AND c1.deleted_at IS NULL AND c1.project_id = ?", spmoID, spmoID, spmoID, calibratorID, projectID).
+		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
+		Joins("JOIN phases p ON p.id = pp.phase_id AND p.order = ?", order).
 		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
+		Where("u.business_unit_id = ?", businessUnitID).
 		Find(&calibration).Error
 	if err != nil {
 		return nil, err

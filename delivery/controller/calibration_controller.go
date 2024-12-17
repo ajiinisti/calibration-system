@@ -202,8 +202,8 @@ func (r *CalibrationController) submitCalibrationsHandler(c *gin.Context) {
 }
 
 func (r *CalibrationController) sendCalibrationToManagerHandler(c *gin.Context) {
-	calibratorID := c.Param("calibratorID")
-	projectID := c.Param("projectID")
+	calibratorID := c.Query("calibratorID")
+	projectID := c.Query("projectID")
 	var payload request.CalibrationRequest
 	if err := r.ParseRequestBody(c, &payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
@@ -219,8 +219,8 @@ func (r *CalibrationController) sendCalibrationToManagerHandler(c *gin.Context) 
 }
 
 func (r *CalibrationController) sendBackCalibrationsToOnePhaseBeforeHandler(c *gin.Context) {
-	calibratorID := c.Param("calibratorID")
-	projectID := c.Param("projectID")
+	calibratorID := c.Query("calibratorID")
+	projectID := c.Query("projectID")
 	var payload request.CalibrationRequest
 	if err := r.ParseRequestBody(c, &payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
@@ -412,8 +412,8 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/save-comment", controller.saveCommentCalibrationHandler)
 	auth.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
 	auth.POST("/calibrations/submit-calibrations/:calibratorID/:projectID", controller.submitCalibrationsHandler)
-	auth.POST("/calibrations/send-calibration-to-manager/:calibratorID", controller.sendCalibrationToManagerHandler)
-	auth.POST("/calibrations/send-calibrations-back/:calibratorID", controller.sendBackCalibrationsToOnePhaseBeforeHandler)
+	auth.POST("/calibrations/send-calibration-to-manager", controller.sendCalibrationToManagerHandler)
+	auth.POST("/calibrations/send-calibrations-back", controller.sendBackCalibrationsToOnePhaseBeforeHandler)
 	auth.POST("/calibrations/accept-approval", controller.spmoAcceptApprovalHandler)
 	auth.POST("/calibrations/accept-multiple-approval", controller.spmoAcceptMultipleApprovalHandler)
 	auth.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)
