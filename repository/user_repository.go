@@ -130,8 +130,6 @@ func (u *userRepo) ListUserAdmin() ([]model.User, error) {
 	subquery := u.db.
 		Table("users u").
 		Select("u.id").
-		Joins("INNER JOIN calibrations c on u.id = c.calibrator_id").
-		Joins("JOIN projects p on p.id = c.project_id AND p.active = ?", true).
 		Joins("JOIN user_roles ur on u.id = ur.user_id").
 		Joins("JOIN roles r on ur.role_id = r.id").
 		Where("r.name = 'exclude'")
