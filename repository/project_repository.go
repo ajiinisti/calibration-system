@@ -1019,20 +1019,34 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 	queryPrevCalibrator := r.db.
 		Table("users u2").
 		Select("u2.id").
+		Distinct().
 		Joins("JOIN calibrations c2 ON c2.calibrator_id = u2.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
 		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
 		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
-		Where("u2.business_unit_id = ?", businessUnit)
+		Joins("JOIN users u3 on c2.employee_id = u3.id").
+		Where("u3.business_unit_id = ?", businessUnit)
 
+	var queryPrevCalibratorResults []string
+	if err := queryPrevCalibrator.Pluck("u.id", &queryPrevCalibratorResults).Error; err != nil {
+		return response.UserCalibration{}, err
+	}
 	// Subquery
 	subquery := r.db.
 		Table("users u2").
 		Select("u2.id").
+		Distinct().
 		Joins("JOIN calibrations c2 ON c2.employee_id = u2.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
 		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
 		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
 		Where("u2.business_unit_id = ?", businessUnit)
 
+	var subqueryResults []string
+	if err := subquery.Pluck("u.id", &subqueryResults).Error; err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	fmt.Println("============================= prev", queryPrevCalibratorResults)
+	fmt.Println("============================= subquery", subqueryResults)
 	err := r.db.
 		Table("users u").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
@@ -1055,7 +1069,7 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.calibrator_id = ? AND c1.project_id = ?", calibratorID, projectID).
 		Joins("INNER JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("INNER JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
-		Where("u.business_unit_id = ? AND u.id NOT IN (?) AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
+		Where("u.business_unit_id = ? AND u.id NOT IN (?) AND u.id NOT IN (?)", businessUnit, queryPrevCalibratorResults, subqueryResults).
 		Find(&users).Error
 	if err != nil {
 		return response.UserCalibration{}, err
@@ -1070,7 +1084,7 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnit(businessUnit string
 		if err != nil {
 			return response.UserCalibration{}, err
 		}
-		fmt.Println(user.Name, user.Nik, "==========================================DATA USER ACTUAL SCORE==========================", user.ActualScores)
+		// fmt.Println(user.Name, user.Nik, "==========================================DATA USER ACTUAL SCORE==========================", user.ActualScores)
 		dataOneResponse := &response.UserResponse{
 			BaseModel: model.BaseModel{
 				ID:        user.ID,

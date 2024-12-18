@@ -740,7 +740,7 @@ func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID, projectID st
 
 				allSubmitted := true
 				for _, user := range data {
-					fmt.Println("====================================u", user.CalibrationScores, len(user.CalibrationScores)-1, user.Name, user.Nik, projectPhase.Order)
+					// fmt.Println("====================================u", user.CalibrationScores, len(user.CalibrationScores)-1, user.Name, user.Nik, projectPhase.Order)
 					lastCalibrationStatus := user.CalibrationScores[len(user.CalibrationScores)-1].SpmoStatus
 					if lastCalibrationStatus == "Waiting" || (lastCalibrationStatus == "Accepted" && user.CalibrationScores[len(user.CalibrationScores)-1].JustificationReviewStatus == false) {
 						status = "Pending"

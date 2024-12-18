@@ -269,10 +269,9 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 		picName := "N-1"
 		picId := "N-1"
 		calibrationLength := len(user.CalibrationScores)
-		fmt.Println("prev calibrator", prevCalibrator)
 		for _, calibration := range user.CalibrationScores {
 			if calibration.ProjectPhase.Phase.Order == phase && calibration.CalibratorID == calibratorID {
-				if _, isExist := prevCalibrator[user.Name]; calibrationLength == 1 && !isExist {
+				if _, isExist := prevCalibrator[user.Name]; calibrationLength == 1 && isExist {
 					// check if n-1 or not
 					checkIfTrue, err := r.repo.FindIfCalibratorOnPhaseBefore(user.ID, projectID, calibration.ProjectPhase.Phase.Order)
 					if err != nil {
@@ -318,7 +317,6 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 			if _, ok := resultSummary[picName+user.BusinessUnit.Name]; ok {
 				bu = false
 			}
-			fmt.Println("=======================data peruser", user.Name, user.BusinessUnit.Name, pic, picName)
 
 			if _, isExist := businessUnit[user.BusinessUnit.Name]; bu && pic && (picName != "N-1" || !isExist) {
 				resp := &response.CalibratorBusinessUnit{
@@ -572,10 +570,10 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 	}
 
 	sort.Slice(result.Summary, func(i, j int) bool {
-		if result.Summary[i].CalibratorBusinessUnitName != result.Summary[j].CalibratorBusinessUnitName {
-			return result.Summary[i].CalibratorBusinessUnitName < result.Summary[j].CalibratorBusinessUnitName
+		if result.Summary[i].CalibratorBusinessUnitID != result.Summary[j].CalibratorBusinessUnitID {
+			return result.Summary[i].CalibratorBusinessUnitID < result.Summary[j].CalibratorBusinessUnitID
 		}
-		return result.Summary[i].CalibratorBusinessUnitName < result.Summary[j].CalibratorBusinessUnitName
+		return result.Summary[i].CalibratorBusinessUnitID < result.Summary[j].CalibratorBusinessUnitID
 	})
 
 	for _, businessUnit := range result.Summary {
@@ -1126,22 +1124,6 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 		file.SetCellValue(sheetName, k, v)
 	}
 
-	// titleRange := []string{"H3", "I3", "J3", "K3", "L3", "M3"}
-	// style, err := file.NewStyle(`{
-	// 	"alignment": {
-	// 		"horizontal": "center",
-	// 		"vertical": "center",
-	// 		"wrap_text": true
-	// 	}
-	// }`)
-	// for _, cell := range titleRange {
-	// 	err := file.SetCellStyle(sheetName, cell, cell, style)
-	// 	if err != nil {
-	// 		fmt.Println("Error applying style:", err)
-	// 		return "", err
-	// 	}
-	// }
-
 	chartJSON := fmt.Sprintf(`{
 		"type": "line",
 		"dimension": {
@@ -1225,7 +1207,7 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 			return "", err
 		}
 
-		index := file.NewSheet(responseData.UserData[0].BusinessUnit.Name)
+		index := file.NewSheet(summaryBusinessUnit.CalibratorBusinessUnitName)
 
 		headers := []string{
 			"No",
