@@ -147,6 +147,8 @@ func (u *userRepo) ListUserAdmin() ([]model.User, error) {
 		}).
 		Preload("BusinessUnit").
 		Select("u.*").
+		Joins("INNER JOIN calibrations c on u.id = c.calibrator_id").
+		Joins("JOIN projects p on p.id = c.project_id AND p.active = ?", true).
 		Where("u.id NOT IN (?)", subqueryResults).
 		Distinct().
 		Find(&users).Error
