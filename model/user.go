@@ -37,5 +37,5 @@ type User struct {
 	SpmoCalibrations       []Calibration `gorm:"foreignKey:SpmoID"`
 	CalibratorCalibrations []Calibration `gorm:"foreignKey:CalibratorID"`
 	AccessTokenGenerate    string        `gorm:"unique;type:uuid;default:gen_random_uuid()"`
-	SupervisorNames        string
+	// SupervisorNames        string
 }
