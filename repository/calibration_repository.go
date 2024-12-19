@@ -1041,6 +1041,7 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 		Preload("CalibrationScores.TopRemarks").
 		Preload("CalibrationScores.BottomRemark").
 		Select("u.*, u2.name as supervisor_names").
+		Distinct().
 		Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.calibrator_id = ? AND c1.deleted_at IS NULL AND c1.project_id = ?", spmoID, spmoID, spmoID, calibratorID, projectID).
 		Joins("JOIN project_phases pp ON pp.id = c1.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id AND p.order = ?", order).
