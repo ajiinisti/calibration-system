@@ -31,7 +31,7 @@ type CalibrationUsecase interface {
 	SaveCommentCalibration(payload *model.Calibration) error
 	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID, projectID string) error
 	SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID, projectID string) error
-	SpmoAcceptApproval(payload *request.AcceptJustification, projectID string) error
+	SpmoAcceptApproval(payload *request.AcceptJustification) error
 	SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error
 	SpmoRejectApproval(payload *request.RejectJustification) error
 	SpmoSubmit(payload *request.AcceptMultipleJustification) error
@@ -575,8 +575,8 @@ func (r *calibrationUsecase) SaveCommentCalibration(payload *model.Calibration) 
 	return r.repo.SaveCommentCalibration(payload)
 }
 
-func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustification, projectID string) error {
-	projectPhase, err := r.project.FindCalibratorPhase(payload.CalibratorID, projectID)
+func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustification) error {
+	projectPhase, err := r.project.FindCalibratorPhase(payload.CalibratorID, payload.ProjectID)
 	if err != nil {
 		return err
 	}

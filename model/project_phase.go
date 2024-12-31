@@ -6,7 +6,7 @@ type ProjectPhase struct {
 	BaseModel
 	Phase      Phase
 	PhaseID    string
-	Project    Project
+	Project    Project `json:"-"`
 	ProjectID  string
 	ReviewSpmo bool
 	StartDate  time.Time

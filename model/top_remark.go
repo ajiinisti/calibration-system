@@ -6,11 +6,11 @@ import (
 
 type TopRemark struct {
 	BaseModel
-	Project        Project `gorm:"foreignKey:ProjectID"`
+	Project        Project `gorm:"foreignKey:ProjectID" json:"-"`
 	ProjectID      string
-	Employee       User `gorm:"foreignKey:EmployeeID"`
+	Employee       User `gorm:"foreignKey:EmployeeID" json:"-"`
 	EmployeeID     string
-	ProjectPhase   ProjectPhase `gorm:"foreignKey:ProjectPhaseID"`
+	ProjectPhase   ProjectPhase `gorm:"foreignKey:ProjectPhaseID" json:"-"`
 	ProjectPhaseID string
 	Initiative     string
 	Description    string
@@ -22,4 +22,5 @@ type TopRemark struct {
 	Evidence       []byte `json:"-"`
 	IsProject      bool
 	IsInitiative   bool
+	EvidenceLink   string
 }

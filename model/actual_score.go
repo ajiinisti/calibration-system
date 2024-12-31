@@ -10,10 +10,10 @@ type ActualScore struct {
 	CreatedAt    time.Time      `gorm:"<-:create" json:"-"`
 	UpdatedAt    time.Time      `json:"-"`
 	DeletedAt    gorm.DeletedAt `json:"-"`
-	Project      Project
-	ProjectID    string `gorm:"primaryKey"`
-	Employee     User
-	EmployeeID   string `gorm:"primaryKey"`
+	Project      Project        `json:"-"`
+	ProjectID    string         `gorm:"primaryKey"`
+	Employee     User           `json:"-"`
+	EmployeeID   string         `gorm:"primaryKey"`
 	ActualScore  float64
 	ActualRating string
 	Y1Rating     string

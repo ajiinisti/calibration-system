@@ -261,13 +261,13 @@ func (r *CalibrationController) getAllActiveCalibrationsBySPMOIDHandler(c *gin.C
 
 func (r *CalibrationController) spmoAcceptApprovalHandler(c *gin.Context) {
 	var payload request.AcceptJustification
-	projectID := c.Param("projectID")
+	// projectID := c.Query("projectID")
 	if err := r.ParseRequestBody(c, &payload); err != nil {
 		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := r.uc.SpmoAcceptApproval(&payload, projectID); err != nil {
+	if err := r.uc.SpmoAcceptApproval(&payload); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -419,6 +419,6 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)
 	auth.POST("/calibrations/spmo/submit", controller.spmoSubmitHandler)
 	auth.DELETE("/calibrations/:projectID/:employeeID", controller.deleteHandler)
-	auth.POST("/projects/send-notificaition-first-calibrator", controller.sendNotificationFirstCalibratorHandler)
+	// auth.POST("/projects/send-notificaition-first-calibrator", controller.sendNotificationFirstCalibratorHandler)
 	return &controller
 }
