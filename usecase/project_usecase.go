@@ -25,14 +25,22 @@ type ProjectUsecase interface {
 	FindScoreDistributionByCalibratorID(businessUnitName, projectID string) (*model.Project, error)
 	FindRatingQuotaByCalibratorID(calibratorID, prevCalibrator, businessUnitID, types, projectID string, countCurrentUser int) (*response.RatingQuota, error)
 	FindTotalActualScoreByCalibratorID(calibratorID, prevCalibrator, businessUnitName, types, projectID string) (*response.TotalActualScore, error)
+	FindTotalCalibratedByCalibratorID(calibratorID, prevCalibrator, businessUnitName, types, projectID string) (*response.TotalCalibratedRating, error)
+	FindAverageScoreByCalibratorID(calibratorID, prevCalibrator, businessUnitName, types, projectID string) (float32, error)
+	FindAllEmployeeName(calibratorID, prevCalibrator, businessUnitName, types, projectID string) ([]string, error)
+	FindAllSupervisorName(calibratorID, prevCalibrator, businessUnitName, types, projectID string) ([]string, error)
+	FindAllGrade(calibratorID, prevCalibrator, businessUnitName, types, projectID string) ([]string, error)
 	FindSummaryProjectByCalibratorID(calibratorID, projectID string, prevCalibratorIDs []string) (*response.SummaryProject, error)
 	FindCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID string) (response.UserCalibration, error)
+	FindCalibrationsByBusinessUnitPaginate(calibratorID, businessUnit, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error)
 	FindCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID string) (response.UserCalibration, error)
+	FindCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, prevCalibrator, businessUnit, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error)
 	FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID string) (response.UserCalibration, error)
 	FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit, projectID string) (response.UserCalibration, error)
-	FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating, projectID string) (response.UserCalibration, error)
-	FindCalibrationsByBusinessUnitAndRating(calibratorID, prevCalibrator, rating, projectID string) (response.UserCalibration, error)
-	FindCalibrationsByRating(calibratorID, rating, projectID string) (response.UserCalibration, error)
+	FindNMinusOneCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, businessUnit, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error)
+	FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error)
+	FindCalibrationsByBusinessUnitAndRating(calibratorID, prevCalibrator, rating, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error)
+	FindCalibrationsByRating(calibratorID, rating, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error)
 	FindCalibratorPhase(calibratorID, projectID string) (*model.ProjectPhase, error)
 	FindActiveProjectPhase(projectID string) ([]model.ProjectPhase, error)
 	FindActiveManagerPhase() (model.ProjectPhase, error)
@@ -221,6 +229,26 @@ func (r *projectUsecase) FindTotalActualScoreByCalibratorID(calibratorID, prevCa
 	}
 
 	return &totalActualScore, nil
+}
+
+func (r *projectUsecase) FindTotalCalibratedByCalibratorID(calibratorID, prevCalibrator, businessUnitName, types, projectID string) (*response.TotalCalibratedRating, error) {
+	return r.repo.GetCalibratedRating(calibratorID, prevCalibrator, businessUnitName, types, projectID)
+}
+
+func (r *projectUsecase) FindAverageScoreByCalibratorID(calibratorID, prevCalibrator, businessUnitName, types, projectID string) (float32, error) {
+	return r.repo.GetAverageScore(calibratorID, prevCalibrator, businessUnitName, types, projectID)
+}
+
+func (r *projectUsecase) FindAllEmployeeName(calibratorID, prevCalibrator, businessUnitName, types, projectID string) ([]string, error) {
+	return r.repo.GetAllEmployeeName(calibratorID, prevCalibrator, businessUnitName, types, projectID)
+}
+
+func (r *projectUsecase) FindAllSupervisorName(calibratorID, prevCalibrator, businessUnitName, types, projectID string) ([]string, error) {
+	return r.repo.GetAllSupervisorName(calibratorID, prevCalibrator, businessUnitName, types, projectID)
+}
+
+func (r *projectUsecase) FindAllGrade(calibratorID, prevCalibrator, businessUnitName, types, projectID string) ([]string, error) {
+	return r.repo.GetAllGrade(calibratorID, prevCalibrator, businessUnitName, types, projectID)
 }
 
 func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectID string, prevCalibratorIDs []string) (*response.SummaryProject, error) {
@@ -598,6 +626,16 @@ func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnit(calibrator
 	return calibration, nil
 }
 
+func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, prevCalibrator, businessUnit, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
+	if err != nil {
+		return response.UserCalibrationNew{}, response.Paging{}, err
+	}
+
+	paginationQuery := utils.GetPaginationParams(param)
+	return r.repo.GetCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, prevCalibrator, businessUnit, projectID, phase, paginationQuery)
+}
+
 func (r *projectUsecase) FindCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID string) (response.UserCalibration, error) {
 	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
 	if err != nil {
@@ -609,6 +647,16 @@ func (r *projectUsecase) FindCalibrationsByBusinessUnit(calibratorID, businessUn
 		return response.UserCalibration{}, err
 	}
 	return calibration, nil
+}
+
+func (r *projectUsecase) FindCalibrationsByBusinessUnitPaginate(calibratorID, businessUnit, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
+	if err != nil {
+		return response.UserCalibrationNew{}, response.Paging{}, err
+	}
+
+	paginationQuery := utils.GetPaginationParams(param)
+	return r.repo.GetCalibrationsByBusinessUnitPaginate(calibratorID, businessUnit, projectID, phase, paginationQuery)
 }
 
 func (r *projectUsecase) FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID string) (response.UserCalibration, error) {
@@ -643,43 +691,44 @@ func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(c
 	return calibration, nil
 }
 
-func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating, projectID string) (response.UserCalibration, error) {
+func (r *projectUsecase) FindNMinusOneCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, businessUnit, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error) {
 	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
 	if err != nil {
-		return response.UserCalibration{}, err
+		return response.UserCalibrationNew{}, response.Paging{}, err
 	}
 
-	calibration, err := r.repo.GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating, projectID, phase)
-	if err != nil {
-		return response.UserCalibration{}, err
-	}
-	return calibration, nil
+	paginationQuery := utils.GetPaginationParams(param)
+	return r.repo.GetNMinusOneCalibrationsByBusinessUnitPaginate(businessUnit, phase, calibratorID, projectID, paginationQuery)
 }
 
-func (r *projectUsecase) FindCalibrationsByBusinessUnitAndRating(calibratorID, businessUnit, rating, projectID string) (response.UserCalibration, error) {
+func (r *projectUsecase) FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error) {
 	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
 	if err != nil {
-		return response.UserCalibration{}, err
+		return response.UserCalibrationNew{}, response.Paging{}, err
 	}
 
-	calibration, err := r.repo.GetCalibrationsByBusinessUnitAndRating(calibratorID, businessUnit, rating, projectID, phase)
-	if err != nil {
-		return response.UserCalibration{}, err
-	}
-	return calibration, nil
+	paginationQuery := utils.GetPaginationParams(param)
+	return r.repo.GetCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating, projectID, phase, paginationQuery)
 }
 
-func (r *projectUsecase) FindCalibrationsByRating(calibratorID, rating, projectID string) (response.UserCalibration, error) {
+func (r *projectUsecase) FindCalibrationsByBusinessUnitAndRating(calibratorID, businessUnit, rating, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error) {
 	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
 	if err != nil {
-		return response.UserCalibration{}, err
+		return response.UserCalibrationNew{}, response.Paging{}, err
 	}
 
-	calibration, err := r.repo.GetCalibrationsByRating(calibratorID, rating, projectID, phase)
+	paginationQuery := utils.GetPaginationParams(param)
+	return r.repo.GetCalibrationsByBusinessUnitAndRating(calibratorID, businessUnit, rating, projectID, phase, paginationQuery)
+}
+
+func (r *projectUsecase) FindCalibrationsByRating(calibratorID, rating, projectID string, param request.PaginationParam) (response.UserCalibrationNew, response.Paging, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
 	if err != nil {
-		return response.UserCalibration{}, err
+		return response.UserCalibrationNew{}, response.Paging{}, err
 	}
-	return calibration, nil
+
+	paginationQuery := utils.GetPaginationParams(param)
+	return r.repo.GetCalibrationsByRating(calibratorID, rating, projectID, phase, paginationQuery)
 }
 
 func (r *projectUsecase) FindSummaryProjectTotalByCalibratorID(calibratorID, projectID string) (*response.SummaryTotal, error) {
@@ -825,9 +874,9 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 	} else if types == "n-1" {
 		responseData, err = r.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit, projectID)
 	} else if types == "default" {
-		responseData, err = r.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID)
+		// responseData, err = r.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID)
 	} else {
-		responseData, err = r.FindCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID)
+		// responseData, err = r.FindCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID)
 	}
 	if err != nil {
 		return "", err

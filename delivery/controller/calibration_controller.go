@@ -169,6 +169,21 @@ func (r *CalibrationController) saveCalibrationsHandler(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, payload, "OK")
 }
 
+func (r *CalibrationController) changeScoreRatingHandler(c *gin.Context) {
+	var payload model.Calibration
+	if err := r.ParseRequestBody(c, &payload); err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := r.uc.SaveScoreAndRating(&payload); err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	r.NewSuccessSingleResponse(c, payload, "OK")
+}
+
 func (r *CalibrationController) saveCommentCalibrationHandler(c *gin.Context) {
 	var payload model.Calibration
 	if err := r.ParseRequestBody(c, &payload); err != nil {
@@ -187,52 +202,42 @@ func (r *CalibrationController) saveCommentCalibrationHandler(c *gin.Context) {
 func (r *CalibrationController) submitCalibrationsHandler(c *gin.Context) {
 	calibratorID := c.Param("calibratorID")
 	projectID := c.Param("projectID")
-	var payload request.CalibrationRequest
-	if err := r.ParseRequestBody(c, &payload); err != nil {
-		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
+	businessUnit := c.Param("businessUnit")
 
-	if err := r.uc.SubmitCalibrations(&payload, calibratorID, projectID); err != nil {
+	if err := r.uc.SubmitCalibrations(calibratorID, projectID, businessUnit); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	r.NewSuccessSingleResponse(c, payload, "OK")
+	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
 func (r *CalibrationController) sendCalibrationToManagerHandler(c *gin.Context) {
 	calibratorID := c.Query("calibratorID")
 	projectID := c.Query("projectID")
-	var payload request.CalibrationRequest
-	if err := r.ParseRequestBody(c, &payload); err != nil {
-		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
+	prevCalibrator := c.Query("prevCalibrator")
+	businessUnit := c.Query("businessUnit")
 
-	if err := r.uc.SendCalibrationsToManager(&payload, calibratorID, projectID); err != nil {
+	if err := r.uc.SendCalibrationsToManager(calibratorID, projectID, prevCalibrator, businessUnit); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	r.NewSuccessSingleResponse(c, payload, "OK")
+	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
 func (r *CalibrationController) sendBackCalibrationsToOnePhaseBeforeHandler(c *gin.Context) {
 	calibratorID := c.Query("calibratorID")
 	projectID := c.Query("projectID")
-	var payload request.CalibrationRequest
-	if err := r.ParseRequestBody(c, &payload); err != nil {
-		r.NewFailedResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
+	prevCalibrator := c.Query("prevCalibrator")
+	businessUnit := c.Query("businessUnit")
 
-	if err := r.uc.SendBackCalibrationsToOnePhaseBefore(&payload, calibratorID, projectID); err != nil {
+	if err := r.uc.SendBackCalibrationsToOnePhaseBefore(calibratorID, projectID, prevCalibrator, businessUnit); err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	r.NewSuccessSingleResponse(c, payload, "OK")
+	r.NewSuccessSingleResponse(c, "", "OK")
 }
 
 func (r *CalibrationController) getSummaryCalibrationsBySPMOIDHandler(c *gin.Context) {
@@ -389,6 +394,19 @@ func (r *CalibrationController) getRatingQuotaSPMOHandlerByID(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
+func (r *CalibrationController) getLatestJustificationHandler(c *gin.Context) {
+	projectID := c.Query("projectID")
+	calibratorID := c.Query("calibratorID")
+	employeeID := c.Query("employeeID")
+
+	calibrations, err := r.uc.FindLatestJustification(projectID, calibratorID, employeeID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, calibrations, "OK")
+}
+
 func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessToken, uc usecase.CalibrationUsecase) *CalibrationController {
 	controller := CalibrationController{
 		router:       r,
@@ -403,6 +421,7 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.GET("/calibrations/spmo/:spmoID", controller.getAllActiveCalibrationsBySPMOIDHandler)
 	auth.GET("/calibrations/spmo/:spmoID/:calibratorID/:businessUnitID/:order/:projectID", controller.getAllDetailActiveCalibrations2BySPMOIDHandler)
 	auth.GET("/calibrations/spmo/rating-quota/:spmoID/:calibratorID/:businessUnitID/:order/:projectID", controller.getRatingQuotaSPMOHandlerByID)
+	auth.GET("/calibrations/get-latest-justification", controller.getLatestJustificationHandler)
 	auth.PUT("/calibrations", controller.updateHandler)
 	auth.POST("/calibrations", controller.createHandler)
 	auth.POST("/calibrations-user", controller.createByUserHandler)
@@ -411,7 +430,8 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/upload-calibrator", controller.uploadCalibratorHandler)
 	auth.POST("/calibrations/save-comment", controller.saveCommentCalibrationHandler)
 	auth.POST("/calibrations/save-calibrations", controller.saveCalibrationsHandler)
-	auth.POST("/calibrations/submit-calibrations/:calibratorID/:projectID", controller.submitCalibrationsHandler)
+	auth.POST("/calibrations/change-score-and-rating", controller.changeScoreRatingHandler)
+	auth.POST("/calibrations/submit-calibrations/:calibratorID/:projectID/:businessUnit", controller.submitCalibrationsHandler)
 	auth.POST("/calibrations/send-calibration-to-manager", controller.sendCalibrationToManagerHandler)
 	auth.POST("/calibrations/send-calibrations-back", controller.sendBackCalibrationsToOnePhaseBeforeHandler)
 	auth.POST("/calibrations/accept-approval", controller.spmoAcceptApprovalHandler)

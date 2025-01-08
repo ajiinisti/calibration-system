@@ -26,11 +26,12 @@ type CalibrationUsecase interface {
 	CheckEmployee(file *multipart.FileHeader, projectId string) ([]string, error)
 	CheckCalibrator(file *multipart.FileHeader, projectId string) ([]string, error)
 	BulkInsert(file *multipart.FileHeader, projectId string) error
-	SubmitCalibrations(payload *request.CalibrationRequest, calibratorID, projectID string) error
+	SubmitCalibrations(calibratorID, projectID, businessUnit string) error
 	SaveCalibrations(payload *request.CalibrationRequest) error
 	SaveCommentCalibration(payload *model.Calibration) error
-	SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID, projectID string) error
-	SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID, projectID string) error
+	SaveScoreAndRating(payload *model.Calibration) error
+	SendCalibrationsToManager(calibratorID, projectID, prevCalibrator, businessUnit string) error
+	SendBackCalibrationsToOnePhaseBefore(calibratorID, projectID, prevCalibrator, businessUnit string) error
 	SpmoAcceptApproval(payload *request.AcceptJustification) error
 	SpmoAcceptMultipleApproval(payload *request.AcceptMultipleJustification) error
 	SpmoRejectApproval(payload *request.RejectJustification) error
@@ -40,6 +41,7 @@ type CalibrationUsecase interface {
 	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, projectID string, order int) ([]response.UserResponse, error)
 	SendNotificationToCurrentCalibrator() ([]response.NotificationModel, error)
 	FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID, projectID string, order int) (*response.RatingQuota, error)
+	FindLatestJustification(projectID, calibratorID, employeeID string) ([]model.SeeCalibrationJustification, error)
 }
 
 type calibrationUsecase struct {
@@ -49,6 +51,10 @@ type calibrationUsecase struct {
 	projectPhase ProjectPhaseUsecase
 	notification NotificationUsecase
 	actualScore  ActualScoreUsecase
+}
+
+func (r *calibrationUsecase) FindLatestJustification(projectID, calibratorID, employeeID string) ([]model.SeeCalibrationJustification, error) {
+	return r.repo.GetLatestJustification(projectID, calibratorID, employeeID)
 }
 
 func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() ([]response.NotificationModel, error) {
@@ -397,12 +403,20 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 				// if err != nil {
 				// 	return fmt.Errorf("HRBP ID not available in database %s", row[lenProjectPhase+2])
 				// }
+				score, err := r.actualScore.FindById(projectId, employee.ID)
+				if err != nil {
+					return fmt.Errorf("Employee %s doesn't have actual score inputted", row[0])
+				}
+
 				cali := model.Calibration{
-					ProjectID:      projectId,
-					ProjectPhaseID: phases[j-1],
-					EmployeeID:     employee.ID,
-					CalibratorID:   calibratorId,
-					SpmoID:         spmo.ID,
+					ProjectID:           projectId,
+					ProjectPhaseID:      phases[j-1],
+					EmployeeID:          employee.ID,
+					CalibratorID:        calibratorId,
+					SpmoID:              spmo.ID,
+					CalibrationRating:   score.ActualRating,
+					CalibrationScore:    score.ActualScore,
+					FilledTopBottomMark: true,
 					// HrbpID:         hrbp.ID,
 				}
 
@@ -441,97 +455,158 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 		}
 
 		if calibrations[len(calibrations)-1].ProjectPhaseID == phaseOne.ID {
+			justificationType := returnRemarkType(calibrations[len(calibrations)-2].CalibrationRating, project.RemarkSettings)
 			calibrations[len(calibrations)-2].Status = "Calibrate"
+			calibrations[len(calibrations)-2].JustificationType = justificationType
+			if justificationType != "default" {
+				calibrations[len(calibrations)-2].FilledTopBottomMark = false
+			}
+			fmt.Println("=========================ISI TOP BOTTOMNYA=====================", justificationType, calibrations[len(calibrations)-2].FilledTopBottomMark)
 		} else {
+			justificationType := returnRemarkType(calibrations[len(calibrations)-1].CalibrationRating, project.RemarkSettings)
 			calibrations[len(calibrations)-1].Status = "Calibrate"
+			calibrations[len(calibrations)-1].JustificationType = justificationType
+			if justificationType != "default" {
+				calibrations[len(calibrations)-1].FilledTopBottomMark = false
+			}
+			fmt.Println("=========================ISI TOP BOTTOMNYA=====================", justificationType, calibrations[len(calibrations)-1].FilledTopBottomMark)
 		}
 	}
 
 	return r.repo.Bulksave(&calibrations)
 }
 
-func (r *calibrationUsecase) SubmitCalibrations(payload *request.CalibrationRequest, calibratorID, projectID string) error {
+func returnRemarkType(score string, projectRemark []model.RemarkSetting) string {
+	value := "default"
+	for _, data := range projectRemark {
+		if data.JustificationType == "top" {
+			if data.ScoringType == "rating" {
+				if score == data.From && score == data.To {
+					value = "top"
+					break
+				}
+			}
+		} else if data.JustificationType == "bottom" {
+			if data.ScoringType == "rating" {
+				if score == data.From && score == data.To {
+					value = "bottom"
+					break
+				}
+			}
+		}
+	}
+	return value
+}
+
+func (r *calibrationUsecase) SubmitCalibrations(calibratorID, projectID, businessUnit string) error {
 	projectPhase, err := r.project.FindCalibratorPhase(calibratorID, projectID)
 	if err != nil {
 		return err
 	}
 
-	spmoIDs, nextCalibrator, err := r.repo.BulkUpdate(payload, *projectPhase)
+	payload, err := r.project.FindCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID)
 	if err != nil {
 		return err
 	}
 
-	calibrator, err := r.user.FindById(calibratorID)
+	totalCalibrated, err := r.project.FindTotalCalibratedByCalibratorID(calibratorID, "", businessUnit, "all", projectID)
 	if err != nil {
 		return err
 	}
 
-	if projectPhase.ReviewSpmo {
-		mapSpmo := make(map[string]*model.User)
-		for _, spmoID := range spmoIDs {
-			spmo, err := r.user.FindById(spmoID)
-			if err != nil {
-				return err
-			}
+	totalRatingQuota, err := r.project.FindRatingQuotaByCalibratorID(calibratorID, "", businessUnit, "all", projectID, 0)
+	if err != nil {
+		return err
+	}
 
-			if _, ok := mapSpmo[spmo.ID]; !ok {
-				mapSpmo[spmo.ID] = spmo
-			}
-		}
+	checkCondition, err := r.repo.CheckConditionBeforeSubmitCalibration(projectID, payload.UserData, *projectPhase, *totalCalibrated, *totalRatingQuota)
+	if err != nil {
+		return err
+	}
 
-		var listSpmo []*model.User
-		for _, data := range mapSpmo {
-			listSpmo = append(listSpmo, data)
-		}
-
-		err = r.notification.NotifySubmittedCalibrationToSpmo(calibrator, listSpmo, projectPhase.Phase.Order, projectID)
+	if checkCondition {
+		spmoIDs, nextCalibrator, err := r.repo.BulkUpdate(payload.UserData, *projectPhase, projectID)
 		if err != nil {
 			return err
 		}
-		return nil
-	}
 
-	nCalibrator := make(map[string]response.NotificationModel)
-	for _, requestData := range nextCalibrator {
-		if _, ok := nCalibrator[requestData.CalibratorID]; !ok {
-			nCalibrator[requestData.CalibratorID] = response.NotificationModel{
-				CalibratorID:           requestData.CalibratorID,
-				ProjectPhase:           requestData.ProjectPhase,
-				Deadline:               requestData.Deadline,
-				PreviousCalibrator:     calibrator.Name,
-				PreviousCalibratorID:   calibratorID,
-				PreviousBusinessUnitID: *calibrator.BusinessUnitId,
+		calibrator, err := r.user.FindById(calibratorID)
+		if err != nil {
+			return err
+		}
+
+		if projectPhase.ReviewSpmo {
+			mapSpmo := make(map[string]*model.User)
+			for _, spmoID := range spmoIDs {
+				spmo, err := r.user.FindById(spmoID)
+				if err != nil {
+					return err
+				}
+
+				if _, ok := mapSpmo[spmo.ID]; !ok {
+					mapSpmo[spmo.ID] = spmo
+				}
+			}
+
+			var listSpmo []*model.User
+			for _, data := range mapSpmo {
+				listSpmo = append(listSpmo, data)
+			}
+
+			err = r.notification.NotifySubmittedCalibrationToSpmo(calibrator, listSpmo, projectPhase.Phase.Order, projectID)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		nCalibrator := make(map[string]response.NotificationModel)
+		for _, requestData := range nextCalibrator {
+			if _, ok := nCalibrator[requestData.CalibratorID]; !ok {
+				nCalibrator[requestData.CalibratorID] = response.NotificationModel{
+					CalibratorID:           requestData.CalibratorID,
+					ProjectPhase:           requestData.ProjectPhase,
+					Deadline:               requestData.Deadline,
+					PreviousCalibrator:     calibrator.Name,
+					PreviousCalibratorID:   calibratorID,
+					PreviousBusinessUnitID: *calibrator.BusinessUnitId,
+				}
 			}
 		}
-	}
 
-	var uniqueNextCalibrator []response.NotificationModel
-	for _, data := range nCalibrator {
-		uniqueNextCalibrator = append(uniqueNextCalibrator, data)
-	}
+		var uniqueNextCalibrator []response.NotificationModel
+		for _, data := range nCalibrator {
+			uniqueNextCalibrator = append(uniqueNextCalibrator, data)
+		}
 
-	err = r.notification.NotifySubmittedCalibrationToNextCalibratorsWithoutReview(response.NotificationModel{
-		CalibratorID: calibratorID,
-		// PreviousCalibratorID: ,
-	})
-	if err != nil {
-		return err
-	}
+		err = r.notification.NotifySubmittedCalibrationToNextCalibratorsWithoutReview(response.NotificationModel{
+			CalibratorID: calibratorID,
+			// PreviousCalibratorID: ,
+		})
+		if err != nil {
+			return err
+		}
 
-	err = r.notification.NotifyNextCalibrators(uniqueNextCalibrator)
-	if err != nil {
-		return err
+		err = r.notification.NotifyNextCalibrators(uniqueNextCalibrator)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.CalibrationRequest, calibratorID, projectID string) error {
+func (r *calibrationUsecase) SendCalibrationsToManager(calibratorID, projectID, prevCalibrator, businessUnit string) error {
 	projectPhase, err := r.project.FindCalibratorPhase(calibratorID, projectID)
 	if err != nil {
 		return err
 	}
 
-	managerCalibratorIDs, projectPhaseId, err := r.repo.UpdateManagerCalibrations(payload, *projectPhase)
+	projectData, err := r.project.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID)
+	if err != nil {
+		return err
+	}
+
+	managerCalibratorIDs, projectPhaseId, err := r.repo.UpdateManagerCalibrations(projectData.UserData, *projectPhase)
 	if err != nil {
 		return err
 	}
@@ -549,13 +624,18 @@ func (r *calibrationUsecase) SendCalibrationsToManager(payload *request.Calibrat
 	return nil
 }
 
-func (r *calibrationUsecase) SendBackCalibrationsToOnePhaseBefore(payload *request.CalibrationRequest, calibratorID, projectID string) error {
+func (r *calibrationUsecase) SendBackCalibrationsToOnePhaseBefore(calibratorID, projectID, prevCalibrator, businessUnit string) error {
 	projectPhase, err := r.project.FindCalibratorPhase(calibratorID, projectID)
 	if err != nil {
 		return err
 	}
 
-	managerCalibratorIDs, err := r.repo.UpdateCalibrationsOnePhaseBefore(payload, *projectPhase)
+	projectData, err := r.project.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID)
+	if err != nil {
+		return err
+	}
+
+	managerCalibratorIDs, err := r.repo.UpdateCalibrationsOnePhaseBefore(projectData.UserData, *projectPhase)
 	if err != nil {
 		return err
 	}
@@ -573,6 +653,10 @@ func (r *calibrationUsecase) SaveCalibrations(payload *request.CalibrationReques
 
 func (r *calibrationUsecase) SaveCommentCalibration(payload *model.Calibration) error {
 	return r.repo.SaveCommentCalibration(payload)
+}
+
+func (r *calibrationUsecase) SaveScoreAndRating(payload *model.Calibration) error {
+	return r.repo.SaveScoreAndRating(payload)
 }
 
 func (r *calibrationUsecase) SpmoAcceptApproval(payload *request.AcceptJustification) error {

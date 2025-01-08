@@ -23,9 +23,8 @@ type UserResponse struct {
 	Position          string
 	Directorate       string
 	ScoringMethod     string
-	Roles             []model.Role          `gorm:"many2many:user_roles"`
-	ActualScores      []ActualScoreResponse `gorm:"foreignKey:EmployeeID"`
-	CalibrationScores []CalibrationResponse `gorm:"foreignKey:EmployeeID"`
+	ActualScores      []model.ActualScore `gorm:"foreignKey:EmployeeID"`
+	CalibrationScores []model.Calibration `gorm:"foreignKey:EmployeeID"`
 }
 
 type ActualScoreResponse struct {
@@ -100,4 +99,11 @@ type UserCalibration struct {
 	SendToManager       bool
 	SendBackCalibration bool
 	UserData            []UserResponse
+}
+
+type UserCalibrationNew struct {
+	NPlusOneManager     bool
+	SendToManager       bool
+	SendBackCalibration bool
+	UserData            []model.UserCalibration
 }

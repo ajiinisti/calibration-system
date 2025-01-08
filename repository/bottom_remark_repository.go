@@ -31,8 +31,21 @@ func (r *bottomRemarkRepo) Save(payload *model.BottomRemark, projectPhases []mod
 		return err.Error
 	}
 
+	err = tx.Model(&model.Calibration{}).
+		Where("project_id = ? AND project_phase_id = ? AND employee_id = ?",
+			payload.ProjectID,
+			payload.ProjectPhaseID,
+			payload.EmployeeID,
+		).Updates(map[string]interface{}{
+		"filled_top_bottom_mark": true,
+	})
+	if err.Error != nil {
+		tx.Rollback()
+		return err.Error
+	}
+
 	for _, projectPhase := range projectPhases {
-		var calibrations []model.Calibration
+		var calibrations []*model.Calibration
 		err := r.db.
 			Table("calibrations c").
 			Where("c.employee_id = ? AND c.project_id = ? AND c.project_phase_id = ?", payload.EmployeeID, payload.ProjectID, projectPhase.ID).
@@ -55,6 +68,13 @@ func (r *bottomRemarkRepo) Save(payload *model.BottomRemark, projectPhases []mod
 	}
 
 	tx.Commit()
+
+	go func() {
+		err := r.db.Exec("REFRESH MATERIALIZED VIEW materialized_user_view;").Error
+		if err != nil {
+			fmt.Printf("Failed to refresh materialized view: %v", err)
+		}
+	}()
 	return nil
 }
 

@@ -60,9 +60,19 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []mod
 			return err.Error
 		}
 
+		err = tx.Model(&model.Calibration{}).
+			Where("project_id = ? AND project_phase_id = ? AND employee_id = ?",
+				remarks.ProjectID,
+				remarks.ProjectPhaseID,
+				remarks.EmployeeID,
+			).Updates(map[string]interface{}{
+			"filled_top_bottom_mark": true,
+		})
+		if err.Error != nil {
+			tx.Rollback()
+			return err.Error
+		}
 	}
-
-	// fmt.Println("banyak projectPhase", len(projectPhases))
 
 	for _, projectPhase := range projectPhases {
 		topRemarks, err := r.Get(payload[0].ProjectID, payload[0].EmployeeID, projectPhase.ID)
@@ -70,8 +80,6 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []mod
 			tx.Rollback()
 			return err
 		}
-
-		// fmt.Println("banyak founded now", len(topRemarks))
 
 		if len(topRemarks) > 0 {
 			err := r.Delete(payload[0].ProjectID, payload[0].EmployeeID, projectPhase.ID)
@@ -81,16 +89,10 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []mod
 			}
 		}
 
-		// allJustification, err := r.Get(payload[0].ProjectID, payload[0].EmployeeID, payload[0].ProjectPhaseID)
-		// if err != nil {
-		// 	tx.Rollback()
-		// 	return err
-		// }
-
-		var calibrations []model.Calibration
+		var calibrations []*model.Calibration
 		err = tx.
 			Table("calibrations c").
-			Where("c.employee_id = ? AND c.project_id = ? AND c.project_phase_id = ?", payload[0].EmployeeID, payload[0].ProjectID, projectPhase.ID).
+			Where("c.employee_id = ? AND c.project_id = ? AND c.project_phase_id = ? AND c.deleted_at is NULL", payload[0].EmployeeID, payload[0].ProjectID, projectPhase.ID).
 			Find(&calibrations).
 			Error
 		if err != nil {
@@ -110,10 +112,16 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []mod
 				}
 			}
 		}
-
 	}
 
 	tx.Commit()
+
+	go func() {
+		err := r.db.Exec("REFRESH MATERIALIZED VIEW materialized_user_view;").Error
+		if err != nil {
+			fmt.Printf("Failed to refresh materialized view: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -154,7 +162,7 @@ func (r *topRemarkRepo) Delete(projectID, employeeID, projectPhaseID string) err
 	}
 
 	// Delete the record based on the specified conditions
-	result := r.db.Unscoped().Where(&conditions).Delete(&model.TopRemark{})
+	result := r.db.Where(&conditions).Delete(&model.TopRemark{})
 	if result.Error != nil {
 		return result.Error
 	} else if result.RowsAffected == 0 {

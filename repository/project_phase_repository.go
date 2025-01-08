@@ -71,7 +71,7 @@ func (r *projectProjectPhaseRepo) ListActiveProjectPhaseHigherThanID(id string) 
 		Table("project_phases pp").
 		Preload("Phase").
 		Preload("Project").
-		Joins("JOIN projects pr ON pr.id = pp.project_id AND pr.active = true").
+		Joins("JOIN projects pr ON pr.id = pp.project_id AND pr.id =?", projectPhase.ProjectID).
 		Joins("JOIN phases p ON p.id = pp.phase_id").
 		Where("p.order > ?", projectPhase.Phase.Order).
 		Order("p.order ASC").

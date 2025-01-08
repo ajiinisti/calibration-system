@@ -219,6 +219,76 @@ func (r *ProjectController) getTotalActualScoreHandlerByID(c *gin.Context) {
 	r.NewSuccessSingleResponse(c, projects, "OK")
 }
 
+func (r *ProjectController) getTotalCalibratedHandlerByID(c *gin.Context) {
+	id := c.Query("calibratorID")
+	prevCalibrator := c.Query("prevCalibrator")
+	businessUnit := c.Query("businessUnit")
+	types := c.Query("type")
+	projectID := c.Query("projectID")
+	projects, err := r.uc.FindTotalCalibratedByCalibratorID(id, prevCalibrator, businessUnit, types, projectID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getAverageScoreHandlerByID(c *gin.Context) {
+	id := c.Query("calibratorID")
+	prevCalibrator := c.Query("prevCalibrator")
+	businessUnit := c.Query("businessUnit")
+	types := c.Query("type")
+	projectID := c.Query("projectID")
+	projects, err := r.uc.FindAverageScoreByCalibratorID(id, prevCalibrator, businessUnit, types, projectID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getEmployeeNameHandler(c *gin.Context) {
+	id := c.Query("calibratorID")
+	prevCalibrator := c.Query("prevCalibrator")
+	businessUnit := c.Query("businessUnit")
+	types := c.Query("type")
+	projectID := c.Query("projectID")
+	projects, err := r.uc.FindAllEmployeeName(id, prevCalibrator, businessUnit, types, projectID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getSupervisorNameHandler(c *gin.Context) {
+	id := c.Query("calibratorID")
+	prevCalibrator := c.Query("prevCalibrator")
+	businessUnit := c.Query("businessUnit")
+	types := c.Query("type")
+	projectID := c.Query("projectID")
+	projects, err := r.uc.FindAllSupervisorName(id, prevCalibrator, businessUnit, types, projectID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
+func (r *ProjectController) getGradeHandler(c *gin.Context) {
+	id := c.Query("calibratorID")
+	prevCalibrator := c.Query("prevCalibrator")
+	businessUnit := c.Query("businessUnit")
+	types := c.Query("type")
+	projectID := c.Query("projectID")
+	projects, err := r.uc.FindAllGrade(id, prevCalibrator, businessUnit, types, projectID)
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	r.NewSuccessSingleResponse(c, projects, "OK")
+}
+
 func (r *ProjectController) getSummaryProjectByCalibratorID(c *gin.Context) {
 	id := c.Query("calibratorID")
 	projectID := c.Query("projectID")
@@ -241,7 +311,57 @@ func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnit(c *gin.C
 	prevCalibrator := c.Query("prevCalibrator")
 	businessUnit := c.Query("businessUnit")
 	projectID := c.Query("projectID")
-	projects, err := r.uc.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID)
+
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+
+	supervisorNames := c.Query("supervisorNames")
+	var supervisorList []string
+	if supervisorNames != "" {
+		supervisorList = strings.Split(supervisorNames, ";")
+	}
+
+	employeeNames := c.Query("employeeNames")
+	var employeeList []string
+	if employeeNames != "" {
+		employeeList = strings.Split(employeeNames, ";")
+	}
+
+	grades := c.Query("grades")
+	var grade []string
+	if grades != "" {
+		grade = strings.Split(grades, ";")
+	}
+
+	OrderEmployeeName := c.Query("orderEmployeeName")
+	OrderGrade := c.Query("orderGrade")
+	OrderCalibrationScore := c.Query("orderCalibrationScore")
+	OrderCalibrationRating := c.Query("orderCalibrationRating")
+	filterCalibrationRating := c.Query("filterCalibrationRating")
+
+	param := request.PaginationParam{
+		Page:                    page,
+		Limit:                   limit,
+		Offset:                  0,
+		Name:                    "",
+		SupervisorName:          supervisorList,
+		Grade:                   grade,
+		EmployeeName:            employeeList,
+		OrderGrade:              OrderGrade,
+		OrderEmployeeName:       OrderEmployeeName,
+		OrderCalibrationScore:   OrderCalibrationScore,
+		OrderCalibrationRating:  OrderCalibrationRating,
+		FilterCalibrationRating: filterCalibrationRating,
+		RatingChanged:           0,
+	}
+
+	projects, pagination, err := r.uc.FindCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, prevCalibrator, businessUnit, projectID, param)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -254,14 +374,64 @@ func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnit(c *gin.C
 			}
 		}
 	}
-	r.NewSuccessSingleResponse(c, projects, "OK")
+	r.NewSuccesPagedResponse(c, []interface{}{projects}, "OK", pagination)
 }
 
 func (r *ProjectController) getCalibrationsByBusinessUnit(c *gin.Context) {
 	calibratorID := c.Query("calibratorID")
 	businessUnit := c.Query("businessUnit")
 	projectID := c.Query("projectID")
-	projects, err := r.uc.FindCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID)
+
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+
+	supervisorNames := c.Query("supervisorNames")
+	var supervisorList []string
+	if supervisorNames != "" {
+		supervisorList = strings.Split(supervisorNames, ";")
+	}
+
+	employeeNames := c.Query("employeeNames")
+	var employeeList []string
+	if employeeNames != "" {
+		employeeList = strings.Split(employeeNames, ";")
+	}
+
+	grades := c.Query("grades")
+	var grade []string
+	if grades != "" {
+		grade = strings.Split(grades, ";")
+	}
+
+	OrderEmployeeName := c.Query("orderEmployeeName")
+	OrderGrade := c.Query("orderGrade")
+	OrderCalibrationScore := c.Query("orderCalibrationScore")
+	OrderCalibrationRating := c.Query("orderCalibrationRating")
+	filterCalibrationRating := c.Query("filterCalibrationRating")
+
+	param := request.PaginationParam{
+		Page:                    page,
+		Limit:                   limit,
+		Offset:                  0,
+		Name:                    "",
+		SupervisorName:          supervisorList,
+		Grade:                   grade,
+		EmployeeName:            employeeList,
+		OrderGrade:              OrderGrade,
+		OrderEmployeeName:       OrderEmployeeName,
+		OrderCalibrationScore:   OrderCalibrationScore,
+		OrderCalibrationRating:  OrderCalibrationRating,
+		FilterCalibrationRating: filterCalibrationRating,
+		RatingChanged:           0,
+	}
+
+	projects, pagination, err := r.uc.FindCalibrationsByBusinessUnitPaginate(calibratorID, businessUnit, projectID, param)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -274,7 +444,7 @@ func (r *ProjectController) getCalibrationsByBusinessUnit(c *gin.Context) {
 			}
 		}
 	}
-	r.NewSuccessSingleResponse(c, projects, "OK")
+	r.NewSuccesPagedResponse(c, []interface{}{projects}, "OK", pagination)
 }
 
 func (r *ProjectController) getNumberOneCalibrationsByPrevCalibratorBusinessUnit(c *gin.Context) {
@@ -302,7 +472,57 @@ func (r *ProjectController) getNMinusOneCalibrationsByPrevCalibratorBusinessUnit
 	calibratorID := c.Query("calibratorID")
 	businessUnit := c.Query("businessUnit")
 	projectID := c.Query("projectID")
-	projects, err := r.uc.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit, projectID)
+
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+
+	supervisorNames := c.Query("supervisorNames")
+	var supervisorList []string
+	if supervisorNames != "" {
+		supervisorList = strings.Split(supervisorNames, ";")
+	}
+
+	employeeNames := c.Query("employeeNames")
+	var employeeList []string
+	if employeeNames != "" {
+		employeeList = strings.Split(employeeNames, ";")
+	}
+
+	grades := c.Query("grades")
+	var grade []string
+	if grades != "" {
+		grade = strings.Split(grades, ";")
+	}
+
+	OrderEmployeeName := c.Query("OrderEmployeeName")
+	OrderGrade := c.Query("OrderGrade")
+	OrderCalibrationScore := c.Query("orderCalibrationScore")
+	OrderCalibrationRating := c.Query("orderCalibrationRating")
+	filterCalibrationRating := c.Query("filterCalibrationRating")
+
+	param := request.PaginationParam{
+		Page:                    page,
+		Limit:                   limit,
+		Offset:                  0,
+		Name:                    "",
+		SupervisorName:          supervisorList,
+		Grade:                   grade,
+		EmployeeName:            employeeList,
+		OrderGrade:              OrderGrade,
+		OrderEmployeeName:       OrderEmployeeName,
+		OrderCalibrationScore:   OrderCalibrationScore,
+		OrderCalibrationRating:  OrderCalibrationRating,
+		FilterCalibrationRating: filterCalibrationRating,
+		RatingChanged:           0,
+	}
+
+	projects, pagination, err := r.uc.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, businessUnit, projectID, param)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -315,7 +535,7 @@ func (r *ProjectController) getNMinusOneCalibrationsByPrevCalibratorBusinessUnit
 			}
 		}
 	}
-	r.NewSuccessSingleResponse(c, projects, "OK")
+	r.NewSuccesPagedResponse(c, []interface{}{projects}, "OK", pagination)
 }
 
 func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnitAndRating(c *gin.Context) {
@@ -324,7 +544,23 @@ func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnitAndRating
 	businessUnit := c.Query("businessUnit")
 	rating := c.Query("rating")
 	projectID := c.Query("projectID")
-	projects, err := r.uc.FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating, projectID)
+
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+	param := request.PaginationParam{
+		Page:   page,
+		Limit:  limit,
+		Offset: 0,
+		Name:   "",
+	}
+
+	projects, pagination, err := r.uc.FindCalibrationsByPrevCalibratorBusinessUnitAndRating(calibratorID, prevCalibrator, businessUnit, rating, projectID, param)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -337,7 +573,7 @@ func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnitAndRating
 			}
 		}
 	}
-	r.NewSuccessSingleResponse(c, projects, "OK")
+	r.NewSuccesPagedResponse(c, []interface{}{projects}, "OK", pagination)
 }
 
 func (r *ProjectController) getCalibrationsByBusinessUnitAndRating(c *gin.Context) {
@@ -345,7 +581,23 @@ func (r *ProjectController) getCalibrationsByBusinessUnitAndRating(c *gin.Contex
 	businessUnit := c.Query("businessUnit")
 	projectID := c.Query("projectID")
 	rating := c.Query("rating")
-	projects, err := r.uc.FindCalibrationsByBusinessUnitAndRating(calibratorID, businessUnit, rating, projectID)
+
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+	param := request.PaginationParam{
+		Page:   page,
+		Limit:  limit,
+		Offset: 0,
+		Name:   "",
+	}
+
+	projects, pagination, err := r.uc.FindCalibrationsByBusinessUnitAndRating(calibratorID, businessUnit, rating, projectID, param)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -359,14 +611,30 @@ func (r *ProjectController) getCalibrationsByBusinessUnitAndRating(c *gin.Contex
 		}
 	}
 
-	r.NewSuccessSingleResponse(c, projects, "OK")
+	r.NewSuccesPagedResponse(c, []interface{}{projects}, "OK", pagination)
 }
 
 func (r *ProjectController) getCalibrationsByRating(c *gin.Context) {
 	calibratorID := c.Query("calibratorID")
 	projectID := c.Query("projectID")
 	rating := c.Query("rating")
-	projects, err := r.uc.FindCalibrationsByRating(calibratorID, rating, projectID)
+
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid page number")
+	}
+	limit, err := strconv.Atoi(c.Query("limit"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid limit number")
+	}
+	param := request.PaginationParam{
+		Page:   page,
+		Limit:  limit,
+		Offset: 0,
+		Name:   "",
+	}
+
+	projects, pagination, err := r.uc.FindCalibrationsByRating(calibratorID, rating, projectID, param)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -379,7 +647,8 @@ func (r *ProjectController) getCalibrationsByRating(c *gin.Context) {
 			}
 		}
 	}
-	r.NewSuccessSingleResponse(c, projects, "OK")
+
+	r.NewSuccesPagedResponse(c, []interface{}{projects}, "OK", pagination)
 }
 
 func (r *ProjectController) getSummaryTotalProjectByCalibrator(c *gin.Context) {
@@ -518,6 +787,11 @@ func NewProjectController(r *gin.Engine, tokenService authenticator.AccessToken,
 	auth.GET("/projects/score-distribution", controller.getScoreDistributionHandlerByID) // BELUM
 	auth.GET("/projects/rating-quota", controller.getRatingQuotaHandlerByID)
 	auth.GET("/projects/total-actual-score", controller.getTotalActualScoreHandlerByID)
+	auth.GET("/projects/total-calibrated", controller.getTotalCalibratedHandlerByID)
+	auth.GET("/projects/average-score", controller.getAverageScoreHandlerByID)
+	auth.GET("/projects/employee-name-filter", controller.getEmployeeNameHandler)
+	auth.GET("/projects/supervisor-name-filter", controller.getSupervisorNameHandler)
+	auth.GET("/projects/grade-filter", controller.getGradeHandler)
 	auth.GET("/projects/summary-calibration", controller.getSummaryProjectByCalibratorID)
 	auth.GET("/projects/calibrations", controller.getCalibrationsByPrevCalibratorBusinessUnit)
 	auth.GET("/projects/calibrations-all-bu", controller.getCalibrationsByBusinessUnit)
