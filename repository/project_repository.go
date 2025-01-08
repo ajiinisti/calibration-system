@@ -357,14 +357,12 @@ func (r *projectRepo) GetAllUserCalibrationByCalibratorID(calibratorID, projectI
 		Table("materialized_user_view").
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
-				Joins("JOIN projects ON calibrations.project_id = projects.id").
 				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
 				Joins("JOIN phases p ON p.id = pp.phase_id ").
-				Where("projects.id = ? AND p.order <= ?", projectID, calibratorPhase).
+				Where("calibrations.project_id = ? AND p.order <= ?", projectID, calibratorPhase).
 				Order("p.order ASC")
 		}).
 		Preload("CalibrationScores.Calibrator").
-		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
 		Select("*").
@@ -1267,12 +1265,13 @@ func (r *projectRepo) GetAllBusinessUnitSummary(calibratorID, projectID string, 
 }
 
 func (r *projectRepo) GetCalibrationsForSummaryHelper(types, calibratorID, prevCalibrator, businessUnit, projectID string, phase int) (int, error) {
-	var users []model.User
-	var err error
-	// prev calibrator
+	var count int64
+
 	if types == "numberOne" {
 		return -1, nil
-	} else if types == "n-1" {
+	}
+	if types == "n-1" {
+		// Query for previous calibrators
 		queryPrevCalibrator := r.db.
 			Table("users u2").
 			Select("u2.id").
@@ -1283,70 +1282,57 @@ func (r *projectRepo) GetCalibrationsForSummaryHelper(types, calibratorID, prevC
 			Joins("JOIN users u3 on c2.employee_id = u3.id").
 			Where("u3.business_unit_id = ?", businessUnit)
 
-		var queryPrevCalibratorResults []string
-		if err := queryPrevCalibrator.Pluck("u.id", &queryPrevCalibratorResults).Error; err != nil {
-			return -1, err
-		}
-
-		// Subquery
+		// Subquery for previous phases
 		subquery := r.db.
 			Table("materialized_user_view m1").
 			Select("m1.id").
 			Distinct().
-			Where("m1.project_id = ? AND m1.phase_order < ? AND m1.business_unit_id = ?", projectID, phase, businessUnit)
+			Where("m1.project_id = ? AND m1.phase_order < ? AND m1.business_unit_id = ?",
+				projectID, phase, businessUnit)
 
-		var subqueryResults []string
-		if err := subquery.Pluck("u.id", &subqueryResults).Error; err != nil {
-			return -1, err
-		}
-
-		if len(queryPrevCalibratorResults) == 0 {
-			queryPrevCalibratorResults = []string{"00000000-0000-0000-0000-000000000000"} // Placeholder UUID
-		}
-		if len(subqueryResults) == 0 {
-			subqueryResults = []string{"00000000-0000-0000-0000-000000000000"} // Placeholder UUID
-		}
-
-		err = r.db.
+		// Main count query
+		err := r.db.
 			Table("users u").
-			Select("u.*").
 			Joins("INNER JOIN calibrations c1 ON c1.employee_id = u.id AND c1.deleted_at IS NULL AND c1.calibrator_id = ? AND c1.project_id = ?", calibratorID, projectID).
 			Joins("INNER JOIN project_phases pp ON pp.id = c1.project_phase_id").
 			Joins("INNER JOIN phases p ON p.id = pp.phase_id AND p.order = ?", phase).
-			Where("u.business_unit_id = ? AND u.id NOT IN (?) AND u.id NOT IN (?)", businessUnit, subquery, queryPrevCalibrator).
-			Find(&users).Error
-		// fmt.Println("===============================DATA N-1========================", count)
+			Where("u.business_unit_id = ?", businessUnit).
+			Where("u.id NOT IN (?)", subquery).
+			Where("u.id NOT IN (?)", queryPrevCalibrator).
+			Count(&count).Error
+		if err != nil {
+			return -1, err
+		}
+
 	} else if types == "default" {
 		subquery := r.db.
 			Table("materialized_user_view mv1").
 			Select("mv1.id").
-			Where("mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ?", phase, prevCalibrator, businessUnit, projectID).
-			Or("mv1.id = ? AND mv1.business_unit_id = ? AND mv1.phase_order = ? AND mv1.project_id = ?", prevCalibrator, businessUnit, phase, projectID)
+			Where("mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ?",
+				phase, prevCalibrator, businessUnit, projectID).
+			Or("mv1.id = ? AND mv1.business_unit_id = ? AND mv1.phase_order = ? AND mv1.project_id = ?",
+				prevCalibrator, businessUnit, phase, projectID)
 
-		var subqueryResults []string
-		if err := subquery.Pluck("u.id", &subqueryResults).Error; err != nil {
+		err := r.db.Table("materialized_user_view m").
+			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ?", phase, subquery, projectID).
+			Count(&count).Error
+
+		if err != nil {
 			return -1, err
 		}
 
-		err = r.db.Table("materialized_user_view m").
-			Select("m.calibration_rating AS calibration_rating, COUNT(*) as count").
-			Distinct().
-			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
-			Group("m.calibration_rating").
-			Scan(&users).
-			Error
 	} else {
-		err = r.db.Table("materialized_user_view m").
-			Select("m.calibration_rating AS calibration_rating, COUNT(*) as count").
-			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnit).
-			Group("m.calibration_rating").
-			Find(&users).Error
-	}
-	if err != nil {
-		return -1, err
+		err := r.db.Table("materialized_user_view m").
+			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?",
+				phase, calibratorID, projectID, businessUnit).
+			Count(&count).Error
+
+		if err != nil {
+			return -1, err
+		}
 	}
 
-	return len(users), nil
+	return int(count), nil
 }
 
 func (r *projectRepo) FindIfCalibratorOnPhaseBefore(calibratorID, projectID string, phase int) (bool, error) {
