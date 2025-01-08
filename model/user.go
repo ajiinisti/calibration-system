@@ -83,4 +83,5 @@ type UserChange struct {
 	Name             *string
 	Nik              *string
 	BusinessUnitName *string
+	Roles            []string
 }

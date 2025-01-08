@@ -121,8 +121,11 @@ func (u *userRepo) List() ([]model.UserChange, error) {
 	var users []model.UserChange
 	err := u.db.
 		Table("users u").
-		Select("u.id as id, u.email as email, u.name as name, u.division as division, u.nik as nik, b.name as business_unit_name").
+		Select("u.id as id, u.email as email, u.name as name, u.division as division, u.nik as nik, b.name as business_unit_name, array_agg(r.name) as roles").
 		Joins("JOIN business_units b on u.business_unit_id = b.id").
+		Joins("JOIN user_roles ur on u.id = ur.user_id").
+		Joins("JOIN roles r on r.id = ur.role_id").
+		Group("u.id, u.email, u.name, u.division, u.nik, b.name").
 		Find(&users).Error
 	if err != nil {
 		return nil, err
