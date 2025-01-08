@@ -10,7 +10,10 @@ import (
 )
 
 type UserRepo interface {
-	BaseRepository[model.User]
+	Save(payload *model.User) error
+	Get(id string) (*model.User, error)
+	List() ([]model.UserChange, error)
+	Delete(id string) error
 	SearchByEmail(email string) (*model.User, error)
 	SearchByNik(nik string) (*model.User, error)
 	SearchByGenerateToken(generateToken string) (*model.User, error)
@@ -20,7 +23,7 @@ type UserRepo interface {
 	PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error)
 	GetTotalRows(name string) (int, error)
 	GetTotalRowsByProjectID(projectId, name string) (int, error)
-	ListUserAdmin() ([]model.User, error)
+	ListUserAdmin() ([]model.UserChange, error)
 }
 
 type userRepo struct {
@@ -114,11 +117,12 @@ func (u *userRepo) Get(id string) (*model.User, error) {
 	return &user, nil
 }
 
-func (u *userRepo) List() ([]model.User, error) {
-	var users []model.User
+func (u *userRepo) List() ([]model.UserChange, error) {
+	var users []model.UserChange
 	err := u.db.
-		// Preload("Roles").
-		Preload("BusinessUnit").
+		Table("users u").
+		Select("u.id as id, u.email as email, u.name as name, u.division as division, u.nik as nik, b.name as business_unit_name").
+		Joins("JOIN business_units b on u.business_unit_id = b.id").
 		Find(&users).Error
 	if err != nil {
 		return nil, err
@@ -126,7 +130,7 @@ func (u *userRepo) List() ([]model.User, error) {
 	return users, nil
 }
 
-func (u *userRepo) ListUserAdmin() ([]model.User, error) {
+func (u *userRepo) ListUserAdmin() ([]model.UserChange, error) {
 	subquery := u.db.
 		Table("users u").
 		Select("u.id").
@@ -139,16 +143,11 @@ func (u *userRepo) ListUserAdmin() ([]model.User, error) {
 		return nil, err
 	}
 
-	var users []model.User
+	var users []model.UserChange
 	err := u.db.
 		Table("users u").
-		Preload("Roles", func(db *gorm.DB) *gorm.DB {
-			return db.Where("name <> 'exclude'")
-		}).
-		Preload("BusinessUnit").
-		Select("u.*").
-		Joins("INNER JOIN calibrations c on u.id = c.calibrator_id").
-		Joins("JOIN projects p on p.id = c.project_id AND p.active = ?", true).
+		Select("u.id as id, u.email as email, u.name as name, u.division as division, u.nik as nik, b.name as business_unit_name").
+		Joins("JOIN business_units b on u.business_unit_id = b.id").
 		Where("u.id NOT IN (?)", subqueryResults).
 		Distinct().
 		Find(&users).Error

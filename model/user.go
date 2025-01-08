@@ -75,3 +75,12 @@ type UserCalibration struct {
 	AccessTokenGenerate    string        `gorm:"unique;type:uuid;default:gen_random_uuid()" json:"-"`
 	SupervisorNames        string
 }
+
+type UserChange struct {
+	ID               string
+	Email            string
+	Division         *string
+	Name             *string
+	Nik              *string
+	BusinessUnitName *string
+}

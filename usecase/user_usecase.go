@@ -16,7 +16,10 @@ import (
 )
 
 type UserUsecase interface {
-	BaseUsecase[model.User]
+	FindAll() ([]model.UserChange, error)
+	FindById(id string) (*model.User, error)
+	SaveData(payload *model.User) error
+	DeleteData(id string) error
 	FindByIdSwitchUser(id string) (*model.ModifiedTokenModel, error)
 	SearchEmail(email string) (*model.User, error)
 	CreateUser(payload model.User, role []string) error
@@ -28,7 +31,7 @@ type UserUsecase interface {
 	FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error)
 	FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.User, response.Paging, error)
 	GeneratePasswordById(id string) error
-	FindListUserAdmin() ([]model.User, error)
+	FindListUserAdmin() ([]model.UserChange, error)
 }
 
 type userUsecase struct {
@@ -50,11 +53,11 @@ func (u *userUsecase) FindByGenerateToken(generateToken string) (*model.User, er
 	return u.repo.SearchByGenerateToken(generateToken)
 }
 
-func (u *userUsecase) FindAll() ([]model.User, error) {
+func (u *userUsecase) FindAll() ([]model.UserChange, error) {
 	return u.repo.List()
 }
 
-func (u *userUsecase) FindListUserAdmin() ([]model.User, error) {
+func (u *userUsecase) FindListUserAdmin() ([]model.UserChange, error) {
 	return u.repo.ListUserAdmin()
 }
 

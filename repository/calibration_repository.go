@@ -16,7 +16,7 @@ type CalibrationRepo interface {
 	GetAllPreviousEmployeeCalibrationByActiveProject(employeeID, projectID string, phaseOrder int) ([]model.Calibration, error)
 	GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error)
 	List() ([]model.Calibration, error)
-	GetActiveUserBySPMOID(spmoID string) ([]model.User, error)
+	GetActiveUserBySPMOID(spmoID string) ([]model.UserChange, error)
 	GetAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
 	GetRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	Delete(projectId, employeeId string) error
@@ -175,6 +175,10 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 			JustificationType: "default",
 		}
 
+		if index == projectPhaseStartIndex {
+			data.Status = "Calibrate"
+		}
+
 		getCalibration, _ := r.Get(calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
 		if getCalibration != nil {
 			data.BottomRemark = getCalibration.BottomRemark
@@ -186,6 +190,8 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 			data.SpmoComment = getCalibration.SpmoComment
 			data.JustificationType = getCalibration.JustificationType
 			data.JustificationReviewStatus = getCalibration.JustificationReviewStatus
+			data.FilledTopBottomMark = getCalibration.FilledTopBottomMark
+			data.Comment = getCalibration.Comment
 		}
 
 		if calibrationData.Spmo2ID != "" {
@@ -194,10 +200,6 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 
 		if calibrationData.Spmo3ID != "" {
 			data.Spmo3ID = &calibrationData.Spmo3ID
-		}
-
-		if index == projectPhaseStartIndex {
-			data.Status = "Calibrate"
 		}
 
 		err := tx.Save(&data).Error
@@ -308,12 +310,12 @@ func (r *calibrationRepo) GetByProjectEmployeeID(projectID, employeeID string) (
 	return calibration, nil
 }
 
-func (r *calibrationRepo) GetActiveUserBySPMOID(spmoID string) ([]model.User, error) {
-	var calibration []model.User
+func (r *calibrationRepo) GetActiveUserBySPMOID(spmoID string) ([]model.UserChange, error) {
+	var calibration []model.UserChange
 	err := r.db.
 		Table("users u").
-		Preload("BusinessUnit").
-		Select("u.*").
+		Select("u.id as id, u.email as email, u.name as name, u.division as division, u.nik as nik, b.name as business_unit_name").
+		Joins("JOIN business_units b on u.business_unit_id = b.id").
 		Joins("JOIN calibrations c1 ON (c1.employee_id = u.id OR c1.calibrator_id = u.id) AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID).
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
 		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
