@@ -1128,13 +1128,14 @@ func (r *calibrationRepo) GetSummaryBySPMOID(spmoID, projectID string) ([]respon
 	var results []response.SPMOSummaryResult
 	err := tx.Table("calibrations c").
 		Select("COUNT(c.*) as count, u.business_unit_id, b.name as business_unit_name, u2.name as calibrator_name, c.calibrator_id, c.project_phase_id, p.order").
-		Joins("JOIN project_phases pp on pp.id = c.project_phase_id").
-		Joins("JOIN phases p on pp.phase_id = p.id").
-		Joins("JOIN users u on c.employee_id = u.id").
-		Joins("JOIN business_units b on u.business_unit_id = b.id").
-		Joins("JOIN users u2 on c.calibrator_id = u2.id").
-		Joins("JOIN projects pr on pr.id = c.project_id AND pr.id = ?", projectID).
-		Where("(spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND p.order NOT IN (SELECT MAX(\"order\") FROM phases)", spmoID, spmoID, spmoID).
+		Joins("JOIN project_phases pp ON pp.id = c.project_phase_id").
+		Joins("JOIN phases p ON pp.phase_id = p.id").
+		Joins("JOIN users u ON c.employee_id = u.id").
+		Joins("JOIN business_units b ON u.business_unit_id = b.id").
+		Joins("JOIN users u2 ON c.calibrator_id = u2.id").
+		Joins("JOIN projects pr ON pr.id = c.project_id").
+		Where("pr.id = ? AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?)", projectID, spmoID, spmoID, spmoID).
+		Where("p.order < 6").
 		Group("u.business_unit_id, b.name, u2.name, c.calibrator_id, c.project_phase_id, p.order").
 		Order("p.order ASC").
 		Scan(&results).Error

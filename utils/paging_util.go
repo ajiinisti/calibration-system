@@ -25,19 +25,24 @@ func GetPaginationParams(params request.PaginationParam) model.PaginationQuery {
 	}
 	skip = (page-1)*take + params.Offset
 	return model.PaginationQuery{
-		Page:                    page,
-		Take:                    take,
-		Skip:                    skip,
-		Name:                    params.Name,
-		SupervisorName:          params.SupervisorName,
-		Grade:                   params.Grade,
-		EmployeeName:            params.EmployeeName,
-		OrderGrade:              params.OrderGrade,
-		OrderEmployeeName:       params.OrderEmployeeName,
-		RatingChanged:           params.RatingChanged,
-		OrderCalibrationScore:   params.OrderCalibrationScore,
-		OrderCalibrationRating:  params.OrderCalibrationRating,
-		FilterCalibrationRating: params.FilterCalibrationRating,
+		Page:                          page,
+		Take:                          take,
+		Skip:                          skip,
+		Name:                          params.Name,
+		SupervisorName:                params.SupervisorName,
+		Grade:                         params.Grade,
+		EmployeeName:                  params.EmployeeName,
+		OrderGrade:                    params.OrderGrade,
+		OrderEmployeeName:             params.OrderEmployeeName,
+		OrderCalibrationScore:         params.OrderCalibrationScore,
+		OrderCalibrationRating:        params.OrderCalibrationRating,
+		FilterCalibrationRating:       params.FilterCalibrationRating,
+		CalibrationPhaseBefore:        params.CalibrationPhaseBefore,
+		OrderCalibrationScoreBefore:   params.OrderCalibrationScoreBefore,
+		OrderCalibrationRatingBefore:  params.OrderCalibrationRatingBefore,
+		FilterCalibrationRatingBefore: params.FilterCalibrationRatingBefore,
+		RatingChangedStatus:           params.RatingChangedStatus,
+		RatingChanged:                 params.RatingChanged,
 	}
 }
 

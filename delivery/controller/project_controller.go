@@ -339,26 +339,43 @@ func (r *ProjectController) getCalibrationsByPrevCalibratorBusinessUnit(c *gin.C
 		grade = strings.Split(grades, ";")
 	}
 
-	OrderEmployeeName := c.Query("orderEmployeeName")
-	OrderGrade := c.Query("orderGrade")
-	OrderCalibrationScore := c.Query("orderCalibrationScore")
-	OrderCalibrationRating := c.Query("orderCalibrationRating")
+	orderEmployeeName := c.Query("orderEmployeeName")
+	orderGrade := c.Query("orderGrade")
+	orderCalibrationScore := c.Query("orderCalibrationScore")
+	orderCalibrationRating := c.Query("orderCalibrationRating")
 	filterCalibrationRating := c.Query("filterCalibrationRating")
+	calibrationPhaseBefore, err := strconv.Atoi(c.Query("calibrationPhaseBefore"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid Phase Before")
+	}
+	orderCalibrationScoreBefore := c.Query("orderCalibrationScoreBefore")
+	orderCalibrationRatingBefore := c.Query("orderCalibrationRatingBefore")
+	filterCalibrationRatingBefore := c.Query("filterCalibrationRatingBefore")
+	ratingChangedStatus := c.Query("ratingChangedStatus")
+	ratingChanged, err := strconv.Atoi(c.Query("ratingChanged"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid Rating Changed")
+	}
 
 	param := request.PaginationParam{
-		Page:                    page,
-		Limit:                   limit,
-		Offset:                  0,
-		Name:                    "",
-		SupervisorName:          supervisorList,
-		Grade:                   grade,
-		EmployeeName:            employeeList,
-		OrderGrade:              OrderGrade,
-		OrderEmployeeName:       OrderEmployeeName,
-		OrderCalibrationScore:   OrderCalibrationScore,
-		OrderCalibrationRating:  OrderCalibrationRating,
-		FilterCalibrationRating: filterCalibrationRating,
-		RatingChanged:           0,
+		Page:                          page,
+		Limit:                         limit,
+		Offset:                        0,
+		Name:                          "",
+		SupervisorName:                supervisorList,
+		Grade:                         grade,
+		EmployeeName:                  employeeList,
+		OrderGrade:                    orderGrade,
+		OrderEmployeeName:             orderEmployeeName,
+		OrderCalibrationScore:         orderCalibrationScore,
+		OrderCalibrationRating:        orderCalibrationRating,
+		FilterCalibrationRating:       filterCalibrationRating,
+		CalibrationPhaseBefore:        calibrationPhaseBefore,
+		OrderCalibrationScoreBefore:   orderCalibrationScoreBefore,
+		OrderCalibrationRatingBefore:  orderCalibrationRatingBefore,
+		FilterCalibrationRatingBefore: filterCalibrationRatingBefore,
+		RatingChangedStatus:           ratingChangedStatus,
+		RatingChanged:                 ratingChanged,
 	}
 
 	projects, pagination, err := r.uc.FindCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, prevCalibrator, businessUnit, projectID, param)
@@ -409,26 +426,43 @@ func (r *ProjectController) getCalibrationsByBusinessUnit(c *gin.Context) {
 		grade = strings.Split(grades, ";")
 	}
 
-	OrderEmployeeName := c.Query("orderEmployeeName")
-	OrderGrade := c.Query("orderGrade")
-	OrderCalibrationScore := c.Query("orderCalibrationScore")
-	OrderCalibrationRating := c.Query("orderCalibrationRating")
+	orderEmployeeName := c.Query("orderEmployeeName")
+	orderGrade := c.Query("orderGrade")
+	orderCalibrationScore := c.Query("orderCalibrationScore")
+	orderCalibrationRating := c.Query("orderCalibrationRating")
 	filterCalibrationRating := c.Query("filterCalibrationRating")
+	calibrationPhaseBefore, err := strconv.Atoi(c.Query("calibrationPhaseBefore"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid Phase Before")
+	}
+	orderCalibrationScoreBefore := c.Query("orderCalibrationScoreBefore")
+	orderCalibrationRatingBefore := c.Query("orderCalibrationRatingBefore")
+	filterCalibrationRatingBefore := c.Query("filterCalibrationRatingBefore")
+	ratingChangedStatus := c.Query("ratingChangedStatus")
+	ratingChanged, err := strconv.Atoi(c.Query("ratingChanged"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid Rating Changed")
+	}
 
 	param := request.PaginationParam{
-		Page:                    page,
-		Limit:                   limit,
-		Offset:                  0,
-		Name:                    "",
-		SupervisorName:          supervisorList,
-		Grade:                   grade,
-		EmployeeName:            employeeList,
-		OrderGrade:              OrderGrade,
-		OrderEmployeeName:       OrderEmployeeName,
-		OrderCalibrationScore:   OrderCalibrationScore,
-		OrderCalibrationRating:  OrderCalibrationRating,
-		FilterCalibrationRating: filterCalibrationRating,
-		RatingChanged:           0,
+		Page:                          page,
+		Limit:                         limit,
+		Offset:                        0,
+		Name:                          "",
+		SupervisorName:                supervisorList,
+		Grade:                         grade,
+		EmployeeName:                  employeeList,
+		OrderGrade:                    orderGrade,
+		OrderEmployeeName:             orderEmployeeName,
+		OrderCalibrationScore:         orderCalibrationScore,
+		OrderCalibrationRating:        orderCalibrationRating,
+		FilterCalibrationRating:       filterCalibrationRating,
+		CalibrationPhaseBefore:        calibrationPhaseBefore,
+		OrderCalibrationScoreBefore:   orderCalibrationScoreBefore,
+		OrderCalibrationRatingBefore:  orderCalibrationRatingBefore,
+		FilterCalibrationRatingBefore: filterCalibrationRatingBefore,
+		RatingChangedStatus:           ratingChangedStatus,
+		RatingChanged:                 ratingChanged,
 	}
 
 	projects, pagination, err := r.uc.FindCalibrationsByBusinessUnitPaginate(calibratorID, businessUnit, projectID, param)
@@ -500,26 +534,43 @@ func (r *ProjectController) getNMinusOneCalibrationsByPrevCalibratorBusinessUnit
 		grade = strings.Split(grades, ";")
 	}
 
-	OrderEmployeeName := c.Query("OrderEmployeeName")
-	OrderGrade := c.Query("OrderGrade")
-	OrderCalibrationScore := c.Query("orderCalibrationScore")
-	OrderCalibrationRating := c.Query("orderCalibrationRating")
+	orderEmployeeName := c.Query("orderEmployeeName")
+	orderGrade := c.Query("orderGrade")
+	orderCalibrationScore := c.Query("orderCalibrationScore")
+	orderCalibrationRating := c.Query("orderCalibrationRating")
 	filterCalibrationRating := c.Query("filterCalibrationRating")
+	calibrationPhaseBefore, err := strconv.Atoi(c.Query("calibrationPhaseBefore"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid Phase Before")
+	}
+	orderCalibrationScoreBefore := c.Query("orderCalibrationScoreBefore")
+	orderCalibrationRatingBefore := c.Query("orderCalibrationRatingBefore")
+	filterCalibrationRatingBefore := c.Query("filterCalibrationRatingBefore")
+	ratingChangedStatus := c.Query("ratingChangedStatus")
+	ratingChanged, err := strconv.Atoi(c.Query("ratingChanged"))
+	if err != nil {
+		r.NewFailedResponse(c, http.StatusBadRequest, "Invalid Rating Changed")
+	}
 
 	param := request.PaginationParam{
-		Page:                    page,
-		Limit:                   limit,
-		Offset:                  0,
-		Name:                    "",
-		SupervisorName:          supervisorList,
-		Grade:                   grade,
-		EmployeeName:            employeeList,
-		OrderGrade:              OrderGrade,
-		OrderEmployeeName:       OrderEmployeeName,
-		OrderCalibrationScore:   OrderCalibrationScore,
-		OrderCalibrationRating:  OrderCalibrationRating,
-		FilterCalibrationRating: filterCalibrationRating,
-		RatingChanged:           0,
+		Page:                          page,
+		Limit:                         limit,
+		Offset:                        0,
+		Name:                          "",
+		SupervisorName:                supervisorList,
+		Grade:                         grade,
+		EmployeeName:                  employeeList,
+		OrderGrade:                    orderGrade,
+		OrderEmployeeName:             orderEmployeeName,
+		OrderCalibrationScore:         orderCalibrationScore,
+		OrderCalibrationRating:        orderCalibrationRating,
+		FilterCalibrationRating:       filterCalibrationRating,
+		CalibrationPhaseBefore:        calibrationPhaseBefore,
+		OrderCalibrationScoreBefore:   orderCalibrationScoreBefore,
+		OrderCalibrationRatingBefore:  orderCalibrationRatingBefore,
+		FilterCalibrationRatingBefore: filterCalibrationRatingBefore,
+		RatingChangedStatus:           ratingChangedStatus,
+		RatingChanged:                 ratingChanged,
 	}
 
 	projects, pagination, err := r.uc.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnitPaginate(calibratorID, businessUnit, projectID, param)

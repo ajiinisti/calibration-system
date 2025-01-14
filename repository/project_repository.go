@@ -554,6 +554,223 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnitPaginate(calibr
 			if pagination.FilterCalibrationRating != "" {
 				db = db.Where("m.calibration_rating = ?", pagination.FilterCalibrationRating)
 			}
+			if pagination.FilterCalibrationRatingBefore != "" || pagination.OrderCalibrationRatingBefore != "default" || pagination.OrderCalibrationScoreBefore != "default" {
+				db = db.Joins("LEFT JOIN materialized_user_view prev_m ON m.employee_id = prev_m.employee_id AND m.project_id = prev_m.project_id AND prev_m.phase_order = ?", phase+pagination.CalibrationPhaseBefore)
+				if pagination.FilterCalibrationRatingBefore != "" {
+					db = db.Where("prev_m.calibration_rating = ?", pagination.FilterCalibrationRatingBefore)
+				}
+			}
+			if pagination.RatingChangedStatus != "all" {
+				if phase == 1 {
+					if pagination.RatingChangedStatus == "changed" {
+						db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating != m.calibration_rating")
+					} else if pagination.RatingChangedStatus == "unchanged" {
+						db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating = m.calibration_rating")
+					}
+				} else {
+					if pagination.RatingChangedStatus == "changed" {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating != prev_table.calibration_rating
+							
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id AND m.calibration_rating != actual.actual_rating`,
+							phase)
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND m.calibration_rating != prev_table.calibration_rating)
+							OR
+							(prev_table.employee_id IS NULL AND m.calibration_rating != actual.actual_rating)`)
+					} else if pagination.RatingChangedStatus == "unchanged" {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating = prev_table.calibration_rating
+							
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id AND m.calibration_rating = actual.actual_rating`,
+							phase)
+
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND m.calibration_rating = prev_table.calibration_rating)
+							OR
+							(prev_table.employee_id IS NULL AND m.calibration_rating = actual.actual_rating)`)
+					}
+				}
+			}
+
+			if pagination.RatingChanged != 0 {
+				if phase == 1 {
+					db = db.Joins(`
+						JOIN actual_scores ac 
+						ON m.employee_id = ac.employee_id 
+						AND m.project_id = ac.project_id 
+						AND (
+							CASE 
+								WHEN m.calibration_rating = 'A+' THEN 6
+								WHEN m.calibration_rating = 'A' THEN 5
+								WHEN m.calibration_rating = 'B+' THEN 4
+								WHEN m.calibration_rating = 'B' THEN 3
+								WHEN m.calibration_rating = 'C' THEN 2
+								WHEN m.calibration_rating = 'D' THEN 1
+								ELSE 0
+							END
+							-
+							CASE 
+								WHEN ac.actual_rating = 'A+' THEN 6
+								WHEN ac.actual_rating = 'A' THEN 5
+								WHEN ac.actual_rating = 'B+' THEN 4
+								WHEN ac.actual_rating = 'B' THEN 3
+								WHEN ac.actual_rating = 'C' THEN 2
+								WHEN ac.actual_rating = 'D' THEN 1
+								ELSE 0
+							END
+						) = ?`, pagination.RatingChanged)
+				} else {
+					db = db.Joins(`
+						LEFT JOIN (
+							SELECT 
+								employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+							FROM 
+								materialized_user_view
+							WHERE 
+								phase_order < ?
+							GROUP BY 
+								employee_id, project_id, calibration_rating
+						) prev_table 
+						ON 
+							m.employee_id = prev_table.employee_id 
+							AND m.project_id = prev_table.project_id 
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN prev_table.calibration_rating = 'A+' THEN 6
+									WHEN prev_table.calibration_rating = 'A' THEN 5
+									WHEN prev_table.calibration_rating = 'B+' THEN 4
+									WHEN prev_table.calibration_rating = 'B' THEN 3
+									WHEN prev_table.calibration_rating = 'C' THEN 2
+									WHEN prev_table.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						 
+						LEFT JOIN actual_scores actual
+						ON 
+							prev_table.employee_id IS NULL
+							AND actual.employee_id IS NOT NULL
+							AND m.employee_id = actual.employee_id 
+							AND m.project_id = actual.project_id
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN actual.actual_rating = 'A+' THEN 6
+									WHEN actual.actual_rating = 'A' THEN 5
+									WHEN actual.actual_rating = 'B+' THEN 4
+									WHEN actual.actual_rating = 'B' THEN 3
+									WHEN actual.actual_rating = 'C' THEN 2
+									WHEN actual.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?`,
+						phase, pagination.RatingChanged, pagination.RatingChanged)
+					db = db.Where(`
+						(prev_table.employee_id IS NOT NULL AND 
+							(
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN prev_table.calibration_rating = 'A+' THEN 6
+									WHEN prev_table.calibration_rating = 'A' THEN 5
+									WHEN prev_table.calibration_rating = 'B+' THEN 4
+									WHEN prev_table.calibration_rating = 'B' THEN 3
+									WHEN prev_table.calibration_rating = 'C' THEN 2
+									WHEN prev_table.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						) 
+						OR 
+						(prev_table.employee_id IS NULL
+							AND actual.employee_id IS NOT NULL AND 
+							(
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN actual.actual_rating = 'A+' THEN 6
+									WHEN actual.actual_rating = 'A' THEN 5
+									WHEN actual.actual_rating = 'B+' THEN 4
+									WHEN actual.actual_rating = 'B' THEN 3
+									WHEN actual.actual_rating = 'C' THEN 2
+									WHEN actual.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						)
+					`, pagination.RatingChanged, pagination.RatingChanged)
+				}
+			}
 			return db
 		}).
 		Order(order).
@@ -608,7 +825,7 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 		Table("materialized_user_view m").
 		Joins("JOIN users u2 on u2.id = m.id").
 		Select("u2.*, COUNT(m.id) AS calibration_count").
-		Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnit).
+		Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnit).
 		Group("u2.id").
 		Order("calibration_count ASC").
 		Find(&users).Error
@@ -665,6 +882,224 @@ func (r *projectRepo) GetCalibrationsByBusinessUnitPaginate(calibratorID, busine
 			}
 			if pagination.FilterCalibrationRating != "" {
 				db = db.Where("m.calibration_rating = ?", pagination.FilterCalibrationRating)
+			}
+			if pagination.FilterCalibrationRatingBefore != "" || pagination.OrderCalibrationRatingBefore != "default" || pagination.OrderCalibrationScoreBefore != "default" {
+				db = db.Joins("LEFT JOIN materialized_user_view prev_m ON m.employee_id = prev_m.employee_id AND m.project_id = prev_m.project_id AND prev_m.phase_order = ?", phase+pagination.CalibrationPhaseBefore)
+				if pagination.FilterCalibrationRatingBefore != "" {
+					db = db.Where("prev_m.calibration_rating = ?", pagination.FilterCalibrationRatingBefore)
+				}
+			}
+
+			if pagination.RatingChangedStatus != "all" {
+				if phase == 1 {
+					if pagination.RatingChangedStatus == "changed" {
+						db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating != m.calibration_rating")
+					} else if pagination.RatingChangedStatus == "unchanged" {
+						db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating = m.calibration_rating")
+					}
+				} else {
+					if pagination.RatingChangedStatus == "changed" {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating != prev_table.calibration_rating
+							
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id AND m.calibration_rating != actual.actual_rating`,
+							phase)
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND m.calibration_rating != prev_table.calibration_rating)
+							OR
+							(prev_table.employee_id IS NULL AND m.calibration_rating != actual.actual_rating)`)
+					} else if pagination.RatingChangedStatus == "unchanged" {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating = prev_table.calibration_rating
+							
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id AND m.calibration_rating = actual.actual_rating`,
+							phase)
+
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND m.calibration_rating = prev_table.calibration_rating)
+							OR
+							(prev_table.employee_id IS NULL AND m.calibration_rating = actual.actual_rating)`)
+					}
+				}
+			}
+
+			if pagination.RatingChanged != 0 {
+				if phase == 1 {
+					db = db.Joins(`
+						JOIN actual_scores ac 
+						ON m.employee_id = ac.employee_id 
+						AND m.project_id = ac.project_id 
+						AND (
+							CASE 
+								WHEN m.calibration_rating = 'A+' THEN 6
+								WHEN m.calibration_rating = 'A' THEN 5
+								WHEN m.calibration_rating = 'B+' THEN 4
+								WHEN m.calibration_rating = 'B' THEN 3
+								WHEN m.calibration_rating = 'C' THEN 2
+								WHEN m.calibration_rating = 'D' THEN 1
+								ELSE 0
+							END
+							-
+							CASE 
+								WHEN ac.actual_rating = 'A+' THEN 6
+								WHEN ac.actual_rating = 'A' THEN 5
+								WHEN ac.actual_rating = 'B+' THEN 4
+								WHEN ac.actual_rating = 'B' THEN 3
+								WHEN ac.actual_rating = 'C' THEN 2
+								WHEN ac.actual_rating = 'D' THEN 1
+								ELSE 0
+							END
+						) = ?`, pagination.RatingChanged)
+				} else {
+					db = db.Joins(`
+						LEFT JOIN (
+							SELECT 
+								employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+							FROM 
+								materialized_user_view
+							WHERE 
+								phase_order < ?
+							GROUP BY 
+								employee_id, project_id, calibration_rating
+						) prev_table 
+						ON 
+							m.employee_id = prev_table.employee_id 
+							AND m.project_id = prev_table.project_id 
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN prev_table.calibration_rating = 'A+' THEN 6
+									WHEN prev_table.calibration_rating = 'A' THEN 5
+									WHEN prev_table.calibration_rating = 'B+' THEN 4
+									WHEN prev_table.calibration_rating = 'B' THEN 3
+									WHEN prev_table.calibration_rating = 'C' THEN 2
+									WHEN prev_table.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						 
+						LEFT JOIN actual_scores actual
+						ON 
+							prev_table.employee_id IS NULL
+							AND actual.employee_id IS NOT NULL
+							AND m.employee_id = actual.employee_id 
+							AND m.project_id = actual.project_id
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN actual.actual_rating = 'A+' THEN 6
+									WHEN actual.actual_rating = 'A' THEN 5
+									WHEN actual.actual_rating = 'B+' THEN 4
+									WHEN actual.actual_rating = 'B' THEN 3
+									WHEN actual.actual_rating = 'C' THEN 2
+									WHEN actual.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?`,
+						phase, pagination.RatingChanged, pagination.RatingChanged)
+					db = db.Where(`
+						(prev_table.employee_id IS NOT NULL AND 
+							(
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN prev_table.calibration_rating = 'A+' THEN 6
+									WHEN prev_table.calibration_rating = 'A' THEN 5
+									WHEN prev_table.calibration_rating = 'B+' THEN 4
+									WHEN prev_table.calibration_rating = 'B' THEN 3
+									WHEN prev_table.calibration_rating = 'C' THEN 2
+									WHEN prev_table.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						) 
+						OR 
+						(prev_table.employee_id IS NULL 
+							AND actual.employee_id IS NOT NULL AND 
+							(
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN actual.actual_rating = 'A+' THEN 6
+									WHEN actual.actual_rating = 'A' THEN 5
+									WHEN actual.actual_rating = 'B+' THEN 4
+									WHEN actual.actual_rating = 'B' THEN 3
+									WHEN actual.actual_rating = 'C' THEN 2
+									WHEN actual.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						)
+					`, pagination.RatingChanged, pagination.RatingChanged)
+				}
 			}
 			return db
 		}).
@@ -1015,9 +1450,9 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnitPaginate(businessUni
 				Where("calibrations.project_id = ? AND p.order <= ?", projectID, phase).
 				Order("p.order")
 		}).
-		Table("materialized_user_view m1").
-		Select("m1.*").
-		Where("m1.calibrator_id = ? AND m1.project_id = ? and m1.phase_order = ? AND m1.business_unit_id = ? AND m1.id NOT IN (?) AND m1.id NOT IN (?)",
+		Table("materialized_user_view m").
+		Select("m.*").
+		Where("m.calibrator_id = ? AND m.project_id = ? and m.phase_order = ? AND m.business_unit_id = ? AND m.id NOT IN (?) AND m.id NOT IN (?)",
 			calibratorID, projectID, phase, businessUnit, queryPrevCalibrator, subqueryResults).
 		Scopes(func(db *gorm.DB) *gorm.DB {
 			if len(pagination.SupervisorName) > 0 {
@@ -1031,6 +1466,224 @@ func (r *projectRepo) GetNMinusOneCalibrationsByBusinessUnitPaginate(businessUni
 			}
 			if pagination.FilterCalibrationRating != "" {
 				db = db.Where("m.calibration_rating = ?", pagination.FilterCalibrationRating)
+			}
+			if pagination.FilterCalibrationRatingBefore != "" || pagination.OrderCalibrationRatingBefore != "default" || pagination.OrderCalibrationScoreBefore != "default" {
+				db = db.Joins("LEFT JOIN materialized_user_view prev_m ON m.employee_id = prev_m.employee_id AND m.project_id = prev_m.project_id AND prev_m.phase_order = ?", phase+pagination.CalibrationPhaseBefore)
+				if pagination.FilterCalibrationRatingBefore != "" {
+					db = db.Where("prev_m.calibration_rating = ?", pagination.FilterCalibrationRatingBefore)
+				}
+			}
+
+			if pagination.RatingChangedStatus != "all" {
+				if phase == 1 {
+					if pagination.RatingChangedStatus == "changed" {
+						db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating != m.calibration_rating")
+					} else if pagination.RatingChangedStatus == "unchanged" {
+						db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating = m.calibration_rating")
+					}
+				} else {
+					if pagination.RatingChangedStatus == "changed" {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating != prev_table.calibration_rating
+							
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id AND m.calibration_rating != actual.actual_rating`,
+							phase)
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND m.calibration_rating != prev_table.calibration_rating)
+							OR
+							(prev_table.employee_id IS NULL AND m.calibration_rating != actual.actual_rating)`)
+					} else if pagination.RatingChangedStatus == "unchanged" {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating = prev_table.calibration_rating
+							
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id AND m.calibration_rating = actual.actual_rating`,
+							phase)
+
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND m.calibration_rating = prev_table.calibration_rating)
+							OR
+							(prev_table.employee_id IS NULL AND m.calibration_rating = actual.actual_rating)`)
+					}
+				}
+			}
+
+			if pagination.RatingChanged != 0 {
+				if phase == 1 {
+					db = db.Joins(`
+						JOIN actual_scores ac 
+						ON m.employee_id = ac.employee_id 
+						AND m.project_id = ac.project_id 
+						AND (
+							CASE 
+								WHEN m.calibration_rating = 'A+' THEN 6
+								WHEN m.calibration_rating = 'A' THEN 5
+								WHEN m.calibration_rating = 'B+' THEN 4
+								WHEN m.calibration_rating = 'B' THEN 3
+								WHEN m.calibration_rating = 'C' THEN 2
+								WHEN m.calibration_rating = 'D' THEN 1
+								ELSE 0
+							END
+							-
+							CASE 
+								WHEN ac.actual_rating = 'A+' THEN 6
+								WHEN ac.actual_rating = 'A' THEN 5
+								WHEN ac.actual_rating = 'B+' THEN 4
+								WHEN ac.actual_rating = 'B' THEN 3
+								WHEN ac.actual_rating = 'C' THEN 2
+								WHEN ac.actual_rating = 'D' THEN 1
+								ELSE 0
+							END
+						) = ?`, pagination.RatingChanged)
+				} else {
+					db = db.Joins(`
+						LEFT JOIN (
+							SELECT 
+								employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+							FROM 
+								materialized_user_view
+							WHERE 
+								phase_order < ?
+							GROUP BY 
+								employee_id, project_id, calibration_rating
+						) prev_table 
+						ON 
+							m.employee_id = prev_table.employee_id 
+							AND m.project_id = prev_table.project_id 
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN prev_table.calibration_rating = 'A+' THEN 6
+									WHEN prev_table.calibration_rating = 'A' THEN 5
+									WHEN prev_table.calibration_rating = 'B+' THEN 4
+									WHEN prev_table.calibration_rating = 'B' THEN 3
+									WHEN prev_table.calibration_rating = 'C' THEN 2
+									WHEN prev_table.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						 
+						LEFT JOIN actual_scores actual
+						ON 
+							prev_table.employee_id IS NULL
+							AND actual.employee_id IS NOT NULL
+							AND m.employee_id = actual.employee_id 
+							AND m.project_id = actual.project_id
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN actual.actual_rating = 'A+' THEN 6
+									WHEN actual.actual_rating = 'A' THEN 5
+									WHEN actual.actual_rating = 'B+' THEN 4
+									WHEN actual.actual_rating = 'B' THEN 3
+									WHEN actual.actual_rating = 'C' THEN 2
+									WHEN actual.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?`,
+						phase, pagination.RatingChanged, pagination.RatingChanged)
+					db = db.Where(`
+						(prev_table.employee_id IS NOT NULL AND 
+							(
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN prev_table.calibration_rating = 'A+' THEN 6
+									WHEN prev_table.calibration_rating = 'A' THEN 5
+									WHEN prev_table.calibration_rating = 'B+' THEN 4
+									WHEN prev_table.calibration_rating = 'B' THEN 3
+									WHEN prev_table.calibration_rating = 'C' THEN 2
+									WHEN prev_table.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						) 
+						OR 
+						(prev_table.employee_id IS NULL 
+							AND actual.employee_id IS NOT NULL AND 
+							(
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN actual.actual_rating = 'A+' THEN 6
+									WHEN actual.actual_rating = 'A' THEN 5
+									WHEN actual.actual_rating = 'B+' THEN 4
+									WHEN actual.actual_rating = 'B' THEN 3
+									WHEN actual.actual_rating = 'C' THEN 2
+									WHEN actual.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?
+						)
+					`, pagination.RatingChanged, pagination.RatingChanged)
+				}
 			}
 			return db
 		}).
@@ -1314,7 +1967,7 @@ func (r *projectRepo) GetCalibrationsForSummaryHelper(types, calibratorID, prevC
 				prevCalibrator, businessUnit, phase, projectID)
 
 		err := r.db.Table("materialized_user_view m").
-			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ?", phase, subquery, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ?", phase, subquery, projectID).
 			Count(&count).Error
 
 		if err != nil {
@@ -1323,7 +1976,7 @@ func (r *projectRepo) GetCalibrationsForSummaryHelper(types, calibratorID, prevC
 
 	} else {
 		err := r.db.Table("materialized_user_view m").
-			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?",
+			Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?",
 				phase, calibratorID, projectID, businessUnit).
 			Count(&count).Error
 
@@ -1459,7 +2112,7 @@ func (r *projectRepo) GetAllEmployeeName(calibratorID, prevCalibrator, businessU
 		err = r.db.Table("materialized_user_view m").
 			Select("m.name").
 			Distinct().
-			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
 			Order("m.name ASC").
 			Find(&employeeName).Error
 	} else {
@@ -1467,7 +2120,7 @@ func (r *projectRepo) GetAllEmployeeName(calibratorID, prevCalibrator, businessU
 			Table("materialized_user_view m").
 			Select("m.name").
 			Distinct().
-			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnitName).
+			Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnitName).
 			Order("m.name ASC").
 			Find(&employeeName).Error
 	}
@@ -1552,7 +2205,7 @@ func (r *projectRepo) GetAllSupervisorName(calibratorID, prevCalibrator, busines
 		err = r.db.Table("materialized_user_view m").
 			Select("m.supervisor_names").
 			Distinct().
-			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ? AND m.supervisor_names IS NOT NULL", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.supervisor_names IS NOT NULL", phase, subqueryResults, projectID).
 			Order("m.supervisor_names ASC").
 			Find(&employeeName).Error
 	} else {
@@ -1560,7 +2213,7 @@ func (r *projectRepo) GetAllSupervisorName(calibratorID, prevCalibrator, busines
 			Table("materialized_user_view m").
 			Select("m.supervisor_names").
 			Distinct().
-			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ? AND m.supervisor_names IS NOT NULL", phase, calibratorID, projectID, businessUnitName).
+			Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ? AND m.supervisor_names IS NOT NULL", phase, calibratorID, projectID, businessUnitName).
 			Order("m.supervisor_names ASC").
 			Find(&employeeName).Error
 	}
@@ -1646,7 +2299,7 @@ func (r *projectRepo) GetAllGrade(calibratorID, prevCalibrator, businessUnitName
 		err = r.db.Table("materialized_user_view m").
 			Select("m.grade").
 			Distinct().
-			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
 			Order("m.grade ASC").
 			Find(&employeeName).Error
 	} else {
@@ -1654,7 +2307,7 @@ func (r *projectRepo) GetAllGrade(calibratorID, prevCalibrator, businessUnitName
 			Table("materialized_user_view m").
 			Select("m.grade").
 			Distinct().
-			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnitName).
+			Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnitName).
 			Order("m.grade ASC").
 			Find(&employeeName).Error
 	}
@@ -1731,6 +2384,223 @@ func (r *projectRepo) GetTotalRowsCalibration(calibratorID, prevCalibrator, busi
 				if len(pagination.Grade) > 0 {
 					db = db.Where("m.grade IN ?", pagination.Grade)
 				}
+				if pagination.FilterCalibrationRating != "" {
+					db = db.Where("m.calibration_rating = ?", pagination.FilterCalibrationRating)
+				}
+				if pagination.FilterCalibrationRatingBefore != "" {
+					db = db.Joins("LEFT JOIN materialized_user_view prev_m ON m.employee_id = prev_m.employee_id AND m.project_id = prev_m.project_id AND prev_m.phase_order = ?", phase+pagination.CalibrationPhaseBefore)
+					db = db.Where("prev_m.calibration_rating = ?", pagination.FilterCalibrationRatingBefore)
+				}
+				if pagination.RatingChangedStatus != "all" {
+					if phase == 1 {
+						if pagination.RatingChangedStatus == "changed" {
+							db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating != m.calibration_rating")
+						} else if pagination.RatingChangedStatus == "unchanged" {
+							db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating = m.calibration_rating")
+						}
+					} else {
+						if pagination.RatingChangedStatus == "changed" {
+							db = db.Joins(`
+								LEFT JOIN (
+									SELECT 
+										employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+									FROM 
+										materialized_user_view
+									WHERE 
+										phase_order < ?
+									GROUP BY 
+										employee_id, project_id, calibration_rating
+								) prev_table 
+								ON 
+									m.employee_id = prev_table.employee_id 
+									AND m.project_id = prev_table.project_id 
+									AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating != prev_table.calibration_rating
+								
+								LEFT JOIN actual_scores actual
+								ON 
+									prev_table.employee_id IS NULL
+									AND m.employee_id = actual.employee_id 
+									AND m.project_id = actual.project_id AND m.calibration_rating != actual.actual_rating`,
+								phase)
+							db = db.Where(`
+								(prev_table.employee_id IS NOT NULL AND m.calibration_rating != prev_table.calibration_rating)
+								OR
+								(prev_table.employee_id IS NULL AND m.calibration_rating != actual.actual_rating)`)
+						} else if pagination.RatingChangedStatus == "unchanged" {
+							db = db.Joins(`
+								LEFT JOIN (
+									SELECT 
+										employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+									FROM 
+										materialized_user_view
+									WHERE 
+										phase_order < ?
+									GROUP BY 
+										employee_id, project_id, calibration_rating
+								) prev_table 
+								ON 
+									m.employee_id = prev_table.employee_id 
+									AND m.project_id = prev_table.project_id 
+									AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating = prev_table.calibration_rating
+								
+								LEFT JOIN actual_scores actual
+								ON 
+									prev_table.employee_id IS NULL
+									AND m.employee_id = actual.employee_id 
+									AND m.project_id = actual.project_id AND m.calibration_rating = actual.actual_rating`,
+								phase)
+
+							db = db.Where(`
+								(prev_table.employee_id IS NOT NULL AND m.calibration_rating = prev_table.calibration_rating)
+								OR
+								(prev_table.employee_id IS NULL AND m.calibration_rating = actual.actual_rating)`)
+						}
+					}
+				}
+
+				if pagination.RatingChanged != 0 {
+					if phase == 1 {
+						db = db.Joins(`
+							JOIN actual_scores ac 
+							ON m.employee_id = ac.employee_id 
+							AND m.project_id = ac.project_id 
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN ac.actual_rating = 'A+' THEN 6
+									WHEN ac.actual_rating = 'A' THEN 5
+									WHEN ac.actual_rating = 'B+' THEN 4
+									WHEN ac.actual_rating = 'B' THEN 3
+									WHEN ac.actual_rating = 'C' THEN 2
+									WHEN ac.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?`, pagination.RatingChanged)
+					} else {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND (
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN prev_table.calibration_rating = 'A+' THEN 6
+										WHEN prev_table.calibration_rating = 'A' THEN 5
+										WHEN prev_table.calibration_rating = 'B+' THEN 4
+										WHEN prev_table.calibration_rating = 'B' THEN 3
+										WHEN prev_table.calibration_rating = 'C' THEN 2
+										WHEN prev_table.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							 
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id
+								AND (
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN actual.actual_rating = 'A+' THEN 6
+										WHEN actual.actual_rating = 'A' THEN 5
+										WHEN actual.actual_rating = 'B+' THEN 4
+										WHEN actual.actual_rating = 'B' THEN 3
+										WHEN actual.actual_rating = 'C' THEN 2
+										WHEN actual.actual_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?`,
+							phase, pagination.RatingChanged, pagination.RatingChanged)
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND 
+								(
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN prev_table.calibration_rating = 'A+' THEN 6
+										WHEN prev_table.calibration_rating = 'A' THEN 5
+										WHEN prev_table.calibration_rating = 'B+' THEN 4
+										WHEN prev_table.calibration_rating = 'B' THEN 3
+										WHEN prev_table.calibration_rating = 'C' THEN 2
+										WHEN prev_table.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							) 
+							OR 
+							(prev_table.employee_id IS NULL
+							AND actual.employee_id IS NOT NULL AND 
+								(
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN actual.actual_rating = 'A+' THEN 6
+										WHEN actual.actual_rating = 'A' THEN 5
+										WHEN actual.actual_rating = 'B+' THEN 4
+										WHEN actual.actual_rating = 'B' THEN 3
+										WHEN actual.actual_rating = 'C' THEN 2
+										WHEN actual.actual_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							)
+						`, pagination.RatingChanged, pagination.RatingChanged)
+					}
+				}
 				return db
 			}).
 			Count(&count).Error
@@ -1750,7 +2620,7 @@ func (r *projectRepo) GetTotalRowsCalibration(calibratorID, prevCalibrator, busi
 		err = r.db.Table("materialized_user_view m").
 			Select("m.id").
 			Distinct().
-			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
 			Scopes(func(db *gorm.DB) *gorm.DB {
 				if len(pagination.SupervisorName) > 0 {
 					db = db.Where("m.supervisor_names IN ?", pagination.SupervisorName)
@@ -1760,6 +2630,223 @@ func (r *projectRepo) GetTotalRowsCalibration(calibratorID, prevCalibrator, busi
 				}
 				if len(pagination.Grade) > 0 {
 					db = db.Where("m.grade IN ?", pagination.Grade)
+				}
+				if pagination.FilterCalibrationRating != "" {
+					db = db.Where("m.calibration_rating = ?", pagination.FilterCalibrationRating)
+				}
+				if pagination.FilterCalibrationRatingBefore != "" {
+					db = db.Joins("LEFT JOIN materialized_user_view prev_m ON m.employee_id = prev_m.employee_id AND m.project_id = prev_m.project_id AND prev_m.phase_order = ?", phase+pagination.CalibrationPhaseBefore)
+					db = db.Where("prev_m.calibration_rating = ?", pagination.FilterCalibrationRatingBefore)
+				}
+				if pagination.RatingChangedStatus != "all" {
+					if phase == 1 {
+						if pagination.RatingChangedStatus == "changed" {
+							db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating != m.calibration_rating")
+						} else if pagination.RatingChangedStatus == "unchanged" {
+							db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating = m.calibration_rating")
+						}
+					} else {
+						if pagination.RatingChangedStatus == "changed" {
+							db = db.Joins(`
+								LEFT JOIN (
+									SELECT 
+										employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+									FROM 
+										materialized_user_view
+									WHERE 
+										phase_order < ?
+									GROUP BY 
+										employee_id, project_id, calibration_rating
+								) prev_table 
+								ON 
+									m.employee_id = prev_table.employee_id 
+									AND m.project_id = prev_table.project_id 
+									AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating != prev_table.calibration_rating
+								
+								LEFT JOIN actual_scores actual
+								ON 
+									prev_table.employee_id IS NULL
+									AND m.employee_id = actual.employee_id 
+									AND m.project_id = actual.project_id AND m.calibration_rating != actual.actual_rating`,
+								phase)
+							db = db.Where(`
+								(prev_table.employee_id IS NOT NULL AND m.calibration_rating != prev_table.calibration_rating)
+								OR
+								(prev_table.employee_id IS NULL AND m.calibration_rating != actual.actual_rating)`)
+						} else if pagination.RatingChangedStatus == "unchanged" {
+							db = db.Joins(`
+								LEFT JOIN (
+									SELECT 
+										employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+									FROM 
+										materialized_user_view
+									WHERE 
+										phase_order < ?
+									GROUP BY 
+										employee_id, project_id, calibration_rating
+								) prev_table 
+								ON 
+									m.employee_id = prev_table.employee_id 
+									AND m.project_id = prev_table.project_id 
+									AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating = prev_table.calibration_rating
+								
+								LEFT JOIN actual_scores actual
+								ON 
+									prev_table.employee_id IS NULL
+									AND m.employee_id = actual.employee_id 
+									AND m.project_id = actual.project_id AND m.calibration_rating = actual.actual_rating`,
+								phase)
+
+							db = db.Where(`
+								(prev_table.employee_id IS NOT NULL AND m.calibration_rating = prev_table.calibration_rating)
+								OR
+								(prev_table.employee_id IS NULL AND m.calibration_rating = actual.actual_rating)`)
+						}
+					}
+				}
+
+				if pagination.RatingChanged != 0 {
+					if phase == 1 {
+						db = db.Joins(`
+							JOIN actual_scores ac 
+							ON m.employee_id = ac.employee_id 
+							AND m.project_id = ac.project_id 
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN ac.actual_rating = 'A+' THEN 6
+									WHEN ac.actual_rating = 'A' THEN 5
+									WHEN ac.actual_rating = 'B+' THEN 4
+									WHEN ac.actual_rating = 'B' THEN 3
+									WHEN ac.actual_rating = 'C' THEN 2
+									WHEN ac.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?`, pagination.RatingChanged)
+					} else {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND (
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN prev_table.calibration_rating = 'A+' THEN 6
+										WHEN prev_table.calibration_rating = 'A' THEN 5
+										WHEN prev_table.calibration_rating = 'B+' THEN 4
+										WHEN prev_table.calibration_rating = 'B' THEN 3
+										WHEN prev_table.calibration_rating = 'C' THEN 2
+										WHEN prev_table.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							 
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id
+								AND (
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN actual.actual_rating = 'A+' THEN 6
+										WHEN actual.actual_rating = 'A' THEN 5
+										WHEN actual.actual_rating = 'B+' THEN 4
+										WHEN actual.actual_rating = 'B' THEN 3
+										WHEN actual.actual_rating = 'C' THEN 2
+										WHEN actual.actual_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?`,
+							phase, pagination.RatingChanged, pagination.RatingChanged)
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND 
+								(
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN prev_table.calibration_rating = 'A+' THEN 6
+										WHEN prev_table.calibration_rating = 'A' THEN 5
+										WHEN prev_table.calibration_rating = 'B+' THEN 4
+										WHEN prev_table.calibration_rating = 'B' THEN 3
+										WHEN prev_table.calibration_rating = 'C' THEN 2
+										WHEN prev_table.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							) 
+							OR 
+							(prev_table.employee_id IS NULL 
+							AND actual.employee_id IS NOT NULL AND 
+								(
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN actual.actual_rating = 'A+' THEN 6
+										WHEN actual.actual_rating = 'A' THEN 5
+										WHEN actual.actual_rating = 'B+' THEN 4
+										WHEN actual.actual_rating = 'B' THEN 3
+										WHEN actual.actual_rating = 'C' THEN 2
+										WHEN actual.actual_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							)
+						`, pagination.RatingChanged, pagination.RatingChanged)
+					}
 				}
 				return db
 			}).
@@ -1768,7 +2855,7 @@ func (r *projectRepo) GetTotalRowsCalibration(calibratorID, prevCalibrator, busi
 		err = r.db.
 			Table("materialized_user_view m").
 			Select("m.id").
-			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnitName).
+			Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnitName).
 			Scopes(func(db *gorm.DB) *gorm.DB {
 				if len(pagination.SupervisorName) > 0 {
 					db = db.Where("m.supervisor_names IN ?", pagination.SupervisorName)
@@ -1778,6 +2865,223 @@ func (r *projectRepo) GetTotalRowsCalibration(calibratorID, prevCalibrator, busi
 				}
 				if len(pagination.Grade) > 0 {
 					db = db.Where("m.grade IN ?", pagination.Grade)
+				}
+				if pagination.FilterCalibrationRating != "" {
+					db = db.Where("m.calibration_rating = ?", pagination.FilterCalibrationRating)
+				}
+				if pagination.FilterCalibrationRatingBefore != "" {
+					db = db.Joins("LEFT JOIN materialized_user_view prev_m ON m.employee_id = prev_m.employee_id AND m.project_id = prev_m.project_id AND prev_m.phase_order = ?", phase+pagination.CalibrationPhaseBefore)
+					db = db.Where("prev_m.calibration_rating = ?", pagination.FilterCalibrationRatingBefore)
+				}
+				if pagination.RatingChangedStatus != "all" {
+					if phase == 1 {
+						if pagination.RatingChangedStatus == "changed" {
+							db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating != m.calibration_rating")
+						} else if pagination.RatingChangedStatus == "unchanged" {
+							db = db.Joins("JOIN actual_scores ac ON m.employee_id = ac.employee_id AND m.project_id = ac.project_id AND ac.actual_rating = m.calibration_rating")
+						}
+					} else {
+						if pagination.RatingChangedStatus == "changed" {
+							db = db.Joins(`
+								LEFT JOIN (
+									SELECT 
+										employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+									FROM 
+										materialized_user_view
+									WHERE 
+										phase_order < ?
+									GROUP BY 
+										employee_id, project_id, calibration_rating
+								) prev_table 
+								ON 
+									m.employee_id = prev_table.employee_id 
+									AND m.project_id = prev_table.project_id 
+									AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating != prev_table.calibration_rating
+								
+								LEFT JOIN actual_scores actual
+								ON 
+									prev_table.employee_id IS NULL
+									AND m.employee_id = actual.employee_id 
+									AND m.project_id = actual.project_id AND m.calibration_rating != actual.actual_rating`,
+								phase)
+							db = db.Where(`
+								(prev_table.employee_id IS NOT NULL AND m.calibration_rating != prev_table.calibration_rating)
+								OR
+								(prev_table.employee_id IS NULL AND m.calibration_rating != actual.actual_rating)`)
+						} else if pagination.RatingChangedStatus == "unchanged" {
+							db = db.Joins(`
+								LEFT JOIN (
+									SELECT 
+										employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+									FROM 
+										materialized_user_view
+									WHERE 
+										phase_order < ?
+									GROUP BY 
+										employee_id, project_id, calibration_rating
+								) prev_table 
+								ON 
+									m.employee_id = prev_table.employee_id 
+									AND m.project_id = prev_table.project_id 
+									AND m.phase_order = prev_table.max_phase_order AND m.calibration_rating = prev_table.calibration_rating
+								
+								LEFT JOIN actual_scores actual
+								ON 
+									prev_table.employee_id IS NULL
+									AND m.employee_id = actual.employee_id 
+									AND m.project_id = actual.project_id AND m.calibration_rating = actual.actual_rating`,
+								phase)
+
+							db = db.Where(`
+								(prev_table.employee_id IS NOT NULL AND m.calibration_rating = prev_table.calibration_rating)
+								OR
+								(prev_table.employee_id IS NULL AND m.calibration_rating = actual.actual_rating)`)
+						}
+					}
+				}
+
+				if pagination.RatingChanged != 0 {
+					if phase == 1 {
+						db = db.Joins(`
+							JOIN actual_scores ac 
+							ON m.employee_id = ac.employee_id 
+							AND m.project_id = ac.project_id 
+							AND (
+								CASE 
+									WHEN m.calibration_rating = 'A+' THEN 6
+									WHEN m.calibration_rating = 'A' THEN 5
+									WHEN m.calibration_rating = 'B+' THEN 4
+									WHEN m.calibration_rating = 'B' THEN 3
+									WHEN m.calibration_rating = 'C' THEN 2
+									WHEN m.calibration_rating = 'D' THEN 1
+									ELSE 0
+								END
+								-
+								CASE 
+									WHEN ac.actual_rating = 'A+' THEN 6
+									WHEN ac.actual_rating = 'A' THEN 5
+									WHEN ac.actual_rating = 'B+' THEN 4
+									WHEN ac.actual_rating = 'B' THEN 3
+									WHEN ac.actual_rating = 'C' THEN 2
+									WHEN ac.actual_rating = 'D' THEN 1
+									ELSE 0
+								END
+							) = ?`, pagination.RatingChanged)
+					} else {
+						db = db.Joins(`
+							LEFT JOIN (
+								SELECT 
+									employee_id, project_id, MAX(phase_order) AS max_phase_order, calibration_rating
+								FROM 
+									materialized_user_view
+								WHERE 
+									phase_order < ?
+								GROUP BY 
+									employee_id, project_id, calibration_rating
+							) prev_table 
+							ON 
+								m.employee_id = prev_table.employee_id 
+								AND m.project_id = prev_table.project_id 
+								AND (
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN prev_table.calibration_rating = 'A+' THEN 6
+										WHEN prev_table.calibration_rating = 'A' THEN 5
+										WHEN prev_table.calibration_rating = 'B+' THEN 4
+										WHEN prev_table.calibration_rating = 'B' THEN 3
+										WHEN prev_table.calibration_rating = 'C' THEN 2
+										WHEN prev_table.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							 
+							LEFT JOIN actual_scores actual
+							ON 
+								prev_table.employee_id IS NULL
+								AND m.employee_id = actual.employee_id 
+								AND m.project_id = actual.project_id
+								AND (
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN actual.actual_rating = 'A+' THEN 6
+										WHEN actual.actual_rating = 'A' THEN 5
+										WHEN actual.actual_rating = 'B+' THEN 4
+										WHEN actual.actual_rating = 'B' THEN 3
+										WHEN actual.actual_rating = 'C' THEN 2
+										WHEN actual.actual_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?`,
+							phase, pagination.RatingChanged, pagination.RatingChanged)
+						db = db.Where(`
+							(prev_table.employee_id IS NOT NULL AND 
+								(
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN prev_table.calibration_rating = 'A+' THEN 6
+										WHEN prev_table.calibration_rating = 'A' THEN 5
+										WHEN prev_table.calibration_rating = 'B+' THEN 4
+										WHEN prev_table.calibration_rating = 'B' THEN 3
+										WHEN prev_table.calibration_rating = 'C' THEN 2
+										WHEN prev_table.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							) 
+							OR 
+							(prev_table.employee_id IS NULL
+							AND actual.employee_id IS NOT NULL AND  
+								(
+									CASE 
+										WHEN m.calibration_rating = 'A+' THEN 6
+										WHEN m.calibration_rating = 'A' THEN 5
+										WHEN m.calibration_rating = 'B+' THEN 4
+										WHEN m.calibration_rating = 'B' THEN 3
+										WHEN m.calibration_rating = 'C' THEN 2
+										WHEN m.calibration_rating = 'D' THEN 1
+										ELSE 0
+									END
+									-
+									CASE 
+										WHEN actual.actual_rating = 'A+' THEN 6
+										WHEN actual.actual_rating = 'A' THEN 5
+										WHEN actual.actual_rating = 'B+' THEN 4
+										WHEN actual.actual_rating = 'B' THEN 3
+										WHEN actual.actual_rating = 'C' THEN 2
+										WHEN actual.actual_rating = 'D' THEN 1
+										ELSE 0
+									END
+								) = ?
+							)
+						`, pagination.RatingChanged, pagination.RatingChanged)
+					}
 				}
 				return db
 			}).
@@ -1897,14 +3201,14 @@ func (r *projectRepo) GetCalibratedRating(calibratorID, prevCalibrator, business
 		err = r.db.Table("materialized_user_view m").
 			Select("m.calibration_rating AS calibration_rating, COUNT(*) as count").
 			Distinct().
-			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
 			Group("m.calibration_rating").
 			Scan(&groupedResults).
 			Error
 	} else if types == "all" {
 		err = r.db.Table("materialized_user_view m").
 			Select("m.calibration_rating AS calibration_rating, COUNT(*) as count").
-			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnitName).
+			Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnitName).
 			Group("m.calibration_rating").
 			Scan(&groupedResults).
 			Error
@@ -2015,13 +3319,13 @@ func (r *projectRepo) GetAverageScore(calibratorID, prevCalibrator, businessUnit
 		// First get the base users
 		err = r.db.Table("materialized_user_view m").
 			Select("AVG(m.calibration_score)").
-			Where("m.phase_order <= ? AND m.id IN (?) AND m.project_id = ? AND m1.scoring_method='Score'", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.scoring_method='Score'", phase, subqueryResults, projectID).
 			Scan(&averageScore).
 			Error
 	} else if types == "all" {
 		err = r.db.Table("materialized_user_view m").
 			Select("AVG(m.calibration_score)").
-			Where("(m.phase_order <= ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ? AND m.scoring_method='Score'", phase, calibratorID, projectID, businessUnitName).
+			Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ? AND m.scoring_method='Score'", phase, calibratorID, projectID, businessUnitName).
 			Scan(&averageScore).
 			Error
 	}
@@ -2056,6 +3360,44 @@ func getOrder(pagination model.PaginationQuery) string {
 				WHEN m.grade ~ '^[0-9]+$' THEN m.grade::INTEGER 
 				ELSE 0 
 			END DESC`
+		}
+	}
+
+	if pagination.OrderCalibrationRatingBefore != "default" {
+		if orderBy != "" {
+			orderBy += ", "
+		}
+		if pagination.OrderCalibrationRatingBefore == "ascending" {
+			orderBy += `CASE prev_m.calibration_rating 
+				WHEN 'A+' THEN 1 
+				WHEN 'A' THEN 2 
+				WHEN 'B+' THEN 3 
+				WHEN 'B' THEN 4 
+				WHEN 'C' THEN 5 
+				WHEN 'D' THEN 6 
+				ELSE 7 
+			END DESC`
+		} else if pagination.OrderCalibrationRatingBefore == "descending" {
+			orderBy += `CASE prev_m.calibration_rating 
+				WHEN 'A+' THEN 1 
+				WHEN 'A' THEN 2 
+				WHEN 'B+' THEN 3 
+				WHEN 'B' THEN 4 
+				WHEN 'C' THEN 5 
+				WHEN 'D' THEN 6 
+				ELSE 7 
+			END ASC`
+		}
+	}
+
+	if pagination.OrderCalibrationScoreBefore != "default" {
+		if orderBy != "" {
+			orderBy += ", "
+		}
+		if pagination.OrderCalibrationScoreBefore == "ascending" {
+			orderBy += `prev_m.calibration_score ASC`
+		} else if pagination.OrderCalibrationScoreBefore == "descending" {
+			orderBy += `prev_m.calibration_score DESC`
 		}
 	}
 
