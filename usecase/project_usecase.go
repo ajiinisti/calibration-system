@@ -506,12 +506,11 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 	finalData := map[string]*response.BusinessUnitTotal{}
 	for _, summary := range summaries {
 		types := "all"
-		if summary.CalibratorName == "N-1" {
-			types = "n-1"
-		}
+		// if summary.CalibratorName == "N-1" {
+		// 	types = "n-1"
+		// }
 
 		guidance, err := r.FindRatingQuotaByCalibratorIDforSummaryHelper(calibratorID, summary.CalibratorID, summary.CalibratorBusinessUnitID, types, projectID, 0)
-		// guidance, err := r.FindRatingQuotaByCalibratorID(calibratorID, summary.CalibratorID, summary.CalibratorBusinessUnitID, types, projectID, 0)
 		if err != nil {
 			return nil, err
 		}
