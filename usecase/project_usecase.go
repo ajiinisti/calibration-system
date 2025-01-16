@@ -493,9 +493,18 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 		}
 	}
 
+	var summaries []*response.CalibratorBusinessUnit
+	for _, summary := range resultSummary {
+		summaries = append(summaries, summary)
+	}
+
+	sort.Slice(summaries, func(i, j int) bool {
+		return summaries[i].CalibratorBusinessUnit < summaries[j].CalibratorBusinessUnit
+	})
+
 	buCheck := map[string]string{}
 	finalData := map[string]*response.BusinessUnitTotal{}
-	for _, summary := range resultSummary {
+	for _, summary := range summaries {
 		types := "all"
 		if summary.CalibratorName == "N-1" {
 			types = "n-1"
