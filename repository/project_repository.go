@@ -49,6 +49,9 @@ type ProjectRepo interface {
 	GetTotalRowsCalibration(calibratorID, prevCalibrator, businessUnitName, types, projectID, rating string, pagination model.PaginationQuery) (int, error)
 	GetCalibratedRating(calibratorID, prevCalibrator, businessUnitName, types, projectID string) (*response.TotalCalibratedRating, error)
 	GetAverageScore(calibratorID, prevCalibrator, businessUnitName, types, projectID string) (float32, error)
+	GetAllDataNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int, calibratorID, projectID string) (response.UserCalibration, error)
+	GetAllDataCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID string, phase int) (response.UserCalibration, error)
+	GetAllDataCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID string, phase int) (response.UserCalibration, error)
 }
 
 type projectRepo struct {
@@ -3347,6 +3350,215 @@ func getOrder(pagination model.PaginationQuery) string {
 
 	return orderBy
 }
+
+func (r *projectRepo) GetAllDataCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID string, phase int) (response.UserCalibration, error) {
+	var users []response.UserResponse
+
+	err := r.db.Debug().
+		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+			return db.Where("project_id = ?", projectID)
+		}).
+		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+				Joins("JOIN phases p ON p.id = pp.phase_id ").
+				Where("calibrations.project_id = ? AND p.order <= ?", projectID, phase).
+				Order("p.order")
+		}).
+		Preload("BusinessUnit").
+		Table("materialized_user_view m").
+		Joins("JOIN users u2 on u2.id = m.id").
+		Select("u2.*, COUNT(m.id) AS calibration_count").
+		Where("(m.phase_order = ? AND m.calibrator_id = ?) AND m.project_id = ? AND m.business_unit_id = ?", phase, calibratorID, projectID, businessUnit).
+		Group("u2.id").
+		Order("calibration_count ASC").
+		Find(&users).Error
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	for i := range users {
+		// r.db.Model(&users[i]).Association("CalibrationScores").Find(&users[i].CalibrationScores)
+		for j := range users[i].CalibrationScores {
+			r.db.Model(&users[i].CalibrationScores[j]).Association("ProjectPhase").Find(&users[i].CalibrationScores[j].ProjectPhase)
+			r.db.Model(&users[i].CalibrationScores[j].ProjectPhase).Association("Phase").Find(&users[i].CalibrationScores[j].ProjectPhase.Phase)
+			if (&users[i]).CalibrationScores[j].JustificationType == "top" {
+				r.db.Model(&users[i].CalibrationScores[j]).Association("TopRemarks").Find(&users[i].CalibrationScores[j].TopRemarks)
+
+			}
+
+			if (&users[i]).CalibrationScores[j].JustificationType == "bottom" {
+				r.db.Model(&users[i].CalibrationScores[j]).Association("BottomRemark").Find(&users[i].CalibrationScores[j].BottomRemark)
+			}
+		}
+	}
+	return response.UserCalibration{
+		NPlusOneManager:     false,
+		SendToManager:       false,
+		SendBackCalibration: false,
+		UserData:            users,
+	}, nil
+}
+
+func (r *projectRepo) GetAllDataCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID string, phase int) (response.UserCalibration, error) {
+	// var users []model.UserCalibration
+	var resultUsers []response.UserResponse
+
+	subquery := r.db.
+		Table("materialized_user_view mv1").
+		Select("mv1.id").
+		Where("mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ?", phase, prevCalibrator, businessUnit, projectID).
+		Or("mv1.id = ? AND mv1.business_unit_id = ? AND mv1.phase_order = ? AND mv1.project_id = ?", prevCalibrator, businessUnit, phase, projectID)
+
+	var subqueryResults []string
+	if err := subquery.Pluck("id", &subqueryResults).Error; err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	subQueryCount := r.db.Table("materialized_user_view mv2").
+		Select("mv2.employee_id, COUNT(mv2.id) as calibration_count").
+		Where("mv2.project_id = ? AND mv2.phase_order <= ?", projectID, phase).
+		Group("mv2.employee_id")
+
+	// First get the base users
+	err := r.db.
+		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+			return db.Where("project_id = ?", projectID)
+		}).
+		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+				Joins("JOIN phases p ON p.id = pp.phase_id ").
+				Where("calibrations.project_id = ? AND p.order <= ?", projectID, phase).
+				Order("p.order")
+		}).
+		Preload("BusinessUnit").
+		Table("materialized_user_view m").
+		Select("m.*, sq.calibration_count").
+		Joins("LEFT JOIN (?) as sq ON sq.employee_id = m.id", subQueryCount).
+		Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
+		Order("calibration_count ASC").
+		Find(&resultUsers).Error
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	for i := range resultUsers {
+		// r.db.Model(&resultUsers[i]).Association("CalibrationScores").Find(&resultUsers[i].CalibrationScores)
+		for j := range resultUsers[i].CalibrationScores {
+			r.db.Model(&resultUsers[i].CalibrationScores[j]).Association("ProjectPhase").Find(&resultUsers[i].CalibrationScores[j].ProjectPhase)
+			r.db.Model(&resultUsers[i].CalibrationScores[j].ProjectPhase).Association("Phase").Find(&resultUsers[i].CalibrationScores[j].ProjectPhase.Phase)
+			if (&resultUsers[i]).CalibrationScores[j].JustificationType == "top" {
+				r.db.Model(&resultUsers[i].CalibrationScores[j]).Association("TopRemarks").Find(&resultUsers[i].CalibrationScores[j].TopRemarks)
+
+			}
+			if (&resultUsers[i]).CalibrationScores[j].JustificationType == "bottom" {
+				r.db.Model(&resultUsers[i].CalibrationScores[j]).Association("BottomRemark").Find(&resultUsers[i].CalibrationScores[j].BottomRemark)
+			}
+		}
+	}
+
+	NPlusOneManagerFlag := false
+	SendToManagerFlag := false
+	SendBackFlag := false
+
+	return response.UserCalibration{
+		NPlusOneManager:     NPlusOneManagerFlag,
+		SendToManager:       SendToManagerFlag,
+		SendBackCalibration: SendBackFlag,
+		UserData:            resultUsers,
+	}, nil
+}
+
+func (r *projectRepo) GetAllDataNMinusOneCalibrationsByBusinessUnit(businessUnit string, phase int, calibratorID, projectID string) (response.UserCalibration, error) {
+	var users []response.UserResponse
+
+	// prev calibrator
+	queryPrevCalibrator := r.db.
+		Table("users u2").
+		Select("u2.id").
+		Distinct().
+		Joins("JOIN calibrations c2 ON c2.calibrator_id = u2.id AND c2.deleted_at IS NULL AND c2.project_id = ?", projectID).
+		Joins("JOIN project_phases pp2 ON pp2.id = c2.project_phase_id").
+		Joins("JOIN phases p2 ON p2.id = pp2.phase_id AND p2.order < ?", phase).
+		Joins("JOIN users u3 on c2.employee_id = u3.id").
+		Where("u3.business_unit_id = ?", businessUnit)
+
+	var queryPrevCalibratorResults []string
+	if err := queryPrevCalibrator.Pluck("u.id", &queryPrevCalibratorResults).Error; err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	// Subquery
+	subquery := r.db.
+		Table("materialized_user_view m1").
+		Select("m1.id").
+		Distinct().
+		Where("m1.project_id = ? AND m1.phase_order < ? AND m1.business_unit_id = ?", projectID, phase, businessUnit)
+
+	var subqueryResults []string
+	if err := subquery.Pluck("u.id", &subqueryResults).Error; err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	if len(queryPrevCalibratorResults) == 0 {
+		queryPrevCalibratorResults = []string{"00000000-0000-0000-0000-000000000000"} // Placeholder UUID
+	}
+	if len(subqueryResults) == 0 {
+		subqueryResults = []string{"00000000-0000-0000-0000-000000000000"} // Placeholder UUID
+	}
+
+	subQuery := r.db.Table("materialized_user_view mv2").
+		Select("mv2.employee_id, COUNT(mv2.id) as calibration_count").
+		Where("mv2.project_id = ? AND mv2.phase_order <= ?", projectID, phase).
+		Group("mv2.employee_id")
+
+	err := r.db.
+		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
+			return db.Where("project_id = ?", projectID)
+		}).
+		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+				Joins("JOIN phases p ON p.id = pp.phase_id ").
+				Where("calibrations.project_id = ? AND p.order <= ?", projectID, phase).
+				Order("p.order")
+		}).
+		Preload("BusinessUnit").
+		Table("materialized_user_view m").
+		Select("m.*, sq.calibration_count").
+		Joins("LEFT JOIN (?) as sq ON sq.employee_id = m.id", subQuery).
+		Where("m.calibrator_id = ? AND m.project_id = ? and m.phase_order = ? AND m.business_unit_id = ? AND m.id NOT IN (?) AND m.id NOT IN (?)",
+			calibratorID, projectID, phase, businessUnit, queryPrevCalibrator, subqueryResults).
+		Find(&users).Error
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	for i := range users {
+		// r.db.Model(&users[i]).Association("CalibrationScores").Find(&users[i].CalibrationScores)
+		for j := range users[i].CalibrationScores {
+			r.db.Model(&users[i].CalibrationScores[j]).Association("ProjectPhase").Find(&users[i].CalibrationScores[j].ProjectPhase)
+			r.db.Model(&users[i].CalibrationScores[j].ProjectPhase).Association("Phase").Find(&users[i].CalibrationScores[j].ProjectPhase.Phase)
+			if (&users[i]).CalibrationScores[j].JustificationType == "top" {
+				r.db.Model(&users[i].CalibrationScores[j]).Association("TopRemarks").Find(&users[i].CalibrationScores[j].TopRemarks)
+
+			}
+
+			if (&users[i]).CalibrationScores[j].JustificationType == "bottom" {
+				r.db.Model(&users[i].CalibrationScores[j]).Association("BottomRemark").Find(&users[i].CalibrationScores[j].BottomRemark)
+			}
+		}
+	}
+
+	return response.UserCalibration{
+		NPlusOneManager:     false,
+		SendToManager:       false,
+		SendBackCalibration: false,
+		UserData:            users,
+	}, nil
+}
+
 func NewProjectRepo(db *gorm.DB) ProjectRepo {
 	return &projectRepo{
 		db: db,

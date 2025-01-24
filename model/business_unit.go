@@ -16,5 +16,5 @@ type BusinessUnit struct {
 	GroupBusinessUnit   GroupBusinessUnit
 	GroupBusinessUnitId string
 	Pillar              string
-	RatingQuotas        []RatingQuota `gorm:"constraint:OnDelete:CASCADE"`
+	RatingQuotas        []RatingQuota `gorm:"constraint:OnDelete:CASCADE" json:"-"`
 }

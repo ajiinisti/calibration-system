@@ -52,6 +52,9 @@ type ProjectUsecase interface {
 	FindRatingQuotaByCalibratorIDforSummaryHelper(calibratorID, prevCalibrator, businessUnitID, types, projectID string, countCurrentUser int) (*response.RatingQuota, error)
 	FindActiveProjectByCalibratorID(calibratorID string) ([]model.Project, error)
 	FindActiveProjectBySpmoID(spmoID string) ([]model.Project, error)
+	FindReportCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID string) (response.UserCalibration, error)
+	FindReportNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit, projectID string) (response.UserCalibration, error)
+	FindReportCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID string) (response.UserCalibration, error)
 }
 
 type projectUsecase struct {
@@ -775,7 +778,7 @@ func (r *projectUsecase) FindSummaryProjectTotalByCalibratorID(calibratorID, pro
 	}
 
 	for _, businessUnit := range allBusinessUnit {
-		ratingQuota, err := r.FindRatingQuotaByCalibratorID(calibratorID, "", businessUnit.ID, "all", projectID, 0)
+		ratingQuota, err := r.FindRatingQuotaByCalibratorIDforSummaryHelper(calibratorID, "", businessUnit.ID, "all", projectID, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -873,6 +876,45 @@ func truncateFloat(f float64, decimals int) float64 {
 	return truncated
 }
 
+func (r *projectUsecase) FindReportCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetAllDataCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID, phase)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindReportCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetAllDataCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID, phase)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
+func (r *projectUsecase) FindReportNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit, projectID string) (response.UserCalibration, error) {
+	phase, err := r.repo.GetProjectPhaseOrder(calibratorID, projectID)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+
+	calibration, err := r.repo.GetAllDataNMinusOneCalibrationsByBusinessUnit(businessUnit, phase, calibratorID, projectID)
+	if err != nil {
+		return response.UserCalibration{}, err
+	}
+	return calibration, nil
+}
+
 func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, prevCalibrator, projectID string, c *gin.Context) (string, error) {
 	var responseData response.UserCalibration
 	var err error
@@ -880,11 +922,11 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 	if types == "numberOne" {
 		responseData, err = r.FindNumberOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID)
 	} else if types == "n-1" {
-		responseData, err = r.FindNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit, projectID)
+		responseData, err = r.FindReportNMinusOneCalibrationsByPrevCalibratorBusinessUnit(calibratorID, businessUnit, projectID)
 	} else if types == "default" {
-		// responseData, err = r.FindCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID)
+		responseData, err = r.FindReportCalibrationsByPrevCalibratorBusinessUnit(calibratorID, prevCalibrator, businessUnit, projectID)
 	} else {
-		// responseData, err = r.FindCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID)
+		responseData, err = r.FindReportCalibrationsByBusinessUnit(calibratorID, businessUnit, projectID)
 	}
 	if err != nil {
 		return "", err
@@ -900,7 +942,7 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 		return "", err
 	}
 
-	ratingQuota, err := r.FindRatingQuotaByCalibratorID(calibratorID, prevCalibrator, businessUnit, types, projectID, 0)
+	ratingQuota, err := r.FindRatingQuotaByCalibratorIDforSummaryHelper(calibratorID, prevCalibrator, businessUnit, types, projectID, 0)
 	if err != nil {
 		return "", err
 	}
@@ -1012,6 +1054,7 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 		}
 	}
 
+	fmt.Println("==========================DATA USER", responseData.UserData[0].Name, responseData.UserData[0].CalibrationScores)
 	for i, user := range responseData.UserData {
 		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("A%d", i+15), i+1)
 		file.SetColWidth(user.BusinessUnit.Name, "A", "A", 4)
@@ -1096,7 +1139,7 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 
 			for _, calibrationScore := range user.CalibrationScores {
 				if j == calibrationScore.ProjectPhase.Phase.Order {
-
+					fmt.Println("sheet= ", user.BusinessUnit.Name, " axis=", fmt.Sprintf("%s%d", asciiToName(column), i+15), " value=", truncateFloat(calibrationScore.CalibrationScore, 2))
 					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), truncateFloat(calibrationScore.CalibrationScore, 2))
 					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 					column++
@@ -1163,19 +1206,28 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 	}
 
 	file.SetActiveSheet(index)
+	file.DeleteSheet("Sheet1")
+
+	deviationRatingAP := countCalibrated["APlus"] - ratingQuota.APlus
+	deviationRatingA := countCalibrated["A"] - ratingQuota.A
+	deviationRatingBP := countCalibrated["BPlus"] - ratingQuota.BPlus
+	deviationRatingB := countCalibrated["B"] - ratingQuota.B
+	deviationRatingC := countCalibrated["C"] - ratingQuota.C
+	deviationRatingD := countCalibrated["D"] - ratingQuota.D
 
 	// Add data for the chart
 	data := map[string]interface{}{
 		"H3": "Category", "I3": "Rating Scale", "J3": "Guidance", "K3": "Actual", "L3": "Calibrated", "M3": "Deviation Rating",
-		"H4": "A+", "I4": "5-5", "J4": ratingQuota.APlus, "K4": actualScore.APlus, "L4": countCalibrated["APlus"], "M4": countCalibrated["APlus"] - ratingQuota.APlus,
-		"H5": "A", "I5": "4.5 - 4.99", "J5": ratingQuota.A, "K5": actualScore.A, "L5": countCalibrated["A"], "M5": countCalibrated["A"] - ratingQuota.A,
-		"H6": "B+", "I6": "3.5 - 6.69", "J6": ratingQuota.BPlus, "K6": actualScore.BPlus, "L6": countCalibrated["BPlus"], "M6": countCalibrated["BPlus"] - ratingQuota.BPlus,
-		"H7": "B", "I7": "3 - 3.49", "J7": ratingQuota.B, "K7": actualScore.B, "L7": countCalibrated["B"], "M7": countCalibrated["B"] - ratingQuota.B,
-		"H8": "C", "I8": "2 - 2.99", "J8": ratingQuota.C, "K8": actualScore.C, "L8": countCalibrated["C"], "M8": countCalibrated["C"] - ratingQuota.C,
-		"H9": "D", "I9": "0 - 1.99", "J9": ratingQuota.D, "K9": actualScore.D, "L9": countCalibrated["D"], "M9": countCalibrated["D"] - ratingQuota.D,
+		"H4": "A+", "I4": "5-5", "J4": ratingQuota.APlus, "K4": actualScore.APlus, "L4": countCalibrated["APlus"], "M4": deviationRatingAP,
+		"H5": "A", "I5": "4.5 - 4.99", "J5": ratingQuota.A, "K5": actualScore.A, "L5": countCalibrated["A"], "M5": deviationRatingA,
+		"H6": "B+", "I6": "3.5 - 4.49", "J6": ratingQuota.BPlus, "K6": actualScore.BPlus, "L6": countCalibrated["BPlus"], "M6": deviationRatingBP,
+		"H7": "B", "I7": "3 - 3.49", "J7": ratingQuota.B, "K7": actualScore.B, "L7": countCalibrated["B"], "M7": deviationRatingB,
+		"H8": "C", "I8": "2 - 2.99", "J8": ratingQuota.C, "K8": actualScore.C, "L8": countCalibrated["C"], "M8": deviationRatingC,
+		"H9": "D", "I9": "0 - 1.99", "J9": ratingQuota.D, "K9": actualScore.D, "L9": countCalibrated["D"], "M9": deviationRatingD,
 		"H10": "Total", "J10": ratingQuota.APlus + ratingQuota.A + ratingQuota.BPlus + ratingQuota.B + ratingQuota.C + ratingQuota.D,
 		"K10": actualScore.APlus + actualScore.A + actualScore.BPlus + actualScore.B + actualScore.C + actualScore.D,
 		"L10": countCalibrated["APlus"] + countCalibrated["A"] + countCalibrated["BPlus"] + countCalibrated["B"] + countCalibrated["C"] + countCalibrated["D"],
+		"M10": deviationRatingAP + deviationRatingA + deviationRatingBP + deviationRatingB + deviationRatingC + deviationRatingD,
 	}
 	for k, v := range data {
 		file.SetCellValue(sheetName, k, v)
@@ -1189,25 +1241,25 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 		},
 		"series": [
 			{
-				"name": "%s!$J$3",
-				"categories": "%s!$H$4:$H$9",
-				"values": "%s!$J$4:$J$9",
+				"name": "'%s'!$J$3",
+				"categories": "'%s'!$H$4:$H$9",
+				"values": "'%s'!$J$4:$J$9",
 				"line": {
 					"color": "#BEBEBE"
 				}
 			},
 			{
-				"name": "%s!$K$3",
-				"categories": "%s!$H$4:$H$9",
-				"values": "%s!$K$4:$K$9",
+				"name": "'%s'!$K$3",
+				"categories": "'%s'!$H$4:$H$9",
+				"values": "'%s'!$K$4:$K$9",
 				"line": {
 					"color": "#02B4CC"
 				}
 			},
 			{
-				"name": "%s!$L$3",
-				"categories": "%s!$H$4:$H$9",
-				"values": "%s!$L$4:$L$9",
+				"name": "'%s'!$L$3",
+				"categories": "'%s'!$H$4:$H$9",
+				"values": "'%s'!$L$4:$L$9",
 				"line": {
 					"color": "#FF7300"
 				}
@@ -1231,6 +1283,7 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 			"minimum": 0
 		}
 	}`, sheetName, sheetName, sheetName, sheetName, sheetName, sheetName, sheetName, sheetName, sheetName, len(responseData.UserData))
+	// fmt.Println("=====================,", len(responseData.UserData), chartJSON)
 
 	// Add the chart at a specific location
 	err = file.AddChart(sheetName, "A1", chartJSON)
@@ -1253,8 +1306,230 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 		return "", err
 	}
 
+	style1, err := file.NewStyle(`{"alignment":{"vertical":"center"}, "font":{"bold":true}}`)
+	if err != nil {
+		return "", err
+	}
+
+	style2, err := file.NewStyle(`{"alignment":{"vertical":"center"}}`)
+	if err != nil {
+		return "", err
+	}
+
+	summaryHeaders := []string{
+		"Business Unit",
+		"Previous Calibrator",
+		"Indicator",
+		"A+",
+		"A",
+		"B+",
+		"B",
+		"C",
+		"D",
+		"Total",
+		"Average",
+		"Status",
+	}
+
+	for col, header := range summaryHeaders {
+		colName := excelize.ToAlphaString(col)
+		cellRef := fmt.Sprintf("%s%d", colName, 1)
+		file.SetCellStyle("Sheet1", cellRef, cellRef, style2)
+		file.SetCellValue("Sheet1", cellRef, header)
+	}
+
+	firstRow := 2
+	for _, summaryData := range summary.Summary {
+		startRow := firstRow
+		for _, prevCalibratorData := range summaryData.CalibratorBusinessUnit {
+			file.SetCellValue("Sheet1", fmt.Sprintf("A%d", firstRow), summaryData.CalibratorBusinessUnitName)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("A%d", firstRow), fmt.Sprintf("A%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("B%d", firstRow), prevCalibratorData.CalibratorName)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("B%d", firstRow), fmt.Sprintf("B%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("C%d", firstRow), "Calibrated")
+			file.SetCellStyle("Sheet1", fmt.Sprintf("C%d", firstRow), fmt.Sprintf("C%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("D%d", firstRow), prevCalibratorData.APlus)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("D%d", firstRow), fmt.Sprintf("D%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("E%d", firstRow), prevCalibratorData.A)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("E%d", firstRow), fmt.Sprintf("E%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("F%d", firstRow), prevCalibratorData.BPlus)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("F%d", firstRow), fmt.Sprintf("F%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("G%d", firstRow), prevCalibratorData.B)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("G%d", firstRow), fmt.Sprintf("G%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("H%d", firstRow), prevCalibratorData.C)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("H%d", firstRow), fmt.Sprintf("H%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("I%d", firstRow), prevCalibratorData.D)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("I%d", firstRow), fmt.Sprintf("I%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("J%d", firstRow), prevCalibratorData.TotalCalibratedScore)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("J%d", firstRow), fmt.Sprintf("J%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("K%d", firstRow), prevCalibratorData.AverageScore)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("K%d", firstRow), fmt.Sprintf("K%d", firstRow), style2)
+
+			file.SetCellValue("Sheet1", fmt.Sprintf("L%d", firstRow), prevCalibratorData.Status)
+			file.SetCellStyle("Sheet1", fmt.Sprintf("L%d", firstRow), fmt.Sprintf("L%d", firstRow), style2)
+			firstRow += 1
+		}
+		file.SetCellValue("Sheet1", fmt.Sprintf("A%d", firstRow), summaryData.CalibratorBusinessUnitName)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("A%d", firstRow), fmt.Sprintf("A%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("B%d", firstRow), "Rating")
+		file.SetCellStyle("Sheet1", fmt.Sprintf("B%d", firstRow), fmt.Sprintf("B%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("C%d", firstRow), "Guidance")
+		file.SetCellStyle("Sheet1", fmt.Sprintf("C%d", firstRow), fmt.Sprintf("C%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("D%d", firstRow), summaryData.APlusGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("D%d", firstRow), fmt.Sprintf("D%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("E%d", firstRow), summaryData.AGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("E%d", firstRow), fmt.Sprintf("E%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("F%d", firstRow), summaryData.BPlusGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("F%d", firstRow), fmt.Sprintf("F%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("G%d", firstRow), summaryData.BGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("G%d", firstRow), fmt.Sprintf("G%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("H%d", firstRow), summaryData.CGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("H%d", firstRow), fmt.Sprintf("H%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("I%d", firstRow), summaryData.DGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("I%d", firstRow), fmt.Sprintf("I%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("J%d", firstRow), summaryData.APlusGuidance+summaryData.AGuidance+summaryData.BPlusGuidance+summaryData.BGuidance+summaryData.CGuidance+summaryData.DGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("J%d", firstRow), fmt.Sprintf("J%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("K%d", firstRow), summaryData.AverageScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("K%d", firstRow), fmt.Sprintf("K%d", firstRow), style2)
+		firstRow += 1
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("A%d", firstRow), summaryData.CalibratorBusinessUnitName)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("A%d", firstRow), fmt.Sprintf("A%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("B%d", firstRow), "Total")
+		file.SetCellStyle("Sheet1", fmt.Sprintf("B%d", firstRow), fmt.Sprintf("B%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("C%d", firstRow), "Calibrated")
+		file.SetCellStyle("Sheet1", fmt.Sprintf("C%d", firstRow), fmt.Sprintf("C%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("D%d", firstRow), summaryData.APlusCalibrated)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("D%d", firstRow), fmt.Sprintf("D%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("E%d", firstRow), summaryData.ACalibrated)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("E%d", firstRow), fmt.Sprintf("E%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("F%d", firstRow), summaryData.BPlusCalibrated)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("F%d", firstRow), fmt.Sprintf("F%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("G%d", firstRow), summaryData.BCalibrated)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("G%d", firstRow), fmt.Sprintf("G%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("H%d", firstRow), summaryData.CCalibrated)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("H%d", firstRow), fmt.Sprintf("H%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("I%d", firstRow), summaryData.DCalibrated)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("I%d", firstRow), fmt.Sprintf("I%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("J%d", firstRow), summaryData.TotalCalibratedScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("J%d", firstRow), fmt.Sprintf("J%d", firstRow), style2)
+		firstRow += 1
+
+		endRow := firstRow - 1  // Adjust to get the last row of the group
+		if startRow != endRow { // Only merge if there's more than one row
+			file.MergeCell("Sheet1", fmt.Sprintf("A%d", startRow), fmt.Sprintf("A%d", endRow))
+		}
+	}
+
+	if len(summary.Summary) > 1 {
+		total := firstRow
+		file.SetCellValue("Sheet1", fmt.Sprintf("A%d", firstRow), "Grand Total")
+		file.SetCellStyle("Sheet1", fmt.Sprintf("A%d", firstRow), fmt.Sprintf("A%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("B%d", firstRow), "Guidance")
+		file.SetCellStyle("Sheet1", fmt.Sprintf("B%d", firstRow), fmt.Sprintf("B%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("D%d", firstRow), summary.APlusGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("D%d", firstRow), fmt.Sprintf("D%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("E%d", firstRow), summary.AGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("E%d", firstRow), fmt.Sprintf("E%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("F%d", firstRow), summary.BPlusGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("F%d", firstRow), fmt.Sprintf("F%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("G%d", firstRow), summary.BGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("G%d", firstRow), fmt.Sprintf("G%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("H%d", firstRow), summary.CGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("H%d", firstRow), fmt.Sprintf("H%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("I%d", firstRow), summary.DGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("I%d", firstRow), fmt.Sprintf("I%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("J%d", firstRow), summary.APlusGuidance+summary.AGuidance+summary.BPlusGuidance+summary.BGuidance+summary.CGuidance+summary.DGuidance)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("J%d", firstRow), fmt.Sprintf("J%d", firstRow), style2)
+		file.MergeCell("Sheet1", fmt.Sprintf("B%d", firstRow), fmt.Sprintf("C%d", firstRow))
+
+		firstRow += 1
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("A%d", firstRow), "Grand Total")
+		file.SetCellStyle("Sheet1", fmt.Sprintf("A%d", firstRow), fmt.Sprintf("A%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("B%d", firstRow), "Calibrated")
+		file.SetCellStyle("Sheet1", fmt.Sprintf("B%d", firstRow), fmt.Sprintf("B%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("D%d", firstRow), summary.APlusTotalScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("D%d", firstRow), fmt.Sprintf("D%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("E%d", firstRow), summary.ATotalScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("E%d", firstRow), fmt.Sprintf("E%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("F%d", firstRow), summary.BPlusTotalScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("F%d", firstRow), fmt.Sprintf("F%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("G%d", firstRow), summary.BTotalScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("G%d", firstRow), fmt.Sprintf("G%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("H%d", firstRow), summary.CTotalScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("H%d", firstRow), fmt.Sprintf("H%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("I%d", firstRow), summary.DTotalScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("I%d", firstRow), fmt.Sprintf("I%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("J%d", firstRow), summary.APlusTotalScore+summary.ATotalScore+summary.BPlusTotalScore+summary.BTotalScore+summary.CTotalScore+summary.DTotalScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("J%d", firstRow), fmt.Sprintf("J%d", firstRow), style2)
+
+		file.SetCellValue("Sheet1", fmt.Sprintf("K%d", firstRow), summary.AverageTotalScore)
+		file.SetCellStyle("Sheet1", fmt.Sprintf("K%d", firstRow), fmt.Sprintf("K%d", firstRow), style2)
+		file.MergeCell("Sheet1", fmt.Sprintf("B%d", firstRow), fmt.Sprintf("C%d", firstRow))
+
+		firstRow += 1
+		file.MergeCell("Sheet1", fmt.Sprintf("A%d", total), fmt.Sprintf("A%d", firstRow-1))
+	}
+	file.SetSheetName("Sheet1", "Summary")
+
 	for _, summaryBusinessUnit := range summary.Summary {
-		responseData, err := r.FindCalibrationsByBusinessUnit(calibratorID, summaryBusinessUnit.CalibratorBusinessUnitID, projectID)
+		responseData, err := r.FindReportCalibrationsByBusinessUnit(calibratorID, summaryBusinessUnit.CalibratorBusinessUnitID, projectID)
+		if err != nil {
+			return "", err
+		}
+
+		actualScore, err := r.FindTotalActualScoreByCalibratorID(calibratorID, "", summaryBusinessUnit.CalibratorBusinessUnitID, "all", projectID)
+		if err != nil {
+			return "", err
+		}
+
+		ratingQuota, err := r.FindRatingQuotaByCalibratorIDforSummaryHelper(calibratorID, "", summaryBusinessUnit.CalibratorBusinessUnitID, "all", projectID, 0)
 		if err != nil {
 			return "", err
 		}
@@ -1264,7 +1539,8 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 			return "", err
 		}
 
-		index := file.NewSheet(summaryBusinessUnit.CalibratorBusinessUnitName)
+		sheetName := responseData.UserData[0].BusinessUnit.Name
+		index := file.NewSheet(sheetName)
 
 		headers := []string{
 			"No",
@@ -1294,23 +1570,22 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 			headers = append(headers, fmt.Sprintf("Justification-%d %s", i+1, colorPallete[i]))
 		}
 
-		style1, err := file.NewStyle(`{"alignment":{"vertical":"center"}, "font":{"bold":true}}`)
-		if err != nil {
-			return "", err
-		}
-
-		style2, err := file.NewStyle(`{"alignment":{"vertical":"center"}}`)
-		if err != nil {
-			return "", err
+		countCalibrated := map[string]int{
+			"APlus": 0,
+			"A":     0,
+			"BPlus": 0,
+			"B":     0,
+			"C":     0,
+			"D":     0,
 		}
 
 		firstAppear := true
 		for col, header := range headers {
 			colName := excelize.ToAlphaString(col)
-			cellRef := fmt.Sprintf("%s%d", colName, 1)
-			cellRefUnder := fmt.Sprintf("%s%d", colName, 2)
+			cellRef := fmt.Sprintf("%s%d", colName, 13)
+			cellRefUnder := fmt.Sprintf("%s%d", colName, 14)
 			nextColName := excelize.ToAlphaString(col + 1)
-			cellNextCollRef := fmt.Sprintf("%s%d", nextColName, 1)
+			cellNextCollRef := fmt.Sprintf("%s%d", nextColName, 13)
 			file.SetCellStyle(responseData.UserData[0].BusinessUnit.Name, cellRef, cellRef, style1)
 
 			if (strings.Contains(header, "Prev") || strings.Contains(header, "Actual") || strings.Contains(header, "Calibration")) && firstAppear {
@@ -1361,58 +1636,76 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 		}
 
 		for i, user := range responseData.UserData {
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("A%d", i+3), i+1)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("A%d", i+15), i+1)
 			file.SetColWidth(user.BusinessUnit.Name, "A", "A", 4)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("A%d", i+3), fmt.Sprintf("A%d", i+3), style2)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("A%d", i+15), fmt.Sprintf("A%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+3), user.Nik)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+15), user.Nik)
 			file.SetColWidth(user.BusinessUnit.Name, "B", "B", 15)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+3), fmt.Sprintf("B%d", i+3), style2)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("B%d", i+15), fmt.Sprintf("B%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+3), user.Name)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+15), user.Name)
 			file.SetColWidth(user.BusinessUnit.Name, "C", "C", 20)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+3), fmt.Sprintf("C%d", i+3), style2)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("C%d", i+15), fmt.Sprintf("C%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+3), user.Grade)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+15), user.Grade)
 			file.SetColWidth(user.BusinessUnit.Name, "D", "D", 4)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+3), fmt.Sprintf("D%d", i+3), style2)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("D%d", i+15), fmt.Sprintf("D%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+3), user.BusinessUnit.Name)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+3), fmt.Sprintf("E%d", i+3), style2)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+15), user.BusinessUnit.Name)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("E%d", i+15), fmt.Sprintf("E%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+3), user.OrganizationUnit)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+15), user.OrganizationUnit)
 			file.SetColWidth(user.BusinessUnit.Name, "F", "F", 15)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+3), fmt.Sprintf("F%d", i+3), style2)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("F%d", i+15), fmt.Sprintf("F%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+3), user.SupervisorNames)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+15), user.SupervisorNames)
 			file.SetColWidth(user.BusinessUnit.Name, "G", "G", 20)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+3), fmt.Sprintf("G%d", i+3), style2)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("G%d", i+15), fmt.Sprintf("G%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+3), user.ActualScores[0].Y2Rating)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+3), fmt.Sprintf("H%d", i+3), style2)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+15), user.ActualScores[0].Y2Rating)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("H%d", i+15), fmt.Sprintf("H%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+3), user.ActualScores[0].Y1Rating)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+3), fmt.Sprintf("I%d", i+3), style2)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+15), user.ActualScores[0].Y1Rating)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+15), fmt.Sprintf("I%d", i+15), style2)
 
 			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), truncateFloat(user.ActualScores[0].PTTScore, 2))
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), fmt.Sprintf("%.2f", user.ActualScores[0].PTTScore))
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), fmt.Sprintf("J%d", i+3), style2)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].PTTScore))
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), fmt.Sprintf("J%d", i+15), style2)
 
-			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+3), truncateFloat(user.ActualScores[0].PATScore, 2))
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+3), fmt.Sprintf("%.2f", user.ActualScores[0].PATScore))
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+3), fmt.Sprintf("K%d", i+3), style2)
+			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), truncateFloat(user.ActualScores[0].PATScore, 2))
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].PATScore))
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), fmt.Sprintf("K%d", i+15), style2)
 
-			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+3), truncateFloat(user.ActualScores[0].Score360, 2))
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+3), fmt.Sprintf("%.2f", user.ActualScores[0].Score360))
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+3), fmt.Sprintf("L%d", i+3), style2)
+			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), truncateFloat(user.ActualScores[0].Score360, 2))
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].Score360))
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), fmt.Sprintf("L%d", i+15), style2)
 
-			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+3), truncateFloat(user.ActualScores[0].ActualScore, 2))
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+3), fmt.Sprintf("%.2f", user.ActualScores[0].ActualScore))
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+3), fmt.Sprintf("M%d", i+3), style2)
+			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), truncateFloat(user.ActualScores[0].ActualScore, 2))
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].ActualScore))
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), fmt.Sprintf("M%d", i+15), style2)
 
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("N%d", i+3), user.ActualScores[0].ActualRating)
-			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("N%d", i+3), fmt.Sprintf("N%d", i+3), style2)
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("N%d", i+15), user.ActualScores[0].ActualRating)
+			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("N%d", i+15), fmt.Sprintf("N%d", i+15), style2)
 			column := int('O')
+
+			rating := user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationRating
+			switch rating {
+			case "A+":
+				countCalibrated["APlus"] += 1
+			case "A":
+				countCalibrated["A"] += 1
+			case "B+":
+				countCalibrated["BPlus"] += 1
+			case "B":
+				countCalibrated["B"] += 1
+			case "C":
+				countCalibrated["C"] += 1
+			case "D":
+				countCalibrated["D"] += 1
+			default:
+				//
+			}
 
 			startCalibrationPhaseCol := 14
 			for j := 1; j < projectPhase.Phase.Order+1; j++ {
@@ -1427,21 +1720,21 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 				for _, calibrationScore := range user.CalibrationScores {
 					if j == calibrationScore.ProjectPhase.Phase.Order {
 
-						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), truncateFloat(calibrationScore.CalibrationScore, 2))
-						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), truncateFloat(calibrationScore.CalibrationScore, 2))
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 						column++
 
-						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), calibrationScore.CalibrationRating)
-						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), calibrationScore.CalibrationRating)
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 						column++
 
-						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), calibrationScore.JustificationType)
-						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), calibrationScore.JustificationType)
+						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 						column++
 
 						if calibrationScore.JustificationType == "default" {
-							file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), calibrationScore.Comment)
-							file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+							file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), calibrationScore.Comment)
+							file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 						} else if calibrationScore.JustificationType == "top" {
 							var justifications string
 							for _, topJustification := range calibrationScore.TopRemarks {
@@ -1455,8 +1748,8 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 									topJustification.EvidenceLink,
 								)
 							}
-							file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), justifications)
-							file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+							file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), justifications)
+							file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 							file.SetColWidth(user.BusinessUnit.Name, fmt.Sprintf("%s", asciiToName(column)), fmt.Sprintf("%s", asciiToName(column)), 25)
 						} else {
 							justification := fmt.Sprintf("Attitude: %s\nIndisipliner: %s\nLow Performance: %s\nWarning Letter: %s",
@@ -1465,35 +1758,119 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 								calibrationScore.BottomRemark.LowPerformance,
 								calibrationScore.BottomRemark.WarningLetter,
 							)
-							file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), justification)
-							file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+							file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), justification)
+							file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 							file.SetColWidth(user.BusinessUnit.Name, fmt.Sprintf("%s", asciiToName(column)), fmt.Sprintf("%s", asciiToName(column)), 25)
 						}
 						column++
 					}
 				}
 				if columnBefore == column {
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), "-")
-					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), "-")
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 					column++
 
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), "-")
-					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), "-")
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 					column++
 
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), "-")
-					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), "-")
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 					column++
 
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), "-")
-					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+3), fmt.Sprintf("%s%d", asciiToName(column), i+3), backgroundColorCalibration)
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), "-")
+					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 					column++
 				}
 			}
 		}
 		file.SetActiveSheet(index)
+
+		deviationRatingAP := countCalibrated["APlus"] - ratingQuota.APlus
+		deviationRatingA := countCalibrated["A"] - ratingQuota.A
+		deviationRatingBP := countCalibrated["BPlus"] - ratingQuota.BPlus
+		deviationRatingB := countCalibrated["B"] - ratingQuota.B
+		deviationRatingC := countCalibrated["C"] - ratingQuota.C
+		deviationRatingD := countCalibrated["D"] - ratingQuota.D
+
+		// Add data for the chart
+		data := map[string]interface{}{
+			"H3": "Category", "I3": "Rating Scale", "J3": "Guidance", "K3": "Actual", "L3": "Calibrated", "M3": "Deviation Rating",
+			"H4": "A+", "I4": "5-5", "J4": ratingQuota.APlus, "K4": actualScore.APlus, "L4": countCalibrated["APlus"], "M4": deviationRatingAP,
+			"H5": "A", "I5": "4.5 - 4.99", "J5": ratingQuota.A, "K5": actualScore.A, "L5": countCalibrated["A"], "M5": deviationRatingA,
+			"H6": "B+", "I6": "3.5 - 4.49", "J6": ratingQuota.BPlus, "K6": actualScore.BPlus, "L6": countCalibrated["BPlus"], "M6": deviationRatingBP,
+			"H7": "B", "I7": "3 - 3.49", "J7": ratingQuota.B, "K7": actualScore.B, "L7": countCalibrated["B"], "M7": deviationRatingB,
+			"H8": "C", "I8": "2 - 2.99", "J8": ratingQuota.C, "K8": actualScore.C, "L8": countCalibrated["C"], "M8": deviationRatingC,
+			"H9": "D", "I9": "0 - 1.99", "J9": ratingQuota.D, "K9": actualScore.D, "L9": countCalibrated["D"], "M9": deviationRatingD,
+			"H10": "Total", "J10": ratingQuota.APlus + ratingQuota.A + ratingQuota.BPlus + ratingQuota.B + ratingQuota.C + ratingQuota.D,
+			"K10": actualScore.APlus + actualScore.A + actualScore.BPlus + actualScore.B + actualScore.C + actualScore.D,
+			"L10": countCalibrated["APlus"] + countCalibrated["A"] + countCalibrated["BPlus"] + countCalibrated["B"] + countCalibrated["C"] + countCalibrated["D"],
+			"M10": deviationRatingAP + deviationRatingA + deviationRatingBP + deviationRatingB + deviationRatingC + deviationRatingD,
+		}
+		for k, v := range data {
+			file.SetCellValue(sheetName, k, v)
+		}
+
+		chartJSON := fmt.Sprintf(`{
+			"type": "line",
+			"dimension": {
+				"width": 600,
+				"height": 225
+			},
+			"series": [
+				{
+					"name": "'%s'!$J$3",
+					"categories": "'%s'!$H$4:$H$9",
+					"values": "'%s'!$J$4:$J$9",
+					"line": {
+						"color": "#BEBEBE"
+					}
+				},
+				{
+					"name": "'%s'!$K$3",
+					"categories": "'%s'!$H$4:$H$9",
+					"values": "'%s'!$K$4:$K$9",
+					"line": {
+						"color": "#02B4CC"
+					}
+				},
+				{
+					"name": "'%s'!$L$3",
+					"categories": "'%s'!$H$4:$H$9",
+					"values": "'%s'!$L$4:$L$9",
+					"line": {
+						"color": "#FF7300"
+					}
+				}
+			],
+			"legend": {
+				"position": "bottom",
+				"show_legend_key": true
+			},
+			"title": {
+				"name": "Chart"
+			},
+			"plotarea": {
+				"show_val": false
+			},
+			"x_axis": {
+				"reverse_order": false
+			},
+			"y_axis": {
+				"maximum": %d,
+				"minimum": 0
+			}
+		}`, sheetName, sheetName, sheetName, sheetName, sheetName, sheetName, sheetName, sheetName, sheetName, len(responseData.UserData))
+
+		// Add the chart at a specific location
+		err = file.AddChart(sheetName, "A1", chartJSON)
+		if err != nil {
+			return "", err
+		}
 	}
 
+	sheetIndex := file.GetSheetIndex("Summary")
+	file.SetActiveSheet(sheetIndex)
 	err = file.SaveAs("report.xlsx")
 	if err != nil {
 		return "", err

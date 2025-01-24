@@ -14,7 +14,7 @@ type UserResponse struct {
 	Name              string
 	Nik               string
 	SupervisorNames   string
-	BusinessUnit      BusinessUnitResponse
+	BusinessUnit      model.BusinessUnit
 	BusinessUnitId    *string
 	OrganizationUnit  string
 	Division          string
