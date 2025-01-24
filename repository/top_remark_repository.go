@@ -112,6 +112,15 @@ func (r *topRemarkRepo) BulkSave(payload []*model.TopRemark, projectPhases []mod
 				}
 			}
 		}
+
+		for _, calibration := range calibrations {
+			calibration.JustificationType = "top"
+			err := tx.Save(calibration)
+			if err.Error != nil {
+				tx.Rollback()
+				return err.Error
+			}
+		}
 	}
 
 	tx.Commit()
