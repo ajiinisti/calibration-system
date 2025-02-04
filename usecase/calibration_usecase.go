@@ -19,7 +19,7 @@ type CalibrationUsecase interface {
 	FindAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindRejectedBySPMOID(spmoID string) ([]model.Calibration, error)
 	FindById(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
-	FindByProjectEmployeeId(projectID, employeeID string) ([]model.Calibration, error)
+	FindByProjectEmployeeId(projectID, employeeID string) ([]model.CalibrationForm, error)
 	SaveData(payload *model.Calibration) error
 	SaveDataByUser(payload *request.CalibrationForm) error
 	DeleteData(projectId, employeeId string) error
@@ -128,7 +128,7 @@ func (r *calibrationUsecase) FindById(projectID, projectPhaseID, employeeID stri
 	return r.repo.Get(projectID, projectPhaseID, employeeID)
 }
 
-func (r *calibrationUsecase) FindByProjectEmployeeId(projectID, employeeID string) ([]model.Calibration, error) {
+func (r *calibrationUsecase) FindByProjectEmployeeId(projectID, employeeID string) ([]model.CalibrationForm, error) {
 	return r.repo.GetByProjectEmployeeID(projectID, employeeID)
 }
 

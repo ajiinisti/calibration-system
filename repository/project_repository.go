@@ -356,8 +356,13 @@ func (r *projectRepo) GetRatingQuotaByCalibratorID(businessUnitID, projectID str
 
 func (r *projectRepo) GetAllUserCalibrationByCalibratorID(calibratorID, projectID string, calibratorPhase int) ([]model.User, error) {
 	var calibration []model.User
+	subQueryCount := r.db.Table("materialized_user_view mv2").
+		Select("mv2.employee_id, COUNT(mv2.id) as calibration_count").
+		Where("mv2.project_id = ? AND mv2.phase_order <= ?", projectID, calibratorPhase).
+		Group("mv2.employee_id")
+
 	err := r.db.
-		Table("materialized_user_view").
+		Table("materialized_user_view m").
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
@@ -368,8 +373,10 @@ func (r *projectRepo) GetAllUserCalibrationByCalibratorID(calibratorID, projectI
 		Preload("CalibrationScores.Calibrator").
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("BusinessUnit").
-		Select("*").
-		Where("calibrator_id = ? AND project_id = ? AND phase_order = ?", calibratorID, projectID, calibratorPhase).
+		Select("m.*, sq.calibration_count").
+		Joins("LEFT JOIN (?) as sq ON sq.employee_id = m.id", subQueryCount).
+		Where("m.calibrator_id = ? AND m.project_id = ? AND m.phase_order = ?", calibratorID, projectID, calibratorPhase).
+		Order("calibration_count DESC").
 		Find(&calibration).Error
 	if err != nil {
 		return nil, err

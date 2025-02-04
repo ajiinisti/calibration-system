@@ -9,7 +9,7 @@ import (
 
 type ActualScoreRepo interface {
 	Save(payload *model.ActualScore) error
-	Get(projectId, employeeId string) (*model.ActualScore, error)
+	Get(projectId, employeeId string) (*model.ActualScoreTable, error)
 	List() ([]model.ActualScore, error)
 	Delete(projectId, employeeId string) error
 	Bulksave(payload *[]model.ActualScore) error
@@ -63,9 +63,9 @@ func (r *actualScoreRepo) Bulksave(payload *[]model.ActualScore) error {
 	return nil
 }
 
-func (r *actualScoreRepo) Get(projectId, employeeId string) (*model.ActualScore, error) {
-	var actualScore model.ActualScore
-	err := r.db.Preload("Project").Preload("Employee").Preload("Employee.BusinessUnit").First(&actualScore, "project_id = ? AND employee_id = ?", projectId, employeeId).Error
+func (r *actualScoreRepo) Get(projectId, employeeId string) (*model.ActualScoreTable, error) {
+	var actualScore model.ActualScoreTable
+	err := r.db.Table("actual_scores").Preload("Project").Preload("Employee").Preload("Employee.BusinessUnit").First(&actualScore, "project_id = ? AND employee_id = ?", projectId, employeeId).Error
 	if err != nil {
 		return nil, err
 	}

@@ -12,7 +12,7 @@ import (
 
 type ActualScoreUsecase interface {
 	FindAll() ([]model.ActualScore, error)
-	FindById(projectId, employeeId string) (*model.ActualScore, error)
+	FindById(projectId, employeeId string) (*model.ActualScoreTable, error)
 	SaveData(payload *model.ActualScore) error
 	DeleteData(projectId, employeeId string) error
 	BulkInsert(file *multipart.FileHeader, projectId string) ([]string, error)
@@ -28,7 +28,7 @@ func (r *actualScoreUsecase) FindAll() ([]model.ActualScore, error) {
 	return r.repo.List()
 }
 
-func (r *actualScoreUsecase) FindById(projectId, employeeId string) (*model.ActualScore, error) {
+func (r *actualScoreUsecase) FindById(projectId, employeeId string) (*model.ActualScoreTable, error) {
 	return r.repo.Get(projectId, employeeId)
 }
 

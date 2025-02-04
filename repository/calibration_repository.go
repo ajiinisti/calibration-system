@@ -14,7 +14,7 @@ type CalibrationRepo interface {
 	SaveByUser(payload *request.CalibrationForm, project *model.Project) error
 	Get(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
 	GetAllPreviousEmployeeCalibrationByActiveProject(employeeID, projectID string, phaseOrder int) ([]model.Calibration, error)
-	GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error)
+	GetByProjectEmployeeID(projectID, employeeID string) ([]model.CalibrationForm, error)
 	List() ([]model.Calibration, error)
 	GetActiveUserBySPMOID(spmoID string) ([]model.UserChange, error)
 	GetAcceptedBySPMOID(spmoID string) ([]model.Calibration, error)
@@ -288,9 +288,10 @@ func (r *calibrationRepo) GetAllPreviousEmployeeCalibrationByActiveProject(emplo
 	return calibrations, nil
 }
 
-func (r *calibrationRepo) GetByProjectEmployeeID(projectID, employeeID string) ([]model.Calibration, error) {
-	var calibration []model.Calibration
+func (r *calibrationRepo) GetByProjectEmployeeID(projectID, employeeID string) ([]model.CalibrationForm, error) {
+	var calibration []model.CalibrationForm
 	err := r.db.
+		Table("calibrations").
 		Preload("Employee").
 		Preload("Employee.BusinessUnit").
 		Preload("ProjectPhase").
