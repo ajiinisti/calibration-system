@@ -112,6 +112,13 @@ func (r *projectRepo) Save(payload *model.Project) error {
 		return err.Error
 	}
 
+	go func() {
+		err := r.db.Exec("REFRESH MATERIALIZED VIEW materialized_user_view;").Error
+		if err != nil {
+			fmt.Printf("Failed to refresh materialized view: %v", err)
+		}
+	}()
+
 	return nil
 }
 
@@ -228,6 +235,13 @@ func (r *projectRepo) ActivateByID(id string) error {
 	if result.Error != nil {
 		return result.Error
 	}
+
+	go func() {
+		err := r.db.Exec("REFRESH MATERIALIZED VIEW materialized_user_view;").Error
+		if err != nil {
+			fmt.Printf("Failed to refresh materialized view: %v", err)
+		}
+	}()
 	return nil
 }
 
@@ -236,6 +250,13 @@ func (r *projectRepo) NonactivateByID(id string) error {
 	if result.Error != nil {
 		return result.Error
 	}
+
+	go func() {
+		err := r.db.Exec("REFRESH MATERIALIZED VIEW materialized_user_view;").Error
+		if err != nil {
+			fmt.Printf("Failed to refresh materialized view: %v", err)
+		}
+	}()
 	return nil
 }
 
