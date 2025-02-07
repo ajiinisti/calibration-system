@@ -29,7 +29,7 @@ type UserUsecase interface {
 	FindByNik(nik string) (*model.User, error)
 	FindByGenerateToken(generateToken string) (*model.User, error)
 	FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error)
-	FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.User, response.Paging, error)
+	FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.UserShow, response.Paging, error)
 	GeneratePasswordById(id string) error
 	FindListUserAdmin() ([]model.UserChange, error)
 }
@@ -93,12 +93,12 @@ func (u *userUsecase) FindPagination(param request.PaginationParam) ([]model.Use
 	return u.repo.PaginateList(paginationQuery)
 }
 
-func (u *userUsecase) FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.User, response.Paging, error) {
+func (u *userUsecase) FindByProjectIdPagination(param request.PaginationParam, projectId string) ([]model.UserShow, response.Paging, error) {
 	paginationQuery := utils.GetPaginationParams(param)
 
 	users, paging, err := u.repo.PaginateByProjectId(paginationQuery, projectId)
 	if err != nil {
-		return []model.User{}, response.Paging{}, err
+		return []model.UserShow{}, response.Paging{}, err
 	}
 
 	for _, user := range users {

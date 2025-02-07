@@ -90,3 +90,7 @@ type CalibrationForm struct {
 	TopRemarks                []TopRemark  `gorm:"foreignKey:ProjectID,EmployeeID,ProjectPhaseID;references:ProjectID,EmployeeID,ProjectPhaseID;constraint:OnDelete:CASCADE"`
 	FilledTopBottomMark       bool
 }
+
+func (CalibrationForm) TableName() string {
+	return "calibrations"
+}

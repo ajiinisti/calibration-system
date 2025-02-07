@@ -20,7 +20,7 @@ type UserRepo interface {
 	Update(payload *model.User) error
 	Bulksave(payload *[]model.User) error
 	PaginateList(pagination model.PaginationQuery) ([]model.User, response.Paging, error)
-	PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error)
+	PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.UserShow, response.Paging, error)
 	GetTotalRows(name string) (int, error)
 	GetTotalRowsByProjectID(projectId, name string) (int, error)
 	ListUserAdmin() ([]model.UserChange, error)
@@ -222,13 +222,13 @@ func (u *userRepo) PaginateList(pagination model.PaginationQuery) ([]model.User,
 	return users, utils.Paginate(pagination.Page, pagination.Take, totalRows), nil
 }
 
-func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.User, response.Paging, error) {
-	var users []model.User
+func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, projectId string) ([]model.UserShow, response.Paging, error) {
+	var users []model.UserShow
 	var err error
 
 	if pagination.Name == "" {
 		err = u.db.
-			Preload("Roles").
+			Table("users").
 			Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
 				return db.
 					Joins("JOIN projects proj2 ON actual_scores.project_id = proj2.id").
@@ -257,7 +257,7 @@ func (u *userRepo) PaginateByProjectId(pagination model.PaginationQuery, project
 		}
 	} else {
 		err = u.db.
-			Preload("Roles").
+			Table("users").
 			Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
 				return db.
 					Joins("JOIN projects proj2 ON actual_scores.project_id = proj2.id").

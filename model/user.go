@@ -85,3 +85,29 @@ type UserChange struct {
 	BusinessUnitName *string
 	Roles            []string
 }
+
+type UserShow struct {
+	BaseModel
+	CreatedBy         string `gorm:"default:admin" json:"-"`
+	UpdatedBy         string `gorm:"default:admin" json:"-"`
+	Email             string
+	Name              string
+	Nik               string
+	DateOfBirth       time.Time `gorm:"type:timestamp without time zone"`
+	SupervisorNik     string
+	BusinessUnit      BusinessUnit
+	BusinessUnitId    *string
+	OrganizationUnit  string
+	Division          string
+	Directorate       string
+	Department        string
+	JoinDate          time.Time `gorm:"type:timestamp without time zone"`
+	Grade             string
+	HRBP              string
+	Position          string
+	PhoneNumber       string
+	ScoringMethod     string            `gorm:"default:Score"`
+	CalibrationScores []CalibrationForm `gorm:"foreignKey:EmployeeID"`
+	ActualScores      []ActualScore     `gorm:"foreignKey:EmployeeID"`
+	SupervisorNames   string
+}
