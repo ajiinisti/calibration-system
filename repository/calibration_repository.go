@@ -69,7 +69,7 @@ func (r *calibrationRepo) GetLatestJustification(projectID, calibratorID, employ
 		Joins("JOIN project_phases pp ON pp.id = c.project_phase_id").
 		Joins("JOIN phases p ON p.id = pp.phase_id").
 		Where("c.employee_id = ? AND c.project_id = ? AND p.order <= ?", employeeID, projectID, calibration.ProjectPhase.Phase.Order).
-		Order("").
+		Order("pp.order ASC").
 		Find(&calibrations).
 		Error
 
