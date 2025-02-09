@@ -366,7 +366,8 @@ func (r *CalibrationController) createByUserHandler(c *gin.Context) {
 }
 
 func (r *CalibrationController) sendNotificationFirstCalibratorHandler(c *gin.Context) {
-	data, err := r.uc.SendNotificationToCurrentCalibrator()
+	projectID := c.Param("projectID")
+	data, err := r.uc.SendNotificationToCurrentCalibrator(projectID)
 	if err != nil {
 		r.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -439,6 +440,6 @@ func NewCalibrationController(r *gin.Engine, tokenService authenticator.AccessTo
 	auth.POST("/calibrations/reject-approval", controller.spmoRejectApprovalHandler)
 	auth.POST("/calibrations/spmo/submit", controller.spmoSubmitHandler)
 	auth.DELETE("/calibrations/:projectID/:employeeID", controller.deleteHandler)
-	// auth.POST("/projects/send-notificaition-first-calibrator", controller.sendNotificationFirstCalibratorHandler)
+	auth.POST("/projects/send-notificaition-first-calibrator/:projectID", controller.sendNotificationFirstCalibratorHandler)
 	return &controller
 }

@@ -36,6 +36,7 @@ type CalibrationRepo interface {
 	GetAllDetailCalibrationBySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
 	GetAllDetailCalibration2BySPMOID(spmoID, calibratorID, businessUnitID, projectID string, order int) ([]response.UserResponse, error)
 	GetCalibrateCalibration() ([]model.Calibration, error)
+	GetCalibrateCalibrationByProjectID(projectID string) ([]model.Calibration, error)
 	GetAllCalibrationByCalibratorID(calibratorId string) ([]model.Calibration, error)
 	GetLatestJustification(projectID, calibratorID, employeeID string) ([]model.SeeCalibrationJustification, error)
 	CheckConditionBeforeSubmitCalibration(projectID string, payload []response.UserResponse,
@@ -101,6 +102,22 @@ func (r *calibrationRepo) GetCalibrateCalibration() ([]model.Calibration, error)
 		Preload("ProjectPhase.Phase").
 		Joins("JOIN projects pr ON pr.id = c.project_id AND pr.active = true").
 		Where("c.status = ? AND c.spmo_status = ? ", "Calibrate", "-").
+		Find(&calibrations).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return calibrations, nil
+}
+
+func (r *calibrationRepo) GetCalibrateCalibrationByProjectID(projectID string) ([]model.Calibration, error) {
+	var calibrations []model.Calibration
+	err := r.db.
+		Table("calibrations c").
+		Preload("ProjectPhase").
+		Preload("ProjectPhase.Phase").
+		Joins("JOIN projects pr ON pr.id = c.project_id AND pr.active = true").
+		Where("c.status = ? AND c.spmo_status = ? AND c.project_id = ?", "Calibrate", "-", projectID).
 		Find(&calibrations).
 		Error
 	if err != nil {
@@ -561,6 +578,22 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload []response.UserRespo
 		}
 	}
 
+	var project model.Project
+	err := r.db.
+		Preload("ProjectPhases", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN phases p ON project_phases.phase_id = p.id").
+				Order("p.order ASC")
+		}).
+		Preload("ProjectPhases.Phase").
+		Preload("ScoreDistributions").
+		Preload("ScoreDistributions.GroupBusinessUnit").
+		Preload("RemarkSettings").
+		First(&project, "id = ?", projectPhase.ProjectID).Error
+	if err != nil {
+		return nil, "", err
+	}
+
 	var ppId string
 	var managerCalibratorIDs []string
 	for _, employeeCalibration := range employeeCalibrationScore {
@@ -582,25 +615,21 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload []response.UserRespo
 		if len(calibrations) > 0 {
 			ppId = calibrations[0].ProjectPhaseID
 			managerCalibratorIDs = append(managerCalibratorIDs, calibrations[0].CalibratorID)
-			// err := tx.Model(&model.Calibration{}).
-			// 	Where("project_id = ? AND project_phase_id = ? AND employee_id = ? AND calibrator_id = ?",
-			// 		calibrations[0].ProjectID,
-			// 		calibrations[0].ProjectPhaseID,
-			// 		calibrations[0].EmployeeID,
-			// 		calibrations[0].CalibratorID,
-			// 	).Updates(map[string]interface{}{
-			// 	"spmo_status":                 "-",
-			// 	"status":                      "Calibrate",
-			// 	"justification_review_status": false,
-			// }).Error
-			err := tx.Updates(&model.Calibration{
+			justificationType := returnRemarkType(calibrations[0].CalibrationRating, project.RemarkSettings)
+			data := &model.Calibration{
 				ProjectID:                 calibrations[0].ProjectID,
 				ProjectPhaseID:            calibrations[0].ProjectPhaseID,
 				EmployeeID:                calibrations[0].EmployeeID,
 				Status:                    "Calibrate",
 				JustificationReviewStatus: false,
 				SpmoStatus:                "-",
-			}).Error
+				JustificationType:         justificationType,
+			}
+
+			if justificationType != "default" {
+				data.FilledTopBottomMark = false
+			}
+			err := tx.Updates(data).Error
 			if err != nil {
 				tx.Rollback()
 				return nil, "", err
@@ -608,8 +637,37 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload []response.UserRespo
 		}
 	}
 
+	go func() {
+		err := r.db.Exec("REFRESH MATERIALIZED VIEW materialized_user_view;").Error
+		if err != nil {
+			fmt.Printf("Failed to refresh materialized view: %v", err)
+		}
+	}()
+
 	tx.Commit()
 	return managerCalibratorIDs, ppId, nil
+}
+
+func returnRemarkType(score string, projectRemark []model.RemarkSetting) string {
+	value := "default"
+	for _, data := range projectRemark {
+		if data.JustificationType == "top" {
+			if data.ScoringType == "rating" {
+				if score == data.From && score == data.To {
+					value = "top"
+					break
+				}
+			}
+		} else if data.JustificationType == "bottom" {
+			if data.ScoringType == "rating" {
+				if score == data.From && score == data.To {
+					value = "bottom"
+					break
+				}
+			}
+		}
+	}
+	return value
 }
 
 func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload []response.UserResponse, projectPhase model.ProjectPhase) ([]response.NotificationModel, error) {
@@ -761,6 +819,13 @@ func (r *calibrationRepo) UpdateCalibrationsOnePhaseBefore(payload []response.Us
 	for _, data := range mapResult {
 		nextCalibrator = append(nextCalibrator, data)
 	}
+
+	go func() {
+		err := r.db.Exec("REFRESH MATERIALIZED VIEW materialized_user_view;").Error
+		if err != nil {
+			fmt.Printf("Failed to refresh materialized view: %v", err)
+		}
+	}()
 
 	tx.Commit()
 	return nextCalibrator, nil
@@ -1108,6 +1173,13 @@ func (r *calibrationRepo) SubmitReview(payload *request.AcceptMultipleJustificat
 		}
 	}
 	tx.Commit()
+
+	go func() {
+		err := r.db.Exec("REFRESH MATERIALIZED VIEW materialized_user_view;").Error
+		if err != nil {
+			fmt.Printf("Failed to refresh materialized view: %v", err)
+		}
+	}()
 
 	var nextCalibrator []response.NotificationModel
 	for _, data := range mapResult {

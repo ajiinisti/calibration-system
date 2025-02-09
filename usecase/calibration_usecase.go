@@ -39,7 +39,7 @@ type CalibrationUsecase interface {
 	FindSummaryCalibrationBySPMOID(spmoID, projectID string) (response.SummarySPMO, error)
 	FindAllDetailCalibrationbySPMOID(spmoID, calibratorID, businessUnitID, department string, order int) ([]response.UserResponse, error)
 	FindAllDetailCalibration2bySPMOID(spmoID, calibratorID, businessUnitID, projectID string, order int) ([]response.UserResponse, error)
-	SendNotificationToCurrentCalibrator() ([]response.NotificationModel, error)
+	SendNotificationToCurrentCalibrator(projectID string) ([]response.NotificationModel, error)
 	FindRatingQuotaSPMOByCalibratorID(spmoID, calibratorID, businessUnitID, projectID string, order int) (*response.RatingQuota, error)
 	FindLatestJustification(projectID, calibratorID, employeeID string) ([]model.SeeCalibrationJustification, error)
 }
@@ -57,8 +57,8 @@ func (r *calibrationUsecase) FindLatestJustification(projectID, calibratorID, em
 	return r.repo.GetLatestJustification(projectID, calibratorID, employeeID)
 }
 
-func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() ([]response.NotificationModel, error) {
-	calibrations, err := r.repo.GetCalibrateCalibration()
+func (r *calibrationUsecase) SendNotificationToCurrentCalibrator(projectID string) ([]response.NotificationModel, error) {
+	calibrations, err := r.repo.GetCalibrateCalibrationByProjectID(projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +92,7 @@ func (r *calibrationUsecase) SendNotificationToCurrentCalibrator() ([]response.N
 		for _, calibrationData := range calibrations {
 			if calibrationData.Status != "Calibrate" {
 				flag = flag && false
+				break
 			}
 		}
 
@@ -460,6 +461,7 @@ func (r *calibrationUsecase) BulkInsert(file *multipart.FileHeader, projectId st
 			calibrations[len(calibrations)-2].JustificationType = justificationType
 			if justificationType != "default" {
 				calibrations[len(calibrations)-2].FilledTopBottomMark = false
+				calibrations[len(calibrations)-1].FilledTopBottomMark = false
 			}
 			fmt.Println("=========================ISI TOP BOTTOMNYA=====================", justificationType, calibrations[len(calibrations)-2].FilledTopBottomMark)
 		} else {
