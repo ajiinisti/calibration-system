@@ -177,7 +177,7 @@ func (r *calibrationUsecase) SaveDataByUser(payload *request.CalibrationForm) er
 		return err
 	}
 
-	err = r.repo.SaveByUser(payload, project)
+	err = r.repo.SaveByUser(payload, project, payload.ActualScore, payload.ActualRating)
 	if err != nil {
 		return err
 	}

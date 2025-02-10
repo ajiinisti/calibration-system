@@ -11,7 +11,7 @@ import (
 
 type CalibrationRepo interface {
 	Save(payload *model.Calibration) error
-	SaveByUser(payload *request.CalibrationForm, project *model.Project) error
+	SaveByUser(payload *request.CalibrationForm, project *model.Project, actualScore float64, actualRating string) error
 	Get(projectID, projectPhaseID, employeeID string) (*model.Calibration, error)
 	GetAllPreviousEmployeeCalibrationByActiveProject(employeeID, projectID string, phaseOrder int) ([]model.Calibration, error)
 	GetByProjectEmployeeID(projectID, employeeID string) ([]model.CalibrationForm, error)
@@ -134,7 +134,7 @@ func (r *calibrationRepo) Save(payload *model.Calibration) error {
 	return nil
 }
 
-func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *model.Project) error {
+func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *model.Project, actualScore float64, actualRating string) error {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -178,6 +178,7 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 	}
 
 	for index, calibrationData := range payload.CalibrationDataForms {
+		justificationType := returnRemarkType(actualRating, project.RemarkSettings)
 		data := model.Calibration{
 			ProjectID:         calibrationData.ProjectID,
 			ProjectPhaseID:    calibrationData.ProjectPhaseID,
@@ -189,11 +190,17 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 			Status:            "Waiting",
 			SpmoStatus:        "-",
 			SpmoComment:       "-",
-			JustificationType: "default",
+			JustificationType: justificationType,
+			CalibrationScore:  actualScore,
+			CalibrationRating: actualRating,
 		}
 
 		if index == projectPhaseStartIndex {
 			data.Status = "Calibrate"
+
+			if justificationType != "default" {
+				data.FilledTopBottomMark = false
+			}
 		}
 
 		getCalibration, _ := r.Get(calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
