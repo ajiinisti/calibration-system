@@ -195,20 +195,12 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 			CalibrationRating: actualRating,
 		}
 
-		if index == projectPhaseStartIndex {
-			data.Status = "Calibrate"
-
-			if justificationType != "default" {
-				data.FilledTopBottomMark = false
-			}
-		}
-
 		getCalibration, _ := r.Get(calibrationData.ProjectID, calibrationData.ProjectPhaseID, calibrationData.EmployeeID)
 		if getCalibration != nil {
 			data.BottomRemark = getCalibration.BottomRemark
 			data.TopRemarks = getCalibration.TopRemarks
-			data.CalibrationScore = getCalibration.CalibrationScore
-			data.CalibrationRating = getCalibration.CalibrationRating
+			data.CalibrationScore = actualScore
+			data.CalibrationRating = actualRating
 			data.Status = getCalibration.Status
 			data.SpmoStatus = getCalibration.SpmoStatus
 			data.SpmoComment = getCalibration.SpmoComment
@@ -216,6 +208,15 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 			data.JustificationReviewStatus = getCalibration.JustificationReviewStatus
 			data.FilledTopBottomMark = getCalibration.FilledTopBottomMark
 			data.Comment = getCalibration.Comment
+		}
+
+		if index == projectPhaseStartIndex {
+			data.Status = "Calibrate"
+			if justificationType != "default" {
+				data.FilledTopBottomMark = false
+			} else {
+				data.FilledTopBottomMark = true
+			}
 		}
 
 		if calibrationData.Spmo2ID != "" {
@@ -635,6 +636,8 @@ func (r *calibrationRepo) UpdateManagerCalibrations(payload []response.UserRespo
 
 			if justificationType != "default" {
 				data.FilledTopBottomMark = false
+			} else {
+				data.FilledTopBottomMark = true
 			}
 			err := tx.Updates(data).Error
 			if err != nil {
