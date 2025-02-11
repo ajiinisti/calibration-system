@@ -406,6 +406,10 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 				resultSummary[picName+user.BusinessUnit.Name] = resp
 			} else {
 				if summary, ok := resultSummary[picName+user.BusinessUnit.Name]; ok {
+					fmt.Println("=============PICNAME N-1======================")
+					if picName == "N-1" {
+						fmt.Println("================user===================", user.Name, user.CalibrationScores[calibrationLength-1].CalibrationRating)
+					}
 					if user.ScoringMethod == "Score" {
 						summary.UserCount += 1
 						summary.TotalCalibratedScore += user.CalibrationScores[len(user.CalibrationScores)-1].CalibrationScore
@@ -438,6 +442,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 					}
 				} else {
 					if picName == "N-1" {
+						fmt.Println("================user===================", user.Name, user.CalibrationScores[calibrationLength-1].CalibrationRating)
 						resp := &response.CalibratorBusinessUnit{
 							CalibratorName:           picName,
 							CalibratorID:             picId,
