@@ -309,6 +309,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 						return nil, err
 					}
 
+					fmt.Println("==========================CHECK PERNAH KALIBRASI ATAU GA==============================", checkIfTrue)
 					if checkIfTrue {
 						prevCalibrator[user.Name+*user.BusinessUnitId] = user.Name
 						picName = user.Name
