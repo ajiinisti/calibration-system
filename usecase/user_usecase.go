@@ -26,6 +26,7 @@ type UserUsecase interface {
 	SaveUser(payload model.User, role []string) error
 	UpdateData(payload *model.User) error
 	BulkInsert(file *multipart.FileHeader) ([]string, error)
+	BulkChangePassword(file *multipart.FileHeader) ([]string, error)
 	FindByNik(nik string) (*model.User, error)
 	FindByGenerateToken(generateToken string) (*model.User, error)
 	FindPagination(param request.PaginationParam) ([]model.User, response.Paging, error)
@@ -289,6 +290,59 @@ func (u *userUsecase) BulkInsert(file *multipart.FileHeader) ([]string, error) {
 	if len(logs) > 0 {
 		return logs, fmt.Errorf("Error when insert data")
 	}
+	return logs, nil
+}
+
+func (u *userUsecase) BulkChangePassword(file *multipart.FileHeader) ([]string, error) {
+	var logs []string
+	var users []model.User
+
+	// Membuka file Excel yang diunggah
+	excelFile, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer excelFile.Close()
+
+	xlsFile, err := excelize.OpenReader(excelFile)
+	if err != nil {
+		return nil, err
+	}
+
+	sheetName := xlsFile.GetSheetName(1)
+	rows := xlsFile.GetRows(sheetName)
+
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+
+		password, err := utils.SaltPassword([]byte(row[3]))
+		if err != nil {
+			return nil, err
+		}
+
+		inputedData, _ := u.repo.SearchByNik(row[1])
+		if inputedData != nil {
+			inputedData.Password = password
+			users = append(users, *inputedData)
+		} else {
+			logs = append(logs, fmt.Sprintf("Error NIK %s Not found on Row %d", row[1], i))
+		}
+
+	}
+
+	if len(logs) > 0 {
+		fmt.Println("==========len logs=========", len(logs))
+		return logs, fmt.Errorf("Error when insert data")
+	} else {
+		fmt.Println("==========len logs=========", len(logs))
+		err = u.repo.Bulksave(&users)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return logs, nil
 }
 

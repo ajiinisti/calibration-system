@@ -101,6 +101,66 @@ func (u *userRepo) Bulksave(payload *[]model.User) error {
 	return nil
 }
 
+func (u *userRepo) BulkUpdatePasswords(payload *[]model.User) error {
+	tx := u.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	batchSize := 100
+	numFullBatches := len(*payload) / batchSize
+
+	// Process full batches
+	for i := 0; i < numFullBatches; i++ {
+		start := i * batchSize
+		end := (i + 1) * batchSize
+		currentBatch := (*payload)[start:end]
+
+		// Process each record in the batch
+		for _, user := range currentBatch {
+			// Skip if no password or if ID is zero UUID
+			if user.Password == "" {
+				continue
+			}
+
+			// Update only the password field
+			err := tx.Model(&model.User{}).
+				Where("id = ?", user.ID).
+				Updates(map[string]interface{}{
+					"password": user.Password,
+				}).Error
+
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+
+	// Process remaining items
+	remainingItems := (*payload)[numFullBatches*batchSize:]
+	for _, user := range remainingItems {
+		if user.Password == "" {
+			continue
+		}
+
+		err := tx.Model(&model.User{}).
+			Where("id = ?", user.ID).
+			Updates(map[string]interface{}{
+				"password": user.Password,
+			}).Error
+
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit().Error
+}
+
 func (u *userRepo) Get(id string) (*model.User, error) {
 	var user model.User
 	if id != "" {

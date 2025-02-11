@@ -218,6 +218,26 @@ func (u *UserController) uploadHandler(c *gin.Context) {
 	u.NewSuccessSingleResponse(c, "", "OK")
 }
 
+func (u *UserController) uploadPasswordHandler(c *gin.Context) {
+	file, err := c.FormFile("excelFile")
+	if err != nil {
+		u.NewFailedResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	logs, err := u.uc.BulkChangePassword(file)
+	if err != nil {
+		if len(logs) > 0 {
+			u.NewFailedResponse(c, http.StatusInternalServerError, strings.Join(logs, ","))
+		} else {
+			u.NewFailedResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	u.NewSuccessSingleResponse(c, "", "OK")
+}
+
 func (u *UserController) generatePasswordHandler(c *gin.Context) {
 	id := c.Param("id")
 	if err := u.uc.GeneratePasswordById(id); err != nil {
@@ -247,6 +267,7 @@ func NewUserController(u *gin.Engine, tokenService authenticator.AccessToken, uc
 	auth.POST("/users", controller.createHandler)
 	auth.POST("/users/generate-password/:id", controller.generatePasswordHandler)
 	auth.POST("/users/upload", controller.uploadHandler)
+	auth.POST("/users/upload/password", controller.uploadPasswordHandler)
 	auth.DELETE("/users/:id", controller.deleteHandler)
 	return &controller
 }
