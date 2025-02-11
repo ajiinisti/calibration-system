@@ -855,6 +855,13 @@ func (r *projectRepo) GetCalibrationsByBusinessUnit(calibratorID, businessUnit, 
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
 			return db.Where("project_id = ?", projectID)
 		}).
+		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
+			return db.
+				Joins("JOIN project_phases pp ON pp.id = calibrations.project_phase_id").
+				Joins("JOIN phases p ON p.id = pp.phase_id ").
+				Where("calibrations.project_id = ? AND p.order = ?", projectID, phase).
+				Order("p.order")
+		}).
 		Table("materialized_user_view m").
 		Joins("JOIN users u2 on u2.id = m.id").
 		Select("u2.*, COUNT(m.id) AS calibration_count").
