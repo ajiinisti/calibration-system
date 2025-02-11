@@ -470,8 +470,9 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorID, 
 	subquery := r.db.
 		Table("materialized_user_view mv1").
 		Select("mv1.id").
-		Where("mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ?", phase, prevCalibrator, businessUnit, projectID).
-		Or("mv1.id = ? AND mv1.business_unit_id = ? AND mv1.phase_order = ? AND mv1.project_id = ?", prevCalibrator, businessUnit, phase, projectID)
+		Where("(mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ?) OR (mv1.id = ? AND mv1.business_unit_id = ? AND mv1.phase_order = ? AND mv1.project_id = ?)",
+			phase, prevCalibrator, businessUnit, projectID,
+			prevCalibrator, businessUnit, phase, projectID)
 
 	var subqueryResults []string
 	if err := subquery.Pluck("id", &subqueryResults).Error; err != nil {
@@ -542,8 +543,9 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnitPaginate(calibr
 	subquery := r.db.
 		Table("materialized_user_view mv1").
 		Select("mv1.id").
-		Where("mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ?", phase, prevCalibrator, businessUnit, projectID).
-		Or("mv1.id = ? AND mv1.business_unit_id = ? AND mv1.phase_order = ? AND mv1.project_id = ?", prevCalibrator, businessUnit, phase, projectID)
+		Where("(mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ?) OR (mv1.id = ? AND mv1.business_unit_id = ? AND mv1.phase_order = ? AND mv1.project_id = ?)",
+			phase, prevCalibrator, businessUnit, projectID,
+			prevCalibrator, businessUnit, phase, projectID)
 
 	var subqueryResults []string
 	if err := subquery.Pluck("id", &subqueryResults).Error; err != nil {
