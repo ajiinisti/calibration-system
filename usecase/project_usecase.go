@@ -302,7 +302,7 @@ func (r *projectUsecase) FindSummaryProjectByCalibratorID(calibratorID, projectI
 		calibrationLength := len(user.CalibrationScores)
 		for _, calibration := range user.CalibrationScores {
 			if calibration.ProjectPhase.Phase.Order == phase && calibration.CalibratorID == calibratorID {
-				if _, isExist := prevCalibrator[user.Name+*user.BusinessUnitId]; calibrationLength == 1 && isExist {
+				if _, isExist := prevCalibrator[user.Name+*user.BusinessUnitId]; calibrationLength == 1 && !isExist {
 					// check if n-1 or not
 					checkIfTrue, err := r.repo.FindIfCalibratorOnPhaseBefore(user.ID, projectID, calibration.ProjectPhase.Phase.Order)
 					if err != nil {
