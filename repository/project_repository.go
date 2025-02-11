@@ -2203,7 +2203,7 @@ func (r *projectRepo) GetAllGrade(calibratorID, prevCalibrator, businessUnitName
 		subquery := r.db.
 			Table("materialized_user_view mv1").
 			Select("mv1.id").
-			Where("mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ? AND m.deleted_at is NULL", phase, prevCalibrator, businessUnitName, projectID).
+			Where("mv1.phase_order < ? AND mv1.calibrator_id = ? AND mv1.business_unit_id = ? AND mv1.project_id = ? AND mv1.deleted_at is NULL", phase, prevCalibrator, businessUnitName, projectID).
 			Or("mv1.id = ? AND mv1.business_unit_id = ? AND mv1.phase_order = ? AND mv1.project_id = ? AND mv1.deleted_at is NULL", prevCalibrator, businessUnitName, phase, projectID)
 
 		var subqueryResults []string
