@@ -2100,8 +2100,7 @@ func (r *projectRepo) GetAllSupervisorName(calibratorID, prevCalibrator, busines
 
 		err = r.db.
 			Table("materialized_user_view m1").
-			Select("COALESCE(m1.supervisor_names, '') as supervisor_names").
-			Distinct().
+			Select("DISTINCT COALESCE(m1.supervisor_names, '') as supervisor_names").
 			Where("m1.calibrator_id = ? AND m1.project_id = ? and m1.phase_order = ? AND m1.business_unit_id = ? AND m1.id NOT IN (?) AND m1.id NOT IN (?) AND m1.deleted_at is NULL",
 				calibratorID, projectID, phase, businessUnitName, queryPrevCalibrator, subqueryResults).
 			Order("m1.supervisor_names ASC").
