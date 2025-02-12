@@ -1,5 +1,7 @@
 package response
 
+import "time"
+
 type SummaryProject struct {
 	Summary           []*BusinessUnitTotal
 	APlusTotalScore   int
@@ -74,6 +76,7 @@ type SPMOSummaryResult struct {
 	CalibratorID     string
 	ProjectPhaseID   string
 	Order            int
+	LastLogin        time.Time
 }
 
 // Response to User
@@ -100,6 +103,7 @@ type CalibratorSummary struct {
 	CalibratorID   string
 	Count          int
 	Status         string
+	LastLogin      time.Time
 }
 
 // type DepartmentCountSummarySPMO struct {

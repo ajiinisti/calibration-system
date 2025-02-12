@@ -1210,7 +1210,7 @@ func (r *calibrationRepo) GetSummaryBySPMOID(spmoID, projectID string) ([]respon
 	// Assuming db is your GORM database instance
 	var results []response.SPMOSummaryResult
 	err := tx.Table("calibrations c").
-		Select("COUNT(c.*) as count, u.business_unit_id, b.name as business_unit_name, u2.name as calibrator_name, c.calibrator_id, c.project_phase_id, p.order").
+		Select("COUNT(c.*) as count, u.business_unit_id, b.name as business_unit_name, u2.name as calibrator_name, c.calibrator_id, c.project_phase_id, p.order, u2.last_login as last_login").
 		Joins("JOIN project_phases pp ON pp.id = c.project_phase_id").
 		Joins("JOIN phases p ON pp.phase_id = p.id").
 		Joins("JOIN users u ON c.employee_id = u.id").
@@ -1219,7 +1219,7 @@ func (r *calibrationRepo) GetSummaryBySPMOID(spmoID, projectID string) ([]respon
 		Joins("JOIN projects pr ON pr.id = c.project_id").
 		Where("pr.id = ? AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?)", projectID, spmoID, spmoID, spmoID).
 		Where("p.order < 6").
-		Group("u.business_unit_id, b.name, u2.name, c.calibrator_id, c.project_phase_id, p.order").
+		Group("u.business_unit_id, b.name, u2.name, c.calibrator_id, c.project_phase_id, p.order, u2.last_login").
 		Order("p.order ASC").
 		Scan(&results).Error
 

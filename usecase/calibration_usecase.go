@@ -768,6 +768,7 @@ func (r *calibrationUsecase) FindSummaryCalibrationBySPMOID(spmoID, projectID st
 			CalibratorID:   d.CalibratorID,
 			Count:          d.Count,
 			Status:         "Pending",
+			LastLogin:      d.LastLogin,
 		}
 
 		phaseSummary := response.ProjectPhaseSummarySPMO{

@@ -95,6 +95,11 @@ func (a *authUsecase) Login(payload request.Login) (*model.User, error) {
 	if !utils.ComparePassword(user.Password, []byte(payload.Password)) {
 		return nil, fmt.Errorf("Email/Password invalid")
 	}
+
+	user.LastLogin = time.Now()
+	if err := a.user.UpdateData(user); err != nil {
+		return nil, fmt.Errorf("Failed to update last access: %v", err)
+	}
 	return user, nil
 }
 
