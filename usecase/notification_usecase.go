@@ -59,7 +59,7 @@ func (n *notificationUsecase) NotifyCalibrator(projectID string) error {
 		URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
 		// URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, "token"),
 		FirstName:  "Aji",
-		Subject:    "Calibration Assignment",
+		Subject:    "Employee Performance Rating Calibration Assignment",
 		PhaseOrder: 1,
 		Deadline:   "12 November 2023",
 	}
@@ -87,7 +87,7 @@ func (n *notificationUsecase) NotifyManager(ids []string, deadline time.Time) er
 			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
 			URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate),
 			FirstName:  employee.Name,
-			Subject:    "Calibration Assignment",
+			Subject:    "Employee Performance Rating Calibration Assignment",
 			PhaseOrder: 1,
 			Deadline:   deadline.Format("02-January-2006"),
 		}
@@ -117,7 +117,7 @@ func (n *notificationUsecase) NotifyApprovedCalibrationToCalibrators(data []resp
 
 		emailData := utils.EmailData{
 			FirstName: user.Name,
-			Subject:   "Approved Calibration",
+			Subject:   "Approved Employee Performance Rating Calibration",
 		}
 
 		// go func() {
@@ -146,7 +146,7 @@ func (n *notificationUsecase) NotifySubmittedCalibrationToNextCalibratorsWithout
 
 	emailData := utils.EmailData{
 		FirstName: user.Name,
-		Subject:   "Submitted Calibration",
+		Subject:   "Submitted Employee Performance Rating Calibration",
 	}
 
 	err = utils.SendMail([]string{user.Email}, &emailData, "./utils/templates", "submitCalibrationWithoutSpmoEmail.html", n.cfg.SMTPConfig)
@@ -183,7 +183,7 @@ func (n *notificationUsecase) NotifyNextCalibrators(data []response.Notification
 			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
 			URL:        url,
 			FirstName:  employee.Name,
-			Subject:    "Calibration Assignment",
+			Subject:    "Employee Performance Rating Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
 			Deadline:   calibratorData.Deadline.Format("02-January-2006"),
 			Calibrator: calibratorData.PreviousCalibrator,
@@ -225,7 +225,7 @@ func (n *notificationUsecase) NotifySendBackCalibrators(data []response.Notifica
 		emailData := utils.EmailData{
 			URL:        url,
 			FirstName:  employee.Name,
-			Subject:    "Calibration Assignment",
+			Subject:    "Employee Performance Rating Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
 			Deadline:   calibratorData.Deadline.Format("02-January-2006"),
 			Calibrator: calibratorData.NextCalibrator,
@@ -261,7 +261,7 @@ func (n *notificationUsecase) NotifyFirstCurrentCalibrators(data []response.Noti
 		emailData := utils.EmailData{
 			URL:        fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, employee.AccessTokenGenerate),
 			FirstName:  employee.Name,
-			Subject:    "Calibration Assignment",
+			Subject:    "Employee Performance Rating Calibration Assignment",
 			PhaseOrder: calibratorData.ProjectPhase,
 			Deadline:   calibratorData.Deadline.Format("02-January-2006"),
 		}
@@ -293,7 +293,7 @@ func (n *notificationUsecase) NotifyRejectedCalibrationToCalibrator(id, employee
 	emailData := utils.EmailData{
 		URL:          fmt.Sprintf("%s/#/autologin/%s", n.cfg.FrontEndApi, user.AccessTokenGenerate),
 		FirstName:    user.Name,
-		Subject:      "Rejected Calibration",
+		Subject:      "Rejected Employee Performance Rating Calibration",
 		Comment:      comment,
 		EmployeeName: employee,
 	}
@@ -322,7 +322,7 @@ func (n *notificationUsecase) NotifySubmittedCalibrationToSpmo(calibrator *model
 			// URL: fmt.Sprintf("%s/#/login", n.cfg.FrontEndApi),
 			URL:        fmt.Sprintf("%s/#/autologin-spmo/%s/%s/%s/%s/%d", n.cfg.FrontEndApi, spmo.AccessTokenGenerate, projectID, calibrator.ID, *calibrator.BusinessUnitId, phase),
 			FirstName:  spmo.Name,
-			Subject:    "Submitted Worksheet",
+			Subject:    "Submitted Employee Performance Rating Calibration Worksheet",
 			Calibrator: calibrator.Name,
 		}
 
