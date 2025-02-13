@@ -113,10 +113,10 @@ func (a *authUsecase) CheckToken(token string) (*model.User, error) {
 		return nil, fmt.Errorf("Token invalid")
 	}
 
-	if err != nil {
-		return nil, err
+	user.LastLogin = time.Now()
+	if err := a.user.UpdateData(user); err != nil {
+		return nil, fmt.Errorf("Failed to update last access: %v", err)
 	}
-
 	return user, nil
 }
 
