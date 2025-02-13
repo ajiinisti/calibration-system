@@ -79,11 +79,11 @@ type UserCalibration struct {
 type UserChange struct {
 	ID               string
 	Email            string
-	Division         *string
-	Name             *string
-	Nik              *string
-	BusinessUnitName *string
-	Roles            []string
+	Division         string
+	Name             string
+	Nik              string
+	BusinessUnitName string
+	Roles            []string `gorm:"type:text[]"`
 }
 
 type UserShow struct {

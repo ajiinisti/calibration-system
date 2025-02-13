@@ -210,7 +210,7 @@ func (r *calibrationRepo) SaveByUser(payload *request.CalibrationForm, project *
 			data.Comment = getCalibration.Comment
 		}
 
-		if index == projectPhaseStartIndex {
+		if index == projectPhaseStartIndex && data.Status == "Waiting" {
 			data.Status = "Calibrate"
 			if justificationType != "default" {
 				data.FilledTopBottomMark = false

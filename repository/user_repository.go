@@ -178,19 +178,35 @@ func (u *userRepo) Get(id string) (*model.User, error) {
 }
 
 func (u *userRepo) List() ([]model.UserChange, error) {
-	var users []model.UserChange
+	var users []model.User
 	err := u.db.
 		Table("users u").
-		Select("u.id as id, u.email as email, u.name as name, u.division as division, u.nik as nik, b.name as business_unit_name, array_agg(r.name) as roles").
-		Joins("JOIN business_units b on u.business_unit_id = b.id").
-		Joins("LEFT JOIN user_roles ur on u.id = ur.user_id").
-		Joins("LEFT JOIN roles r on r.id = ur.role_id").
-		Group("u.id, u.email, u.name, u.division, u.nik, b.name").
+		Select("u.*").
+		Preload("Roles").
+		Preload("BusinessUnit").
 		Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
-	return users, nil
+
+	var userChanges []model.UserChange
+	for _, user := range users {
+		var roleNames []string
+		for _, role := range user.Roles {
+			roleNames = append(roleNames, role.Name)
+		}
+
+		userChanges = append(userChanges, model.UserChange{
+			ID:               user.ID,
+			Email:            user.Email,
+			Division:         user.Division,
+			Name:             user.Name,
+			Nik:              user.Nik,
+			BusinessUnitName: user.BusinessUnit.Name,
+			Roles:            roleNames,
+		})
+	}
+	return userChanges, nil
 }
 
 func (u *userRepo) ListUserAdmin() ([]model.UserChange, error) {
@@ -206,21 +222,37 @@ func (u *userRepo) ListUserAdmin() ([]model.UserChange, error) {
 		return nil, err
 	}
 
-	var users []model.UserChange
+	var users []model.User
 	err := u.db.
 		Table("users u").
-		Select("u.id as id, u.email as email, u.name as name, u.division as division, u.nik as nik, b.name as business_unit_name, array_agg(r.name) as roles").
-		Joins("JOIN business_units b on u.business_unit_id = b.id").
-		Joins("LEFT JOIN user_roles ur on u.id = ur.user_id").
-		Joins("LEFT JOIN roles r on r.id = ur.role_id").
-		Group("u.id, u.email, u.name, u.division, u.nik, b.name").
+		Select("u.*").
+		Preload("Roles").
+		Preload("BusinessUnit").
 		Where("u.id NOT IN (?)", subqueryResults).
 		Distinct().
 		Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
-	return users, nil
+
+	var userChanges []model.UserChange
+	for _, user := range users {
+		var roleNames []string
+		for _, role := range user.Roles {
+			roleNames = append(roleNames, role.Name)
+		}
+
+		userChanges = append(userChanges, model.UserChange{
+			ID:               user.ID,
+			Email:            user.Email,
+			Division:         user.Division,
+			Name:             user.Name,
+			Nik:              user.Nik,
+			BusinessUnitName: user.BusinessUnit.Name,
+			Roles:            roleNames,
+		})
+	}
+	return userChanges, nil
 }
 
 func (u *userRepo) Delete(id string) error {
