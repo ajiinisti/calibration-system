@@ -344,7 +344,9 @@ func (r *calibrationRepo) GetActiveUserBySPMOID(spmoID string) ([]model.UserChan
 		Joins("JOIN business_units b on u.business_unit_id = b.id").
 		Joins("JOIN calibrations c1 ON (c1.employee_id = u.id OR c1.calibrator_id = u.id) AND (spmo_id = ? OR spmo2_id = ? OR spmo3_id = ?) AND c1.deleted_at IS NULL", spmoID, spmoID, spmoID).
 		Joins("JOIN projects pr ON pr.id = c1.project_id AND pr.active = true").
-		Joins("LEFT JOIN users u2 ON u.supervisor_nik = u2.nik").
+		Joins("JOIN user_roles ur on u.id = ur.user_id").
+		Joins("JOIN roles r on ur.role_id = r.id").
+		Where("r.name != 'exclude'").
 		Distinct().
 		Find(&calibration).Error
 	if err != nil {
