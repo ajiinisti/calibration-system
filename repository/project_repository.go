@@ -491,7 +491,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnit(calibratorID, 
 		}).
 		Select("m.*, sq.calibration_count").
 		Joins("LEFT JOIN (?) as sq ON sq.employee_id = m.id", subQueryCount).
-		Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL", phase, subqueryResults, projectID).
+		Where("m.phase_order = ? AND m.id IN (?) AND m.calibrator_id = ? AND m.project_id = ? AND m.deleted_at is NULL", phase, subqueryResults, calibratorID, projectID).
 		Order("calibration_count ASC").
 		Find(&resultUsers).Error
 	if err != nil {
@@ -573,7 +573,7 @@ func (r *projectRepo) GetCalibrationsByPrevCalibratorBusinessUnitPaginate(calibr
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Select("m.*, sq.calibration_count").
 		Joins("LEFT JOIN (?) as sq ON sq.employee_id = m.id", subQueryCount).
-		Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL", phase, subqueryResults, projectID).
+		Where("m.phase_order = ? AND m.id IN (?) AND m.calibrator_id = ? AND m.project_id = ? AND m.deleted_at is NULL", phase, subqueryResults, calibratorID, projectID).
 		Scopes(func(db *gorm.DB) *gorm.DB {
 			if len(pagination.SupervisorName) > 0 {
 				db = db.Where("m.supervisor_names IN ?", pagination.SupervisorName)
@@ -1892,7 +1892,7 @@ func (r *projectRepo) GetCalibrationsForSummaryHelper(types, calibratorID, prevC
 				prevCalibrator, businessUnit, phase, projectID)
 
 		err := r.db.Table("materialized_user_view m").
-			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL", phase, subquery, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.calibrator_id = ? AND m.deleted_at is NULL", phase, subquery, projectID, calibratorID).
 			Count(&count).Error
 
 		if err != nil {
@@ -2038,7 +2038,7 @@ func (r *projectRepo) GetAllEmployeeName(calibratorID, prevCalibrator, businessU
 		err = r.db.Table("materialized_user_view m").
 			Select("m.name").
 			Distinct().
-			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.calibrator_id = ? AND m.deleted_at is NULL", phase, subqueryResults, projectID, calibratorID).
 			Order("m.name ASC").
 			Find(&employeeName).Error
 	} else {
@@ -2133,7 +2133,7 @@ func (r *projectRepo) GetAllSupervisorName(calibratorID, prevCalibrator, busines
 		err = r.db.Table("materialized_user_view m").
 			Select("m.supervisor_names").
 			Distinct().
-			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL AND m.supervisor_names IS NOT NULL", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.calibrator_id = ? AND m.deleted_at is NULL AND m.supervisor_names IS NOT NULL", phase, subqueryResults, projectID, calibratorID).
 			Order("m.supervisor_names ASC").
 			Find(&employeeName).Error
 	} else {
@@ -2228,7 +2228,7 @@ func (r *projectRepo) GetAllGrade(calibratorID, prevCalibrator, businessUnitName
 		err = r.db.Table("materialized_user_view m").
 			Select("m.grade").
 			Distinct().
-			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ?", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.calibrator_id = ?", phase, subqueryResults, projectID, calibratorID).
 			Order("m.grade ASC").
 			Find(&employeeName).Error
 	} else {
@@ -2550,7 +2550,7 @@ func (r *projectRepo) GetTotalRowsCalibration(calibratorID, prevCalibrator, busi
 		err = r.db.Table("materialized_user_view m").
 			Select("m.id").
 			Distinct().
-			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL AND m.calibrator_id = ?", phase, subqueryResults, projectID, calibratorID).
 			Scopes(func(db *gorm.DB) *gorm.DB {
 				if len(pagination.SupervisorName) > 0 {
 					db = db.Where("m.supervisor_names IN ?", pagination.SupervisorName)
@@ -3132,7 +3132,7 @@ func (r *projectRepo) GetCalibratedRating(calibratorID, prevCalibrator, business
 		err = r.db.Table("materialized_user_view m").
 			Select("m.calibration_rating AS calibration_rating, COUNT(*) as count").
 			Distinct().
-			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.deleted_at is NULL AND m.calibrator_id = ?", phase, subqueryResults, projectID, calibratorID).
 			Group("m.calibration_rating").
 			Scan(&groupedResults).
 			Error
@@ -3251,7 +3251,7 @@ func (r *projectRepo) GetAverageScore(calibratorID, prevCalibrator, businessUnit
 		// First get the base users
 		err = r.db.Table("materialized_user_view m").
 			Select("AVG(m.calibration_score)").
-			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.scoring_method='Score' AND m.deleted_at is NULL", phase, subqueryResults, projectID).
+			Where("m.phase_order = ? AND m.id IN (?) AND m.project_id = ? AND m.scoring_method='Score' AND m.deleted_at is NULL AND m.calibrator_id = ?", phase, subqueryResults, projectID, calibratorID).
 			Scan(&averageScore).
 			Error
 	} else if types == "all" {
