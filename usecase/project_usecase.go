@@ -1099,19 +1099,19 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+15), fmt.Sprintf("I%d", i+15), style2)
 
 		// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), truncateFloat(user.ActualScores[0].PTTScore, 2))
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].PTTScore))
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), user.ActualScores[0].PTTScore)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), fmt.Sprintf("J%d", i+15), style2)
 
 		// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), truncateFloat(user.ActualScores[0].PATScore, 2))
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].PATScore))
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), user.ActualScores[0].PATScore)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), fmt.Sprintf("K%d", i+15), style2)
 
 		// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), truncateFloat(user.ActualScores[0].Score360, 2))
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].Score360))
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), user.ActualScores[0].Score360)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), fmt.Sprintf("L%d", i+15), style2)
 
 		// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), truncateFloat(user.ActualScores[0].ActualScore, 2))
-		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].ActualScore))
+		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), user.ActualScores[0].ActualScore)
 		file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), fmt.Sprintf("M%d", i+15), style2)
 
 		file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("N%d", i+15), user.ActualScores[0].ActualRating)
@@ -1149,7 +1149,7 @@ func (r *projectUsecase) ReportCalibrations(types, calibratorID, businessUnit, p
 			for _, calibrationScore := range user.CalibrationScores {
 				if j == calibrationScore.ProjectPhase.Phase.Order {
 					fmt.Println("sheet= ", user.BusinessUnit.Name, " axis=", fmt.Sprintf("%s%d", asciiToName(column), i+15), " value=", truncateFloat(calibrationScore.CalibrationScore, 2))
-					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), truncateFloat(calibrationScore.CalibrationScore, 2))
+					file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), calibrationScore.CalibrationScore)
 					file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 					column++
 
@@ -1679,19 +1679,19 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("I%d", i+15), fmt.Sprintf("I%d", i+15), style2)
 
 			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+3), truncateFloat(user.ActualScores[0].PTTScore, 2))
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].PTTScore))
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), user.ActualScores[0].PTTScore)
 			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("J%d", i+15), fmt.Sprintf("J%d", i+15), style2)
 
 			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), truncateFloat(user.ActualScores[0].PATScore, 2))
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].PATScore))
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), user.ActualScores[0].PATScore)
 			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("K%d", i+15), fmt.Sprintf("K%d", i+15), style2)
 
 			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), truncateFloat(user.ActualScores[0].Score360, 2))
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].Score360))
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), user.ActualScores[0].Score360)
 			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("L%d", i+15), fmt.Sprintf("L%d", i+15), style2)
 
 			// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), truncateFloat(user.ActualScores[0].ActualScore, 2))
-			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), fmt.Sprintf("%.2f", user.ActualScores[0].ActualScore))
+			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), user.ActualScores[0].ActualScore)
 			file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("M%d", i+15), fmt.Sprintf("M%d", i+15), style2)
 
 			file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("N%d", i+15), user.ActualScores[0].ActualRating)
@@ -1729,7 +1729,8 @@ func (r *projectUsecase) SummaryReportCalibrations(calibratorID, projectID strin
 				for _, calibrationScore := range user.CalibrationScores {
 					if j == calibrationScore.ProjectPhase.Phase.Order {
 
-						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), truncateFloat(calibrationScore.CalibrationScore, 2))
+						// file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), truncateFloat(calibrationScore.CalibrationScore, 2))
+						file.SetCellValue(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), calibrationScore.CalibrationScore)
 						file.SetCellStyle(user.BusinessUnit.Name, fmt.Sprintf("%s%d", asciiToName(column), i+15), fmt.Sprintf("%s%d", asciiToName(column), i+15), backgroundColorCalibration)
 						column++
 
