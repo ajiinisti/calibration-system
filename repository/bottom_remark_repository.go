@@ -67,6 +67,7 @@ func (r *bottomRemarkRepo) Save(payload *model.BottomRemark, projectPhases []mod
 
 		for _, calibration := range calibrations {
 			calibration.JustificationType = "bottom"
+			calibration.FilledTopBottomMark = true
 			err := tx.Save(calibration)
 			if err.Error != nil {
 				tx.Rollback()
