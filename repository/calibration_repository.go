@@ -881,7 +881,8 @@ func (r *calibrationRepo) SaveCommentCalibration(payload *model.Calibration) err
 			payload.EmployeeID,
 			payload.CalibratorID,
 		).Updates(map[string]interface{}{
-		"comment": payload.Comment,
+		"comment":                payload.Comment,
+		"filled_top_bottom_mark": true,
 	}).Error
 	if err != nil {
 		tx.Rollback()
@@ -915,6 +916,7 @@ func (r *calibrationRepo) SaveCommentCalibration(payload *model.Calibration) err
 
 	for _, c := range calibrations {
 		c.Comment = payload.Comment
+		c.FilledTopBottomMark = true
 		err := tx.Updates(c).Error
 		if err != nil {
 			tx.Rollback()
