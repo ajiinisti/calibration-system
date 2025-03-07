@@ -1275,9 +1275,7 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 	err := r.db.
 		Table("materialized_user_view m").
 		Preload("ActualScores", func(db *gorm.DB) *gorm.DB {
-			return db.
-				Joins("JOIN projects proj1 ON actual_scores.project_id = proj1.id AND actual_scores.deleted_at IS NULL").
-				Where("proj1.id = ?", projectID)
+			return db.Where("project_id = ?", projectID)
 		}).
 		Preload("CalibrationScores", func(db *gorm.DB) *gorm.DB {
 			return db.
@@ -1286,11 +1284,7 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 				Where("calibrations.project_id = ? AND p.order <= ?", projectID, order).
 				Order("p.order ASC")
 		}).
-		// Preload("CalibrationScores.Calibrator").
-		Preload("CalibrationScores.ProjectPhase").
 		Preload("CalibrationScores.ProjectPhase.Phase").
-		Preload("CalibrationScores.TopRemarks").
-		Preload("CalibrationScores.BottomRemark").
 		Select("m.*").
 		Distinct().
 		Where("m.phase_order = ? AND m.project_id = ? AND m.business_unit_id = ? AND m.calibrator_id = ? AND (m.spmo_id = ? OR m.spmo2_id = ? OR m.spmo3_id = ?)", order, projectID, businessUnitID, calibratorID, spmoID, spmoID, spmoID).
