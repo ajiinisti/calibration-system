@@ -1291,7 +1291,7 @@ func (r *calibrationRepo) GetAllDetailCalibration2BySPMOID(spmoID, calibratorID,
 		Preload("CalibrationScores.ProjectPhase.Phase").
 		Preload("CalibrationScores.TopRemarks").
 		Preload("CalibrationScores.BottomRemark").
-		Select("m.*, sq.calibration_count").
+		Select("m.*").
 		Distinct().
 		Where("m.phase_order = ? AND m.project_id = ? AND m.business_unit_id = ? AND m.calibrator_id = ? AND (m.spmo_id = ? OR m.spmo2_id = ? OR m.spmo3_id = ?)", order, projectID, businessUnitID, calibratorID, spmoID, spmoID, spmoID).
 		// Select("u.*, u2.name as supervisor_names").
